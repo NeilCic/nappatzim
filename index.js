@@ -12,7 +12,7 @@ app.use('/workouts', workoutRouter);
 app.use('/auth', authRouter);
 app.use('/categories', categoryRouter)
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const IP = '0.0.0.0';
 app.listen(PORT, IP, () => {
   console.log(`Server running on http://${IP}:${PORT}`);
