@@ -26,7 +26,9 @@ const workoutSchema = z.object({
     .optional(),
 });
 
-const getWorkouts = async (userId) => {
+const getWorkouts = async (userId, options = {}) => {
+  const { limit, sortBy = 'createdAt', sortOrder = 'desc' } = options;
+
   const workouts = await prisma.workout.findMany({
     where: { userId },
     include: {
@@ -36,7 +38,8 @@ const getWorkouts = async (userId) => {
         include: { setsDetail: { orderBy: { order: "asc" } } },
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { [sortBy]: sortOrder },
+    ...(limit && { take: parseInt(limit, 10) }),
   });
   return workouts;
 };

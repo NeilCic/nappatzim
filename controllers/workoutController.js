@@ -20,7 +20,8 @@ const addWorkoutController = async (req, res) => {
 
 const getWorkoutController = async (req, res) => {
   try {
-    const workouts = await getWorkouts(req.user.userId);
+    const { limit, sortBy, sortOrder } = req.query;
+    const workouts = await getWorkouts(req.user.userId, { limit, sortBy, sortOrder });
     res.json(workouts);
   } catch (error) {
     res.status(500).json({ error: error.message });

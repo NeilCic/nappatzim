@@ -11,7 +11,7 @@ const userSchema = z.object({
 });
 
 const hashPassword = async (password) => {
-    const saltRounds = 15;
+    const saltRounds = 10;
     return await bcrypt.hash(password, saltRounds);
 };
 

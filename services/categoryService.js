@@ -11,6 +11,11 @@ export const getCategories = async (userId) => {
     try {
         const categories = await prisma.workoutCategory.findMany({
             where: { userId },
+            include: {
+                _count: {
+                    select: { workouts: true }
+                }
+            }
         });
         return categories;
     } catch (error) {
