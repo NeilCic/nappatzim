@@ -244,19 +244,13 @@ ISC
 ---
 
 For LOCAL development:
-✅ Mobile App.js: http://192.168.1.215:3000
-✅ Local .env: Use local postgres DATABASE_URL
+set const USE_PRODUCTION = false;
 ✅ Run: docker-compose up -d
 ✅ Run: npm start (backend)
 ✅ Run: npx expo start (mobile)
 
 For DEPLOYED (Render):
-✅ Mobile App.js: https://nappatzim.onrender.com
-❌ Don't toggle .env file - Your local .env doesn't get deployed to Render
-✅ Set environment variables on Render's dashboard:
-Go to your Render service → Environment
-Add DATABASE_URL = (Neon connection string)
-Add JWT_SECRET = (your secret)
+set const USE_PRODUCTION = true;
 ✅ Don't run docker-compose
 ✅ Don't run npm start locally
 ✅ Run: npx expo start --tunnel (mobile)
