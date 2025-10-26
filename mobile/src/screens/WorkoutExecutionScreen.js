@@ -32,7 +32,6 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
     require("../../assets/pad-tense-mood-and-anticipation-237289.mp3"),
   ];
 
-  // todo currently we cant log the executed workout because of validations probs
   // todo apparently the zod validations should be at controller level. where we can also convert strings into numbers if needed
 
   useEffect(() => {

@@ -1,55 +1,185 @@
 import { getCategories, createCategory, getCategoryById, updateCategory, deleteCategory } from '../services/categoryService.js';
+import logger from '../lib/logger.js';
+import { z } from 'zod';
+
+const categorySchema = z.object({
+    name: z.string().min(1, "Category name is required"),
+    color: z.string().optional(),
+});
 
 const getCategoriesController = async (req, res) => {
+    const requestId = Date.now().toString();
     try {
+        logger.info(
+            { requestId, userId: req.user.userId },
+            "Getting categories"
+        );
+
         const categories = await getCategories(req.user.userId);
+
+        logger.info({ requestId, userId: req.user.userId, count: categories.length }, "Categories retrieved");
         res.json(categories);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        logger.error(
+            {
+                requestId,
+                userId: req.user.userId,
+                error: error.message,
+                stack: error.stack,
+            },
+            "Failed to get categories - server error"
+        );
+        res.status(500).json({ error: "Internal server error" });
     }
 };
 
 const createCategoryController = async (req, res) => {
+    const requestId = Date.now().toString();
     try {
-        const category_id = await createCategory({ ...req.body, userId: req.user.userId });
+        logger.info(
+            { requestId, userId: req.user.userId, requestBody: req.body },
+            "Creating category"
+        );
+
+        const validatedData = categorySchema.parse(req.body);
+        const category_id = await createCategory({
+            ...validatedData,
+            userId: req.user.userId,
+        });
+
+        logger.info({ requestId, userId: req.user.userId, categoryId: category_id }, "Category created");
         res.status(201).json({ id: category_id });
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        if (error.name === "ZodError") {
+            logger.warn(
+                {
+                    requestId,
+                    userId: req.user.userId,
+                    validationError: error,
+                },
+                "Category creation validation failed"
+            );
+            res.status(400).json({ error: error.message });
+        } else {
+            logger.error(
+                {
+                    requestId,
+                    userId: req.user.userId,
+                    error: error.message,
+                    stack: error.stack,
+                    requestBody: req.body,
+                },
+                "Failed to create category - server error"
+            );
+            res.status(500).json({ error: "Internal server error" });
+        }
     }
 };
 
 const getCategoryByIdController = async (req, res) => {
+    const requestId = Date.now().toString();
     try {
         const { id } = req.params;
+        logger.info(
+            { requestId, userId: req.user.userId, categoryId: id },
+            "Getting category by ID"
+        );
+
         const category = await getCategoryById(id, req.user.userId);
         
         if (!category) {
+            logger.warn(
+                { requestId, userId: req.user.userId, categoryId: id },
+                "Category not found"
+            );
             return res.status(404).json({ error: 'Category not found' });
         }
         
+        logger.info({ requestId, userId: req.user.userId, categoryId: id }, "Category retrieved");
         res.json(category);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        logger.error(
+            {
+                requestId,
+                userId: req.user.userId,
+                categoryId: req.params.id,
+                error: error.message,
+                stack: error.stack,
+            },
+            "Failed to get category by ID - server error"
+        );
+        res.status(500).json({ error: "Internal server error" });
     }
 };
 
 const updateCategoryController = async (req, res) => {
+    const requestId = Date.now().toString();
     try {
         const { id } = req.params;
-        const category = await updateCategory(id, req.body, req.user.userId);
+        logger.info(
+            { requestId, userId: req.user.userId, categoryId: id, requestBody: req.body },
+            "Updating category"
+        );
+
+        const validatedData = categorySchema.partial().parse(req.body);
+        const category = await updateCategory(id, validatedData, req.user.userId);
+
+        logger.info({ requestId, userId: req.user.userId, categoryId: id }, "Category updated");
         res.json(category);
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        if (error.name === "ZodError") {
+            logger.warn(
+                {
+                    requestId,
+                    userId: req.user.userId,
+                    categoryId: req.params.id,
+                    validationError: error,
+                },
+                "Category update validation failed"
+            );
+            res.status(400).json({ error: error.message });
+        } else {
+            logger.error(
+                {
+                    requestId,
+                    userId: req.user.userId,
+                    categoryId: req.params.id,
+                    error: error.message,
+                    stack: error.stack,
+                    requestBody: req.body,
+                },
+                "Failed to update category - server error"
+            );
+            res.status(500).json({ error: "Internal server error" });
+        }
     }
 };
 
 const deleteCategoryController = async (req, res) => {
+    const requestId = Date.now().toString();
     try {
         const { id } = req.params;
+        logger.info(
+            { requestId, userId: req.user.userId, categoryId: id },
+            "Deleting category"
+        );
+
         await deleteCategory(id, req.user.userId);
+
+        logger.info({ requestId, userId: req.user.userId, categoryId: id }, "Category deleted");
         res.status(204).send();
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        logger.error(
+            {
+                requestId,
+                userId: req.user.userId,
+                categoryId: req.params.id,
+                error: error.message,
+                stack: error.stack,
+            },
+            "Failed to delete category - server error"
+        );
+        res.status(500).json({ error: "Internal server error" });
     }
 };
 

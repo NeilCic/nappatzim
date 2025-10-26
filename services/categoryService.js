@@ -1,11 +1,4 @@
 import prisma from '../lib/prisma.js';
-import { z } from 'zod';
-
-const categorySchema = z.object({
-    name: z.string(),
-    color: z.string().optional(),
-    userId: z.string()
-});
 
 export const getCategories = async (userId) => {
     try {
@@ -24,9 +17,8 @@ export const getCategories = async (userId) => {
 };
 
 export const createCategory = async(data) => {
-    const validatedData = categorySchema.parse(data);
     const category = await prisma.workoutCategory.create({
-        data: validatedData
+        data: data
     });
     return category.id;
 };
@@ -42,13 +34,12 @@ export const getCategoryById = async (categoryId, userId) => {
 };
 
 export const updateCategory = async (categoryId, data, userId) => {
-    const validatedData = categorySchema.partial().parse(data);
     const category = await prisma.workoutCategory.update({
         where: { 
             id: categoryId,
             userId 
         },
-        data: validatedData
+        data: data
     });
     return category;
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import { useApi } from "../ApiProvider";
 import ExerciseAdvancedModal from "../components/ExerciseAdvancedModal";
 
 export default function CreateWorkoutScreen({ navigation, route }) {
-  const { categories, usePrevious } = route.params || {};
+  const { categories } = route.params || {};
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [notes, setNotes] = useState("");
   const [showCategoryList, setShowCategoryList] = useState(false);
@@ -22,6 +22,9 @@ export default function CreateWorkoutScreen({ navigation, route }) {
   const [showAdvancedModal, setShowAdvancedModal] = useState(false);
   const [selectedExerciseIndex, setSelectedExerciseIndex] = useState(null);
   const [advancedSets, setAdvancedSets] = useState([]);
+  const [isLoadingPrevious, setIsLoadingPrevious] = useState(false);
+  const [hasLoadedPrevious, setHasLoadedPrevious] = useState(false);
+  const [hasPreviousWorkout, setHasPreviousWorkout] = useState(false);
   const { api } = useApi();
 
   const unitPlaceholderMap = {
@@ -37,23 +40,15 @@ export default function CreateWorkoutScreen({ navigation, route }) {
     distance: ["km", "m"],
   };
 
-  useEffect(() => {
-    if (usePrevious) {
-      fetchPreviousWorkout();
-    }
-  }, [usePrevious]); // todo keeping dependency here because id want to be able to toggle it later
-
-  const fetchPreviousWorkout = async (categoryId = null) => {
+  const fetchPreviousWorkout = async (categoryId) => {
+    setIsLoadingPrevious(true);
     try {
-      const url = categoryId
-        ? `/workouts/category/${categoryId}?limit=1&sortBy=createdAt&sortOrder=desc`
-        : "/workouts?limit=1&sortBy=createdAt&sortOrder=desc";
+      const url = `/workouts/category/${categoryId}?limit=1&sortBy=createdAt&sortOrder=desc`;
 
       const res = await api.get(url);
-      const workout = res.data?.[0] || null;
+      const workout = res.data?.workouts[0] || null;
 
       if (workout) {
-        setSelectedCategoryId(workout.categoryId || "");
         setNotes(workout.notes || "");
         setExercises(
           (workout.exercises || []).map((ex, idx) => ({
@@ -86,16 +81,39 @@ export default function CreateWorkoutScreen({ navigation, route }) {
             ],
           }))
         );
+        setHasLoadedPrevious(true);
       } else {
-        setNotes("");
-        setExercises([]);
+        Alert.alert(
+          "No Previous Workout",
+          "No previous workout found for this category."
+        );
       }
     } catch (error) {
       console.error("Error fetching previous workout:", error);
+      Alert.alert("Error", "Failed to load previous workout");
+    } finally {
+      setIsLoadingPrevious(false);
+    }
+  };
+
+  const handleDataChange = () => {
+    setHasLoadedPrevious(false);
+  };
+
+  const checkForPreviousWorkout = async (categoryId) => {
+    try {
+      const res = await api.get(
+        `/workouts/category/${categoryId}/check-previous`
+      );
+      setHasPreviousWorkout(res.data.hasPrevious || false);
+    } catch (error) {
+      console.error("Error checking for previous workout:", error);
+      setHasPreviousWorkout(false);
     }
   };
 
   const addExercise = () => {
+    handleDataChange();
     const newExercise = {
       type: "weight",
       name: `Exercise ${exercises.length + 1}`,
@@ -112,6 +130,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
   };
 
   const updateExercise = (index, field, value) => {
+    handleDataChange();
     const updatedExercises = [...exercises];
     updatedExercises[index] = {
       ...updatedExercises[index],
@@ -126,11 +145,13 @@ export default function CreateWorkoutScreen({ navigation, route }) {
   };
 
   const removeExercise = (index) => {
+    handleDataChange();
     const updatedExercises = exercises.filter((_, i) => i !== index);
     setExercises(updatedExercises);
   };
 
   const applyBasicSetup = (index) => {
+    handleDataChange();
     const exercise = exercises[index];
     if (!exercise.basicSets || !exercise.basicReps) {
       Alert.alert("Error", "Please enter both sets and reps");
@@ -150,6 +171,19 @@ export default function CreateWorkoutScreen({ navigation, route }) {
     updateExercise(index, "setsDetail", newSetsDetail);
   };
 
+  const cleanExercises = (exercises) => {
+    return exercises.map((exercise) => {
+      const {
+        basicReps,
+        basicRestMinutes,
+        basicSets,
+        basicWeight,
+        ...cleanExercise
+      } = exercise;
+      return cleanExercise;
+    });
+  };
+
   const handleCreateWorkout = async () => {
     if (!selectedCategoryId) {
       Alert.alert("Error", "Please select a category");
@@ -160,7 +194,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
       const workoutData = {
         categoryId: selectedCategoryId,
         notes: notes.trim() || undefined,
-        exercises: exercises.length > 0 ? exercises : undefined,
+        exercises: exercises.length > 0 ? cleanExercises(exercises) : undefined,
       };
 
       await api.post("/workouts", workoutData);
@@ -222,9 +256,14 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                   onPress={() => {
                     setSelectedCategoryId(category.id);
                     setShowCategoryList(false);
-
-                    if (usePrevious) {
-                      fetchPreviousWorkout(category.id);
+                    // Reset state when category changes
+                    if (category.id !== selectedCategoryId) {
+                      setHasLoadedPrevious(false);
+                      setNotes("");
+                      setExercises([]);
+                      setHasPreviousWorkout(false);
+                      // Check for previous workout
+                      checkForPreviousWorkout(category.id);
                     }
                   }}
                 >
@@ -235,12 +274,52 @@ export default function CreateWorkoutScreen({ navigation, route }) {
           )}
         </View>
 
+        {categories.length > 0 &&
+          selectedCategoryId &&
+          !hasLoadedPrevious &&
+          hasPreviousWorkout && (
+            <View style={styles.section}>
+              <TouchableOpacity
+                style={styles.loadPreviousButton}
+                onPress={() => fetchPreviousWorkout(selectedCategoryId)}
+                disabled={isLoadingPrevious}
+              >
+                <Text style={styles.loadPreviousButtonText}>
+                  {isLoadingPrevious ? "Loading..." : "Load Previous Workout"}
+                </Text>
+              </TouchableOpacity>
+              {isLoadingPrevious && (
+                <Text style={styles.loadingText}>
+                  Loading previous workout...
+                </Text>
+              )}
+            </View>
+          )}
+
+        {hasLoadedPrevious && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.clearButton}
+              onPress={() => {
+                setNotes("");
+                setExercises([]);
+                setHasLoadedPrevious(false);
+              }}
+            >
+              <Text style={styles.clearButtonText}>Start Fresh</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.section}>
           <Text style={styles.label}>Notes (Optional)</Text>
           <TextInput
             style={styles.textInput}
             value={notes}
-            onChangeText={setNotes}
+            onChangeText={(text) => {
+              handleDataChange();
+              setNotes(text);
+            }}
             placeholder="Add workout notes..."
             multiline
             numberOfLines={3}
@@ -460,16 +539,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
             ]}
             onPress={() => {
               if (exercises.length > 0) {
-                const cleanExercises = exercises.map((exercise) => {
-                  const {
-                    basicReps,
-                    basicRestMinutes,
-                    basicSets,
-                    basicWeight,
-                    ...cleanExercises
-                  } = exercise;
-                  return cleanExercises;
-                });
+                const cleanExercises = cleanExercises(exercises);
                 navigation.navigate("Workout Execution", {
                   workoutData: {
                     categoryId: selectedCategoryId,
@@ -514,6 +584,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
         onClose={() => setShowAdvancedModal(false)}
         onSave={(detailed) => {
           if (selectedExerciseIndex == null) return;
+          handleDataChange();
           const updated = [...exercises];
           updated[selectedExerciseIndex] = {
             ...updated[selectedExerciseIndex],
@@ -643,7 +714,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
     marginBottom: 8,
     flex: 1,
-    alignItems: "center"
+    alignItems: "center",
   },
   typeButtonSelected: { backgroundColor: "#007AFF" },
   typeButtonText: { fontSize: 12, color: "#666" },
@@ -732,5 +803,34 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 8,
     marginTop: 4,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginTop: 8,
+    fontStyle: "italic",
+  },
+  loadPreviousButton: {
+    backgroundColor: "#28a745",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  loadPreviousButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  clearButton: {
+    backgroundColor: "#ffc107",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  clearButtonText: {
+    color: "#333",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

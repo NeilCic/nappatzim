@@ -1,14 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma.js';
-import { z } from 'zod';
-
-const userSchema = z.object({
-    // email: z.email(),
-    email: z.string().min(3, "User name has to be at least 3 characters").max(20, "User name can't be more than 20 characters"),
-    password: z.string().min(6, "Password has to be at least 6 characters").max(20, "Password can't be more than 20 characters"),
-    role: z.enum(['user', 'admin']).default('user')
-});
 
 const hashPassword = async (password) => {
     const saltRounds = 10;
@@ -36,12 +28,7 @@ const generateTokens = (userId, email, role) => {
 };
 
 const registerUser = async (data) => {
-    const validatedData = userSchema.safeParse(data);
-    const { email, password } =  validatedData.data;
-    if (!validatedData.success) {
-        const errorArray = JSON.parse(validatedData.error.message);
-        throw new Error (errorArray[0].message);
-    }
+    const { email, password } = data;
 
     const passwordHash = await hashPassword(password);
     const user = await prisma.user.create({
@@ -56,7 +43,7 @@ const registerUser = async (data) => {
 };
 
 const loginUser = async (credentials) => {
-    const { email, password } = credentials;  // todo add zod validation
+    const { email, password } = credentials;
     
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) throw new Error('Invalid user name');

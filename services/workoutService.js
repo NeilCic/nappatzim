@@ -1,30 +1,4 @@
 import prisma from "../lib/prisma.js";
-import { z } from "zod";
-
-const exerciseSetSchema = z.object({
-  order: z.number().int().min(1),
-  value: z.number().optional(),
-  reps: z.number().optional(),
-  restMinutes: z.number().optional(),
-});
-
-const workoutSchema = z.object({
-  notes: z.string().optional(),
-  categoryId: z.string(),
-  userId: z.string(),
-  exercises: z
-    .array(
-      z.object({
-        type: z.string(),
-        name: z.string(),
-        unit: z.string().optional(),
-        notes: z.string().optional(),
-        order: z.number(),
-        setsDetail: z.array(exerciseSetSchema).optional(),
-      })
-    )
-    .optional(),
-});
 
 const getWorkouts = async (userId, options = {}) => {
   const { limit, sortBy = 'createdAt', sortOrder = 'desc' } = options;
@@ -45,15 +19,14 @@ const getWorkouts = async (userId, options = {}) => {
 };
 
 const createWorkout = async (data) => {
-  const validatedData = workoutSchema.parse(data);
   const workout = await prisma.workout.create({
     data: {
-      notes: validatedData.notes,
-      categoryId: validatedData.categoryId,
-      userId: validatedData.userId,
-      exercises: validatedData.exercises
+      notes: data.notes,
+      categoryId: data.categoryId,
+      userId: data.userId,
+      exercises: data.exercises
         ? {
-            create: validatedData.exercises.map(({ setsDetail, ...rest }) => ({
+            create: data.exercises.map(({ setsDetail, ...rest }) => ({
               ...rest,
               setsDetail: setsDetail?.length
                 ? { create: setsDetail }
@@ -137,19 +110,17 @@ const getWorkoutsByCategory = async (
 };
 
 const updateWorkout = async (workoutId, userId, data) => {
-  const validatedData = workoutSchema.partial().parse(data);
-
   const workout = await prisma.workout.update({
     where: {
       id: workoutId,
       userId,
     },
     data: {
-      ...validatedData,
-      exercises: validatedData.exercises
+      ...data,
+      exercises: data.exercises
         ? {
             deleteMany: {},
-            create: validatedData.exercises.map(({ setsDetail, ...rest }) => ({
+            create: data.exercises.map(({ setsDetail, ...rest }) => ({
               ...rest,
               setsDetail: setsDetail?.length
                 ? { create: setsDetail }
@@ -181,10 +152,21 @@ const deleteWorkout = async (workoutId, userId) => {
   return { success: true };
 };
 
+const hasPreviousWorkout = async (userId, categoryId) => {
+  const count = await prisma.workout.count({
+    where: {
+      userId,
+      categoryId,
+    },
+  });
+  return count > 0;
+};
+
 export {
   createWorkout,
   getWorkouts,
   getWorkoutsByCategory,
   updateWorkout,
   deleteWorkout,
+  hasPreviousWorkout,
 };

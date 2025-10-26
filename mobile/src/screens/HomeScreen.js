@@ -15,7 +15,6 @@ const { width: screenWidth } = Dimensions.get("window");
 
 export default function HomeScreen({ navigation, onLogout }) {
   const [categories, setCategories] = useState([]);
-  const [previousWorkout, setPreviousWorkout] = useState(null);
   const [loading, setLoading] = useState(true);
   const { api } = useApi();
 
@@ -33,30 +32,11 @@ export default function HomeScreen({ navigation, onLogout }) {
     }
   };
 
-  const fetchPreviousWorkout = async () => {
-    try {
-      const res = await api.get(
-        "/workouts?limit=1&sortBy=createdAt&sortOrder=desc"
-      );
-      setPreviousWorkout(res.data?.[0] || null);
-    } catch (error) {
-      if (axios.isCancel(error)) return;
-      console.error("Error fetching previous workout:", error);
-    }
-  };
-
-  const usePreviousWorkout = () => {
-    navigation.navigate("Create Workout", {
-      categories,
-      usePrevious: true,
-    });
-  };
-
   useFocusEffect(
     useCallback(() => {
       const loadData = async () => {
         setLoading(true);
-        await Promise.all([fetchCategories(), fetchPreviousWorkout()]);
+        await fetchCategories();
         setLoading(false);
       };
       loadData();
@@ -125,16 +105,6 @@ export default function HomeScreen({ navigation, onLogout }) {
           disabled={categories.length === 0}
         >
           <Text style={styles.buttonText}>+ New Workout</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.newWorkoutButton, categories.length === 0 && styles.disabledButton]}
-          onPress={usePreviousWorkout}
-          disabled={categories.length === 0}
-        >
-          <Text style={styles.buttonText}>
-            {previousWorkout ? "Use Previous Workout" : "No Previous Workout"}
-          </Text>
         </TouchableOpacity>
       </View>
 

@@ -4,7 +4,8 @@ import {
     getWorkoutController, 
     getWorkoutsByCategoryController,
     updateWorkoutController,
-    deleteWorkoutController 
+    deleteWorkoutController,
+    hasPreviousWorkoutController
 } from '../controllers/workoutController.js';
 import { verifyToken } from '../middleware/auth.js'
 
@@ -14,6 +15,7 @@ router.use(verifyToken);
 router.get('/', getWorkoutController);
 router.post('/', addWorkoutController);
 router.get('/category/:categoryId', getWorkoutsByCategoryController);
+router.get('/category/:categoryId/check-previous', hasPreviousWorkoutController);
 router.put('/:workoutId', updateWorkoutController);
 router.delete('/:workoutId', deleteWorkoutController);
 
