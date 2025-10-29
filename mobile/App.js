@@ -16,7 +16,7 @@ import { ApiProvider } from "./src/ApiProvider";
 import { createApi } from "./src/ApiClient";
 
 const Stack = createNativeStackNavigator();
-const USE_PRODUCTION = false;
+const USE_PRODUCTION = true;
 
 const API_BASE_URL = USE_PRODUCTION
   ? "https://nappatzim.onrender.com"
