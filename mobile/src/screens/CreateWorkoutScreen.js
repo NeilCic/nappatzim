@@ -419,7 +419,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                               updateExercise(
                                 index,
                                 "basicSets",
-                                parseInt(value) || 0
+                                String(parseInt(value) || 0)
                               )
                             }
                             keyboardType="numeric"
@@ -437,7 +437,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                               updateExercise(
                                 index,
                                 "basicReps",
-                                parseInt(value) || 0
+                                String(parseInt(value) || 0)
                               )
                             }
                             keyboardType="numeric"
@@ -455,7 +455,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                               updateExercise(
                                 index,
                                 "basicWeight",
-                                parseFloat(value) || 0
+                                String(parseFloat(value) || 0)
                               )
                             }
                             keyboardType="numeric"
@@ -473,7 +473,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                               updateExercise(
                                 index,
                                 "basicRestMinutes",
-                                parseFloat(value) || 0
+                                String(parseFloat(value) || 0)
                               )
                             }
                             keyboardType="numeric"
