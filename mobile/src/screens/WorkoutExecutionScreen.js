@@ -21,7 +21,7 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
   const [totalSets, setTotalSets] = useState(0);
   const intervalRef = useRef(null);
   const { api } = useApi();
-  const soundRefs = useRef([]);
+  const soundRefs = useRef([]); //todo is this necessary? i feel like we could drop this somehow
 
   const exercises = workoutData.exercises || [];
   const currentExercise = exercises[currentExerciseIndex];
@@ -31,8 +31,6 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
     require("../../assets/contador-385321.mp3"),
     require("../../assets/pad-tense-mood-and-anticipation-237289.mp3"),
   ];
-
-  // todo apparently the zod validations should be at controller level. where we can also convert strings into numbers if needed
 
   useEffect(() => {
     if (completedExercises.length === exercises.length) {
@@ -71,6 +69,9 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
 
   const handleTimerComplete = () => {
     playSoundSequence(completionSounds, soundRefs);
+    Alert.alert("Timer Complete!", "Time's up!", [
+      { text: "OK", onPress: () => stopAllSounds(soundRefs) },
+    ]);
 
     if (currentSet + 1 < totalSets) {
       setCurrentSet((prev) => prev + 1);
@@ -84,8 +85,8 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
   };
 
   const handleStopSound = () => {
-  stopAllSounds(soundRefs);
-};
+    stopAllSounds(soundRefs);
+  };
 
   const toggleTimer = () => {
     setIsRunning(!isRunning);
@@ -208,23 +209,40 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
         </Text>
       </View>
 
-<TouchableOpacity onPress={(!isRunning && timeLeft === 0) ? handleStopSound : toggleTimer}>
-  <View style={styles.timerSection}>
-    <View style={styles.timerDisplay}>
-      <View
-        style={[
-          styles.timerCircle,
-          { borderColor: (!isRunning && timeLeft === 0) ? "#4CAF50" : getProgressColor() },
-          isRunning && styles.timerCircleRunning,
-        ]}
+      <TouchableOpacity
+        onPress={!isRunning && timeLeft === 0 ? handleStopSound : toggleTimer}
       >
-        <Text style={[styles.timerText, { color: (!isRunning && timeLeft === 0) ? "#4CAF50" : getProgressColor() }]}>
-          {(!isRunning && timeLeft === 0) ? "DONE" : formatTime(timeLeft)}
-        </Text>
-      </View>
-    </View>
-  </View>
-</TouchableOpacity>
+        <View style={styles.timerSection}>
+          <View style={styles.timerDisplay}>
+            <View
+              style={[
+                styles.timerCircle,
+                {
+                  borderColor:
+                    !isRunning && timeLeft === 0
+                      ? "#4CAF50"
+                      : getProgressColor(),
+                },
+                isRunning && styles.timerCircleRunning,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.timerText,
+                  {
+                    color:
+                      !isRunning && timeLeft === 0
+                        ? "#4CAF50"
+                        : getProgressColor(),
+                  },
+                ]}
+              >
+                {!isRunning && timeLeft === 0 ? "DONE" : formatTime(timeLeft)}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
 
       <View style={styles.currentExerciseSection}>
         <Text style={styles.sectionTitle}>

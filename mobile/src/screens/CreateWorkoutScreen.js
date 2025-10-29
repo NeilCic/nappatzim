@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -25,19 +25,27 @@ export default function CreateWorkoutScreen({ navigation, route }) {
   const [isLoadingPrevious, setIsLoadingPrevious] = useState(false);
   const [hasLoadedPrevious, setHasLoadedPrevious] = useState(false);
   const [hasPreviousWorkout, setHasPreviousWorkout] = useState(false);
+  const [expandedExercises, setExpandedExercises] = useState(new Set());
   const { api } = useApi();
-
-  const unitPlaceholderMap = {
-    // todo get rid of this, we one below is better
-    weight: "KGs",
-    time: "Minutes",
-    distance: "Meters",
-  };
 
   const unitOptionsMap = {
     weight: ["kg", "g"],
     time: ["seconds", "minutes", "hours"],
     distance: ["km", "m"],
+  };
+
+  useEffect(() => {
+    setExpandedExercises(new Set(exercises.map((_, i) => i)));
+  }, [exercises]);
+
+  const toggleExercise = (index) => {
+    const newExpanded = new Set(expandedExercises);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedExercises(newExpanded);
   };
 
   const fetchPreviousWorkout = async (categoryId) => {
@@ -335,6 +343,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
           </View>
 
           {exercises.map((exercise, index) => {
+            const isExpanded = expandedExercises.has(index);
             return (
               <View key={index} style={styles.exerciseCard}>
                 <View style={styles.exerciseHeader}>
@@ -348,185 +357,202 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                     multiline={false}
                     selectTextOnFocus={true}
                   />
-                  <TouchableOpacity
-                    style={styles.removeButton}
-                    onPress={() => removeExercise(index)}
-                  >
-                    <Text style={styles.removeButtonText}>Remove</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.exerciseRow}>
-                  <View style={styles.exerciseField}>
-                    <Text style={styles.fieldLabel}>Type</Text>
-                    <View style={styles.typeButtons}>
-                      {["weight", "time", "distance"].map((type) => (
-                        <TouchableOpacity
-                          key={type}
-                          style={[
-                            styles.typeButton,
-                            exercise.type === type && styles.typeButtonSelected,
-                          ]}
-                          onPress={() => updateExercise(index, "type", type)}
-                        >
-                          <Text
-                            style={[
-                              styles.typeButtonText,
-                              exercise.type === type &&
-                                styles.typeButtonTextSelected,
-                            ]}
-                          >
-                            {type.charAt(0).toUpperCase() + type.slice(1)}{" "}
-                            {/* i have a util for this */}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
+                  <View style={styles.exerciseActions}>
+                    <TouchableOpacity
+                      style={styles.removeButton}
+                      onPress={() => removeExercise(index)}
+                    >
+                      <Text style={styles.removeButtonText}>Remove</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => toggleExercise(index)}>
+                      <Text style={styles.expandButton}>
+                        {isExpanded ? "▼" : "▶"}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
 
-                <View style={styles.basicSetupSection}>
-                  <Text style={styles.sectionTitle}>Basic Setup</Text>
-
-                  <View style={styles.exerciseRow}>
-                    <View style={styles.exerciseField}>
-                      <Text style={styles.fieldLabel}>Sets</Text>
-                      <TextInput
-                        style={styles.smallInput}
-                        value={exercise.basicSets} // todo get rid of basic sets, its just the number of sets, no basic/advanced
-                        onChangeText={(value) =>
-                          updateExercise(
-                            index,
-                            "basicSets",
-                            parseInt(value) || 0
-                          )
-                        }
-                        keyboardType="numeric"
-                        placeholder={String(exercise.basicSets)}
-                        selectTextOnFocus={true}
-                      />
+                {isExpanded && (
+                  <>
+                    <View style={styles.exerciseRow}>
+                      <View style={styles.exerciseField}>
+                        <Text style={styles.fieldLabel}>Type</Text>
+                        <View style={styles.typeButtons}>
+                          {["weight", "time", "distance"].map((type) => (
+                            <TouchableOpacity
+                              key={type}
+                              style={[
+                                styles.typeButton,
+                                exercise.type === type &&
+                                  styles.typeButtonSelected,
+                              ]}
+                              onPress={() =>
+                                updateExercise(index, "type", type)
+                              }
+                            >
+                              <Text
+                                style={[
+                                  styles.typeButtonText,
+                                  exercise.type === type &&
+                                    styles.typeButtonTextSelected,
+                                ]}
+                              >
+                                {type.charAt(0).toUpperCase() + type.slice(1)}{" "}
+                                {/* i have a util for this */}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
                     </View>
 
-                    <View style={styles.exerciseField}>
-                      <Text style={styles.fieldLabel}>Reps</Text>
-                      <TextInput
-                        style={styles.smallInput}
-                        value={exercise.basicReps}
-                        onChangeText={(value) =>
-                          updateExercise(
-                            index,
-                            "basicReps",
-                            parseInt(value) || 0
-                          )
-                        }
-                        keyboardType="numeric"
-                        placeholder={String(exercise.basicReps)}
-                        selectTextOnFocus={true}
-                      />
+                    <View style={styles.basicSetupSection}>
+                      <Text style={styles.sectionTitle}>Basic Setup</Text>
+
+                      <View style={styles.exerciseRow}>
+                        <View style={styles.exerciseField}>
+                          <Text style={styles.fieldLabel}>Sets</Text>
+                          <TextInput
+                            style={styles.smallInput}
+                            value={exercise.basicSets} // todo get rid of basic sets, its just the number of sets, no basic/advanced
+                            onChangeText={(value) =>
+                              updateExercise(
+                                index,
+                                "basicSets",
+                                parseInt(value) || 0
+                              )
+                            }
+                            keyboardType="numeric"
+                            placeholder={String(exercise.basicSets)}
+                            selectTextOnFocus={true}
+                          />
+                        </View>
+
+                        <View style={styles.exerciseField}>
+                          <Text style={styles.fieldLabel}>Reps</Text>
+                          <TextInput
+                            style={styles.smallInput}
+                            value={exercise.basicReps}
+                            onChangeText={(value) =>
+                              updateExercise(
+                                index,
+                                "basicReps",
+                                parseInt(value) || 0
+                              )
+                            }
+                            keyboardType="numeric"
+                            placeholder={String(exercise.basicReps)}
+                            selectTextOnFocus={true}
+                          />
+                        </View>
+
+                        <View style={styles.exerciseField}>
+                          <Text style={styles.fieldLabel}>Weight</Text>
+                          <TextInput
+                            style={styles.smallInput}
+                            value={exercise.basicWeight}
+                            onChangeText={(value) =>
+                              updateExercise(
+                                index,
+                                "basicWeight",
+                                parseFloat(value) || 0
+                              )
+                            }
+                            keyboardType="numeric"
+                            placeholder={String(exercise.basicWeight)}
+                            selectTextOnFocus={true}
+                          />
+                        </View>
+
+                        <View style={styles.exerciseField}>
+                          <Text style={styles.fieldLabel}>Rest (mins)</Text>
+                          <TextInput
+                            style={styles.smallInput}
+                            value={exercise.basicRestMinutes}
+                            onChangeText={(value) =>
+                              updateExercise(
+                                index,
+                                "basicRestMinutes",
+                                parseFloat(value) || 0
+                              )
+                            }
+                            keyboardType="numeric"
+                            placeholder={String(exercise.basicRestMinutes)}
+                            selectTextOnFocus={true}
+                          />
+                        </View>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.applyBasicButton}
+                        onPress={() => applyBasicSetup(index)}
+                      >
+                        <Text style={styles.applyBasicButtonText}>
+                          Apply Basic Setup
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.exerciseRow}>
+                      <View style={styles.exerciseField}>
+                        <Text style={styles.fieldLabel}>
+                          {exercise.setsDetail?.length > 0
+                            ? `Total Reps: ${exercise.setsDetail.reduce(
+                                (sum, set) => sum + Number(set.reps || 0),
+                                0
+                              )}`
+                            : "No sets configured"}
+                        </Text>
+                      </View>
                     </View>
 
-                    <View style={styles.exerciseField}>
-                      <Text style={styles.fieldLabel}>Weight</Text>
-                      <TextInput
-                        style={styles.smallInput}
-                        value={exercise.basicWeight}
-                        onChangeText={(value) =>
-                          updateExercise(
-                            index,
-                            "basicWeight",
-                            parseFloat(value) || 0
-                          )
-                        }
-                        keyboardType="numeric"
-                        placeholder={String(exercise.basicWeight)}
-                        selectTextOnFocus={true}
-                      />
+                    <View style={styles.exerciseRow}>
+                      <View style={styles.exerciseField}>
+                        <Text style={styles.fieldLabel}>Unit</Text>
+                        <View style={styles.typeButtons}>
+                          {unitOptionsMap[exercise.type]?.map((unit) => (
+                            <TouchableOpacity
+                              key={unit}
+                              style={[
+                                styles.typeButton,
+                                exercise.unit === unit &&
+                                  styles.typeButtonSelected,
+                              ]}
+                              onPress={() =>
+                                updateExercise(index, "unit", unit)
+                              }
+                            >
+                              <Text
+                                style={[
+                                  styles.typeButtonText,
+                                  exercise.unit === unit &&
+                                    styles.typeButtonTextSelected,
+                                ]}
+                              >
+                                {unit}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
                     </View>
 
-                    <View style={styles.exerciseField}>
-                      <Text style={styles.fieldLabel}>Rest (mins)</Text>
-                      <TextInput
-                        style={styles.smallInput}
-                        value={exercise.basicRestMinutes}
-                        onChangeText={(value) =>
-                          updateExercise(
-                            index,
-                            "basicRestMinutes",
-                            parseFloat(value) || 0
-                          )
-                        }
-                        keyboardType="numeric"
-                        placeholder={String(exercise.basicRestMinutes)}
-                        selectTextOnFocus={true}
-                      />
-                    </View>
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.applyBasicButton}
-                    onPress={() => applyBasicSetup(index)}
-                  >
-                    <Text style={styles.applyBasicButtonText}>
-                      Apply Basic Setup
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.exerciseRow}>
-                  <View style={styles.exerciseField}>
-                    <Text style={styles.fieldLabel}>
-                      {exercise.setsDetail?.length > 0
-                        ? `Total Reps: ${exercise.setsDetail.reduce(
-                            (sum, set) => sum + Number(set.reps || 0),
-                            0
-                          )}`
-                        : "No sets configured"}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.exerciseRow}>
-                  <View style={styles.exerciseField}>
-                    <Text style={styles.fieldLabel}>Unit</Text>
-                    <View style={styles.typeButtons}>
-                      {unitOptionsMap[exercise.type]?.map((unit) => (
-                        <TouchableOpacity
-                          key={unit}
-                          style={[
-                            styles.typeButton,
-                            exercise.unit === unit && styles.typeButtonSelected,
-                          ]}
-                          onPress={() => updateExercise(index, "unit", unit)}
-                        >
-                          <Text
-                            style={[
-                              styles.typeButtonText,
-                              exercise.unit === unit &&
-                                styles.typeButtonTextSelected,
-                            ]}
-                          >
-                            {unit}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                </View>
-
-                <TextInput
-                  style={styles.exerciseNotes}
-                  value={exercise.notes}
-                  onChangeText={(value) =>
-                    updateExercise(index, "notes", value)
-                  }
-                  placeholder="Exercise notes..."
-                  multiline
-                />
-                <TouchableOpacity
-                  style={[styles.startWorkout, { marginTop: 12 }]}
-                  onPress={() => openAdvancedForIndex(index)}
-                >
-                  <Text style={[styles.buttonText]}>Advanced setup</Text>
-                </TouchableOpacity>
+                    <TextInput
+                      style={styles.exerciseNotes}
+                      value={exercise.notes}
+                      onChangeText={(value) =>
+                        updateExercise(index, "notes", value)
+                      }
+                      placeholder="Exercise notes..."
+                      multiline
+                    />
+                    <TouchableOpacity
+                      style={[styles.startWorkout, { marginTop: 12 }]}
+                      onPress={() => openAdvancedForIndex(index)}
+                    >
+                      <Text style={[styles.buttonText]}>Advanced setup</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
             );
           })}
@@ -539,12 +565,11 @@ export default function CreateWorkoutScreen({ navigation, route }) {
             ]}
             onPress={() => {
               if (exercises.length > 0) {
-                const cleanExercises = cleanExercises(exercises);
                 navigation.navigate("Workout Execution", {
                   workoutData: {
                     categoryId: selectedCategoryId,
                     notes: notes.trim() || undefined,
-                    exercises: cleanExercises,
+                    exercises: cleanExercises(exercises),
                   },
                 });
               }
@@ -580,7 +605,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
         visible={showAdvancedModal}
         exerciseName={exercises[selectedExerciseIndex]?.name}
         initialSets={advancedSets}
-        units={unitPlaceholderMap[exercises[selectedExerciseIndex]?.type]}
+        units={unitOptionsMap[exercises[selectedExerciseIndex]?.type]?.[0]}
         onClose={() => setShowAdvancedModal(false)}
         onSave={(detailed) => {
           if (selectedExerciseIndex == null) return;
@@ -832,5 +857,15 @@ const styles = StyleSheet.create({
     color: "#333",
     fontSize: 16,
     fontWeight: "600",
+  },
+  exerciseActions: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+  },
+  expandButton: {
+    fontSize: 16,
+    color: "#007AFF",
+    marginRight: 8,
   },
 });
