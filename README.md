@@ -244,13 +244,11 @@ ISC
 ---
 
 For LOCAL development:
-set const USE_PRODUCTION = false;
 ✅ Run: docker-compose up -d
 ✅ Run: npm start (backend)
 ✅ Run: npx expo start (mobile)
 
 For DEPLOYED (Render):
-set const USE_PRODUCTION = true;
 ✅ Don't run docker-compose
 ✅ Don't run npm start locally
 ✅ Run: npx expo start --tunnel (mobile)

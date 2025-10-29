@@ -455,7 +455,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                               updateExercise(
                                 index,
                                 "basicWeight",
-                                String((value))
+                                String(value)
                               )
                             }
                             keyboardType="numeric"
@@ -564,6 +564,13 @@ export default function CreateWorkoutScreen({ navigation, route }) {
               exercises.length === 0 && styles.disabledButton,
             ]}
             onPress={() => {
+              if (!selectedCategoryId || selectedCategoryId === "") {
+                Alert.alert(
+                  "Error",
+                  "Please select a category before starting the workout"
+                );
+                return;
+              }
               if (exercises.length > 0) {
                 navigation.navigate("Workout Execution", {
                   workoutData: {
