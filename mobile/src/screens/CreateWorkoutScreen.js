@@ -419,11 +419,11 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                               updateExercise(
                                 index,
                                 "basicSets",
-                                String(parseInt(value) || 0)
+                                String(parseInt(value) || "")
                               )
                             }
                             keyboardType="numeric"
-                            placeholder={String(exercise.basicSets)}
+                            placeholder={"1"}
                             selectTextOnFocus={true}
                           />
                         </View>
@@ -437,11 +437,11 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                               updateExercise(
                                 index,
                                 "basicReps",
-                                String(parseInt(value) || 0)
+                                String(parseInt(value) || "")
                               )
                             }
                             keyboardType="numeric"
-                            placeholder={String(exercise.basicReps)}
+                            placeholder={"1"}
                             selectTextOnFocus={true}
                           />
                         </View>
@@ -455,11 +455,11 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                               updateExercise(
                                 index,
                                 "basicWeight",
-                                String(parseFloat(value) || 0)
+                                String((value))
                               )
                             }
                             keyboardType="numeric"
-                            placeholder={String(exercise.basicWeight)}
+                            placeholder={"12.5"}
                             selectTextOnFocus={true}
                           />
                         </View>
@@ -473,11 +473,11 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                               updateExercise(
                                 index,
                                 "basicRestMinutes",
-                                String(parseFloat(value) || 0)
+                                String(value)
                               )
                             }
                             keyboardType="numeric"
-                            placeholder={String(exercise.basicRestMinutes)}
+                            placeholder={"2.5"}
                             selectTextOnFocus={true}
                           />
                         </View>
