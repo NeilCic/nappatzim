@@ -1,183 +1,117 @@
-# Nappatzim - Workout Tracking App
+# Nappatzim
 
-Fitness tracking application with React Native mobile app and Express/Prisma backend.
-
----
-
-## Architecture
-
-- **Backend:** Express.js + Prisma ORM
-- **Database:** PostgreSQL (local via Docker / Neon for production)
-- **Mobile:** React Native (Expo)
-- **Deployment:** Render (backend) + Neon (database)
+Nappatzim is a modern workout-tracking platform that pairs a React Native mobile client with an Express/Prisma backend. The goal is to deliver a smooth experience for programming workouts, logging sessions, and syncing data across devices.
 
 ---
 
-## Local Development Setup
+## Features at a Glance
 
-### 1. Start Local Database
+- **Cross-platform mobile experience** via Expo + React Native.
+- **Secure REST API** powered by Express.js, Prisma ORM, and JWT authentication.
+- **PostgreSQL storage** (Docker for development, Neon for cloud hosting).
+- **Cloud-friendly deployment** targeting Render for the backend and Neon for the database.
+
+---
+
+## Architecture Overview
+
+| Layer        | Technology                              |
+| ------------ | ---------------------------------------- |
+| Mobile App   | React Native (Expo)                      |
+| API Server   | Node.js · Express.js · Prisma ORM        |
+| Database     | PostgreSQL                               |
+| Deployment   | Render (API) · Neon (Database)           |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- npm (or yarn)
+- Docker & Docker Compose (for local database)
+- Expo CLI (`npm install -g expo-cli`)
+
+### 1. Install Dependencies
 
 ```bash
-docker-compose up -d
+npm install
+cd mobile && npm install
 ```
 
-This starts PostgreSQL on `localhost:5432` and pgAdmin on `localhost:5050`
+### 2. Configure Environment Variables
 
-### 2. Configure Backend Environment
-
-Ensure your `.env` file has:
+Create a `.env` file in the project root (keep it out of version control). Use placeholders such as:
 
 ```env
-DATABASE_URL="postgresql://neil:secret123@localhost:5432/napadb?schema=public"
-JWT_SECRET=K8s9mN2pQ7rT4vX1wZ5aB8cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN
+# Backend
+DATABASE_URL="postgresql://<user>:<password>@localhost:5432/<db>?schema=public"
+JWT_SECRET="<32+ character random string>"
+
+# Optional: Docker Compose defaults
+POSTGRES_USER=<postgres-user>
+POSTGRES_PASSWORD=<postgres-password>
+POSTGRES_DB=<postgres-database>
+
+# Mobile API base
+API_BASE_URL="http://<your-local-ip>:3000"
 ```
 
-### 3. Start Backend Server
+For production, define the same variable names in Render's dashboard and point `DATABASE_URL` to your Neon connection string.
+
+### 3. Start Local Services
 
 ```bash
-npm start
-# or for development with auto-reload:
-npm run dev
+docker compose up -d
 ```
 
-Backend runs on `http://localhost:3000`
+- PostgreSQL available at `localhost:5432`
+- pgAdmin available at `http://localhost:5050`
 
-### 4. Configure Mobile App
-
-In `mobile/App.js` or wherever API base URL is configured, use:
-
-```javascript
-const API_BASE_URL = "http://192.168.1.215:3000"; // Your local IP
-```
-
-### 5. Start Mobile App
+### 4. Prepare the Database
 
 ```bash
-cd mobile
-npx expo start
-```
-
----
-
-## Production Deployment
-
-### Backend (Render)
-
-**Deployment URL:** `https://nappatzim.onrender.com`
-
-#### Environment Variables (Set in Render Dashboard)
-
-Navigate to your Render service → Environment tab and set:
-
-```
-DATABASE_URL=postgresql://neondb_owner:npg_QuRG1d0pvAIt@ep-sparkling-mud-abdv14rt-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
-
-JWT_SECRET=K8s9mN2pQ7rT4vX1wZ5aB8cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN5pQ8rT1vX4wZ7aB0cE3fG6hI9jL2mN
-```
-
-**Important:**
-
-- Your local `.env` file is in `.gitignore` and does NOT get deployed
-- Environment variables must be set in Render's dashboard
-- Render automatically redeploys when you push to main branch
-
-### Database (Neon)
-
-**Connection:** Already configured via `DATABASE_URL` in Render
-
-- No local setup needed
-- Database is in EU-West-2 region
-- Uses connection pooling (`-pooler` endpoint)
-
-### Mobile App (Testing Production)
-
-In `mobile/App.js` or API config, use:
-
-```javascript
-const API_BASE_URL = "https://nappatzim.onrender.com";
-```
-
-Then start mobile with tunnel:
-
-```bash
-cd mobile
-npx expo start --tunnel
-```
-
----
-
-## Quick Reference: Local vs Production
-
-| Component          | Local                           | Production                       |
-| ------------------ | ------------------------------- | -------------------------------- |
-| **Mobile API URL** | `http://192.168.1.215:3000`     | `https://nappatzim.onrender.com` |
-| **Backend .env**   | Local postgres + JWT_SECRET     | Set in Render dashboard          |
-| **Database**       | Docker Compose (localhost:5432) | Neon (cloud)                     |
-| **Run Docker**     | ✅ Yes (`docker-compose up -d`) | ❌ No                            |
-| **Run npm start**  | ✅ Yes (backend)                | ❌ No (Render handles it)        |
-| **Mobile Expo**    | `npx expo start`                | `npx expo start --tunnel`        |
-
----
-
-## Common Commands
-
-### Backend
-
-```bash
-# Install dependencies
-npm install
-
-# Start development server with auto-reload
-npm run dev
-
-# Start production server
-npm start
-
-# Run Prisma migrations
-npx prisma migrate dev
-
-# Generate Prisma client
 npx prisma generate
+npx prisma migrate dev
 ```
 
-### Mobile
+### 5. Start the Backend
+
+```bash
+npm run dev
+```
+
+The API is served at `http://localhost:3000`.
+
+### 6. Launch the Mobile App
 
 ```bash
 cd mobile
-
-# Install dependencies
-npm install
-
-# Start Expo development server
 npx expo start
-
-# Start with tunnel (for production testing)
-npx expo start --tunnel
-
-# Run on Android
-npx expo start --android
-
-# Run on iOS
-npx expo start --ios
 ```
 
-### Database
+Set `API_BASE_URL` to your machine's LAN IP so the emulator/device can reach the backend.
 
-```bash
-# Start local database
-docker-compose up -d
+---
 
-# Stop local database
-docker-compose down
+## Deployment Notes
 
-# View logs
-docker-compose logs -f postgres
+### Render (Backend)
 
-# Access pgAdmin
-# Open browser: http://localhost:5050
-# Email: admin@admin.com
-# Password: admin
-```
+1. Connect this repository to Render and enable auto-deploys from the main branch.
+2. Configure environment variables (`DATABASE_URL`, `JWT_SECRET`, etc.) in the Render dashboard.
+3. Ensure the `DATABASE_URL` uses Neon's SSL-enabled connection string.
+
+### Neon (Database)
+
+- Use the Neon-provided connection string (pooler endpoint recommended).
+- Apply Prisma migrations via CI/CD or manually from a trusted environment.
+
+### Mobile Client
+
+- When testing against production, update `API_BASE_URL` to `https://<your-render-app>.onrender.com`.
+- Start Expo in tunnel mode if you need the device to reach your local machine: `npx expo start --tunnel`.
 
 ---
 
@@ -185,72 +119,63 @@ docker-compose logs -f postgres
 
 ```
 Nappatzim/
-├── controllers/          # Request handlers
-├── services/             # Business logic
-├── routes/               # API routes
-├── middleware/           # Auth middleware
-├── lib/                  # Prisma client
-├── prisma/               # Database schema & migrations
-├── mobile/               # React Native app
+├── controllers/          # Express route controllers
+├── services/             # Business/domain services
+├── routes/               # API route definitions
+├── middleware/           # Auth and other middleware
+├── lib/                  # Shared utilities (e.g., Prisma client)
+├── prisma/               # Prisma schema & migrations
+├── mobile/               # React Native application
 │   └── src/
-│       ├── screens/      # App screens
-│       ├── components/   # Reusable components
-│       └── utils/        # Utilities
+│       ├── screens/
+│       ├── components/
+│       └── utils/
 ├── index.js              # Express server entry point
-├── docker-compose.yml    # Local database setup
-└── .env                  # Environment variables (not in git)
+├── docker-compose.yml    # Local infrastructure
+└── README.md
 ```
+
+---
+
+## Useful Commands
+
+| Task                         | Command                                      |
+| ---------------------------- | -------------------------------------------- |
+| Install backend dependencies | `npm install`                                |
+| Install mobile dependencies  | `cd mobile && npm install`                   |
+| Start local Postgres         | `docker compose up -d`                       |
+| Stop local Postgres          | `docker compose down`                        |
+| Generate Prisma client       | `npx prisma generate`                        |
+| Run migrations               | `npx prisma migrate dev`                     |
+| Start backend (dev)          | `npm run dev`                                |
+| Start Expo dev server        | `cd mobile && npx expo start`                |
+| Expo with tunnel             | `cd mobile && npx expo start --tunnel`       |
 
 ---
 
 ## Troubleshooting
 
-### "Can't connect to database"
-
-- **Local:** Ensure `docker-compose up -d` is running
-- **Production:** Check Render environment variables are set correctly
-
-### "Mobile app can't reach API"
-
-- **Local:** Use your computer's local IP (192.168.x.x), not localhost
-- **Production:** Ensure API_BASE_URL points to `https://nappatzim.onrender.com`
-
-### "Token expired"
-
-- Tokens expire after 15 minutes
-- Refresh token is valid for 7 days
-- Re-login if refresh token expired
+- **Database connection issues**
+  - Ensure Docker is running and the compose stack is up.
+  - Confirm `DATABASE_URL` matches your local credentials.
+- **Mobile cannot reach API**
+  - Use your machine's LAN IP rather than `localhost`.
+  - Verify the backend is listening on port 3000.
+- **Expired tokens**
+  - Access tokens expire after 15 minutes; refresh tokens are valid for 7 days.
+  - Trigger the refresh endpoint or re-authenticate.
 
 ---
 
-## Security Notes
+## Security Checklist
 
-- Never commit `.env` file to git
-- Keep `JWT_SECRET` secure and unique
-- Use different secrets for local/production
-- Database credentials should be rotated periodically
-- CORS is currently wide open (`cors()`) - should be restricted in production
+- Keep `.env` out of version control.
+- Rotate database credentials and JWT secrets regularly.
+- Restrict CORS in production to trusted origins.
+- Use different secrets for each environment.
 
 ---
 
 ## License
 
-ISC
-
----
-
----
-
----
-
-For LOCAL development:
-✅ Run: docker-compose up -d
-✅ Run: npm start (backend)
-✅ Run: npx expo start (mobile)
-
-For DEPLOYED (Render):
-✅ Don't run docker-compose
-✅ Don't run npm start locally
-✅ Run: npx expo start --tunnel (mobile)
-
-before pushing to git - always revert to DEPLOYMENT mode
+ISC License.
