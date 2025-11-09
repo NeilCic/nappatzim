@@ -11,25 +11,21 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { playSoundSequence, stopAllSounds } from "../utils/soundUtils";
+import { playSound, stopSound } from "../utils/soundUtils";
 
 const { width } = Dimensions.get("window");
 
 // todo add laps functionality in stopwatch -> and probably can make up and log a workout out of such data
-export default function TimerScreen({ navigation }) {
-  // todo take unused navigation out
+export default function TimerScreen() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [timerType, setTimerType] = useState("countdown"); // todo 'countdown' or 'stopwatch' enumify
   const [customMinutes, setCustomMinutes] = useState("");
   const [customSeconds, setCustomSeconds] = useState("");
-  const soundRefs = useRef([]);
+  const soundRef = useRef();
   const intervalRef = useRef(null);
 
-  const completionSounds = [
-    require("../../assets/contador-385321.mp3"),
-    require("../../assets/pad-tense-mood-and-anticipation-237289.mp3"),
-  ];
+  const completionSound = require("../../assets/contador-385321.mp3");
 
   useEffect(() => {
     if (timerType === "countdown" && isRunning && timeLeft > 0) {
@@ -37,9 +33,9 @@ export default function TimerScreen({ navigation }) {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             setIsRunning(false);
-            playSoundSequence(completionSounds, soundRefs);
+            playSound(completionSound, soundRef);
             Alert.alert("Timer Complete!", "Time's up!", [
-              { text: "OK", onPress: () => stopAllSounds(soundRefs) },
+              { text: "OK", onPress: () => stopSound(soundRef) },
             ]);
             return 0;
           }
@@ -49,16 +45,21 @@ export default function TimerScreen({ navigation }) {
     } else if (timerType === "stopwatch" && isRunning) {
       intervalRef.current = setInterval(() => {
         setTimeLeft((prev) => prev + 1);
-      });
+      }, 1000);
     } else {
       clearInterval(intervalRef.current);
     }
 
     return () => {
       clearInterval(intervalRef.current);
-      stopAllSounds(soundRefs);
     };
   }, [isRunning, timeLeft]);
+
+  useEffect(() => {
+    return () => {
+      stopSound(soundRef);
+    };
+  }, []);
 
   const startTimer = (seconds) => {
     setTimeLeft(seconds);

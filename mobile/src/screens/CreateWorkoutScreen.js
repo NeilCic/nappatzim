@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -34,10 +34,6 @@ export default function CreateWorkoutScreen({ navigation, route }) {
     distance: ["km", "m"],
   };
 
-  useEffect(() => {
-    setExpandedExercises(new Set(exercises.map((_, i) => i)));
-  }, [exercises]);
-
   const toggleExercise = (index) => {
     const newExpanded = new Set(expandedExercises);
     if (newExpanded.has(index)) {
@@ -49,6 +45,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
   };
 
   const fetchPreviousWorkout = async (categoryId) => {
+    setExpandedExercises(new Set());
     setIsLoadingPrevious(true);
     try {
       const url = `/workouts/category/${categoryId}?limit=1&sortBy=createdAt&sortOrder=desc`;
@@ -71,7 +68,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
               (set) => set.reps === ex.setsDetail[0].reps
             )
               ? String(ex.setsDetail[0].reps)
-              : "adv",
+              : "adv", // todo not happening, consider removing
             basicWeight: ex.setsDetail.every(
               (set) => set.value === ex.setsDetail[0].value
             )
@@ -134,7 +131,13 @@ export default function CreateWorkoutScreen({ navigation, route }) {
       basicRestMinutes: "1",
       setsDetail: [{ order: 1, reps: 1, value: 0, restMinutes: 1 }],
     };
+    const newIndex = exercises.length;
     setExercises([...exercises, newExercise]);
+    setExpandedExercises((prev) => {
+      const next = new Set(prev);
+      next.add(newIndex);
+      return next;
+    });
   };
 
   const updateExercise = (index, field, value) => {

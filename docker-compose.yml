@@ -5,9 +5,9 @@ services:
     image: postgres:latest
     container_name: pg-be
     environment:
-      POSTGRES_USER: neil
-      POSTGRES_PASSWORD: secret123
-      POSTGRES_DB: napadb
+      POSTGRES_USER:  ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:

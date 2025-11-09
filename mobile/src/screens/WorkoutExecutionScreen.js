@@ -9,7 +9,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useApi } from "../ApiProvider";
-import { playSoundSequence, stopAllSounds } from "../utils/soundUtils";
+import { playSound, stopSound } from "../utils/soundUtils";
 
 export default function WorkoutExecutionScreen({ navigation, route }) {
   const { workoutData } = route.params;
@@ -21,16 +21,13 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
   const [totalSets, setTotalSets] = useState(0);
   const intervalRef = useRef(null);
   const { api } = useApi();
-  const soundRefs = useRef([]); //todo is this necessary? i feel like we could drop this somehow
+  const soundRef = useRef();
 
   const exercises = workoutData.exercises || [];
   const currentExercise = exercises[currentExerciseIndex];
   const isLastExercise = currentExerciseIndex === exercises.length - 1;
 
-  const completionSounds = [
-    require("../../assets/contador-385321.mp3"),
-    require("../../assets/pad-tense-mood-and-anticipation-237289.mp3"),
-  ];
+  const completionSound = require("../../assets/contador-385321.mp3");
 
   useEffect(() => {
     if (completedExercises.length === exercises.length) {
@@ -58,21 +55,38 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
       }, 1000);
     } else {
       const currentSetData = currentExercise?.setsDetail?.[currentSet];
-      setTimeLeft((currentSetData?.restMinutes || 0) * 60); // todo disable timer if timeLeft is 0
+      if (exercises.length === completedExercises.length) {
+        setTimeLeft(0);
+      } else {
+        setTimeLeft((currentSetData?.restMinutes || 0) * 60);
+      }
     }
 
     return () => {
       clearInterval(intervalRef.current);
-      stopAllSounds(soundRefs);
+      stopSound(soundRef);
     };
   }, [isRunning, timeLeft]);
 
   const handleTimerComplete = () => {
-    playSoundSequence(completionSounds, soundRefs);
+    playSound(completionSound, soundRef);
     Alert.alert("Timer Complete!", "Time's up!", [
-      { text: "OK", onPress: () => stopAllSounds(soundRefs) },
+      { text: "OK", onPress: () => stopSound(soundRef) },
     ]);
 
+    completeSet()
+    toggleTimer();
+  };
+
+  const finishRestNow = () => {
+    clearInterval(intervalRef.current);
+    setIsRunning(false);
+    setTimeLeft(0);
+    
+    completeSet()
+  };
+
+  const completeSet = () => {
     if (currentSet + 1 < totalSets) {
       setCurrentSet((prev) => prev + 1);
     } else {
@@ -81,11 +95,10 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
         setCurrentExerciseIndex((prev) => prev + 1);
       }
     }
-    toggleTimer();
-  };
+  }
 
   const handleStopSound = () => {
-    stopAllSounds(soundRefs);
+    stopSound(soundRef);
   };
 
   const toggleTimer = () => {
@@ -130,7 +143,6 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
       };
       await api.post("/workouts", cleanData);
       Alert.alert("Success!", "The workout has been logged.");
-      navigation.goBack();
     } catch (error) {
       Alert.alert("Error", "Failed to create workout: " + error.message);
     }
@@ -143,7 +155,6 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
 
     return (
       <View
-        key={exercise.id}
         style={[
           styles.exerciseItem,
           isCompleted && styles.completedExercise,
@@ -243,6 +254,15 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
           </View>
         </View>
       </TouchableOpacity>
+
+      {isRunning && timeLeft > 0 && (
+        <TouchableOpacity
+          style={[styles.timerButton, styles.resetButton]}
+          onPress={finishRestNow}
+        >
+          <Text style={styles.timerButtonText}>Finish Rest</Text>
+        </TouchableOpacity>
+      )}
 
       <View style={styles.currentExerciseSection}>
         <Text style={styles.sectionTitle}>
