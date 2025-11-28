@@ -1,4 +1,4 @@
-import redis from './redis.js';
+import redis from './redisCache.js';
 import logger from './logger.js';
 
 const DEFAULT_TTL = 300;

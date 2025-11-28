@@ -4,62 +4,6 @@ This document tracks pending improvements to make the Nappatzim workout tracking
 
 ---
 
-## Phase 3: Queue System (BullMQ)
-
-### 🔄 BullMQ Setup
-**Priority**: Medium | **Effort**: High | **Impact**: High
-
-**Why BullMQ over RabbitMQ?**
-- Built for Node.js
-- Simpler setup and API
-- Better TypeScript support
-- Built on Redis (can share with cache)
-- Good dashboard (Bull Board)
-
-**Dependencies**:
-```bash
-npm install bullmq ioredis
-```
-
-**Infrastructure**:
-- Uses same Redis instance as caching
-- Add worker process to handle jobs
-- Add job monitoring dashboard
-
-**Structure**:
-```
-backend/
-  queues/
-    progressQueue.js      # Progress calculation jobs
-    exportQueue.js        # Data export jobs (future)
-    notificationQueue.js  # Email/push notifications (future)
-  workers/
-    progressWorker.js     # Worker for progress jobs
-  lib/
-    queue.js              # Queue configuration
-```
-
----
-
-### 🔄 Future Queue Jobs
-
-**Data Export Jobs** (Future):
-- Export workouts to CSV/PDF
-- Generate reports
-- Bulk data operations
-
-**Notification Jobs** (Future):
-- Email workout reminders
-- Achievement notifications
-- Weekly progress summaries
-
-**Analytics Jobs** (Future):
-- Daily/weekly stats aggregation
-- Personal records calculation
-- Trend analysis
-
----
-
 ## Phase 4: Advanced Optimizations
 
 ### 🔄 Database Query Optimization
@@ -165,8 +109,7 @@ backend/
 ## Implementation Priority
 
 ### Medium Term (Next Quarter):
-1. 🔄 BullMQ setup
-2. 🔄 Additional pagination for category workouts (if needed)
+1. 🔄 Additional pagination for category workouts (if needed)
 
 ### Long Term (Future):
 1. 🔄 Horizontal scaling
@@ -213,5 +156,32 @@ backend/
 
 ---
 
-*Last updated: November 2024*
-*Status: Phase 2 Complete, Phase 3 Pending*
+---
+
+## Recent Progress (Week Summary)
+
+### ✅ Completed This Week:
+1. **Progress Calculation Optimization**
+   - Moved from full recalculation (slow, queued) to incremental updates (fast, synchronous)
+   - Progress updates now instant for create/update/delete operations
+   - No more stale data issues - users see updated progress immediately
+
+2. **Code Quality Improvements**
+   - Extracted duplicate functions to `lib/exerciseUtils.js` (normalizeExerciseName, calculateExerciseStats)
+   - Removed unused imports and code
+   - Simplified redundant conditionals
+
+---
+
+## BullMQ Infrastructure
+
+**Status**: Infrastructure is set up but currently unused. Progress calculations were moved to incremental synchronous updates (faster, no queue needed).
+
+**Decision needed**: Either find a use case (data exports, notifications, bulk operations) or remove the infrastructure to avoid clutter.
+
+**Files**: `queues/progressQueue.js`, `workers/progressWorker.js`, `worker.js`, `lib/queue.js`
+
+---
+
+*Last updated: December 2024*
+*Status: Phase 2 Complete*

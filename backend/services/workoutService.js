@@ -3,21 +3,7 @@ import { WORKOUT_MODEL } from "../lib/dbModels.js";
 import prisma from "../lib/prisma.js";
 import { decodeCursor, createCursorFromEntity } from "../lib/cursor.js";
 import { DEFAULT_PAGINATION_LIMIT } from "../lib/constants.js";
-
-function normalizeExerciseName(name) {
-  return name.toLowerCase().trim();
-}
-
-function calculateExerciseStats(setsDetail) {
-  return setsDetail.reduce(
-    (acc, set) => ({
-      totalVolume: acc.totalVolume + (set.reps * (set.value || 1)),
-      totalReps: acc.totalReps + set.reps,
-      maxWeight: Math.max(acc.maxWeight, set.value || 0)
-    }),
-    { totalVolume: 0, totalReps: 0, maxWeight: 0 }
-  );
-}
+import { normalizeExerciseName, calculateExerciseStats } from "../lib/exerciseUtils.js";
 
 async function updateProgressOnWorkoutCreate(userId, categoryId, workoutDate, exercises) {
   const dateString = workoutDate.toISOString();
@@ -83,6 +69,71 @@ async function updateProgressOnWorkoutCreate(userId, categoryId, workoutDate, ex
   }
 }
 
+async function updateProgressOnWorkoutDelete(userId, categoryId, workoutDate, exercises) {
+  const dateString = workoutDate.toISOString();
+  
+  for (const exercise of exercises) {
+    const normalizedName = normalizeExerciseName(exercise.name);
+    const stats = calculateExerciseStats(exercise.setsDetail);
+    
+    const existing = await prisma.exerciseProgress.findUnique({
+      where: {
+        userId_categoryId_normalizedName: {
+          userId,
+          categoryId,
+          normalizedName
+        }
+      }
+    });
+    
+    if (existing) {
+      const progress = (existing.progress || []).filter(
+        entry => entry.date !== dateString
+      );
+      
+      const newTotalVolume = Math.max(0, existing.totalVolume - stats.totalVolume);
+      const newTotalReps = Math.max(0, existing.totalReps - stats.totalReps);
+      
+      const newMaxWeight = progress.length > 0
+        ? Math.max(...progress.map(e => e.maxWeight || 0), 0)
+        : 0;
+      
+      if (progress.length === 0 && newTotalVolume === 0 && newTotalReps === 0) {
+        await prisma.exerciseProgress.delete({
+          where: {
+            userId_categoryId_normalizedName: {
+              userId,
+              categoryId,
+              normalizedName
+            }
+          }
+        });
+      } else {
+        await prisma.exerciseProgress.update({
+          where: {
+            userId_categoryId_normalizedName: {
+              userId,
+              categoryId,
+              normalizedName
+            }
+          },
+          data: {
+            totalVolume: newTotalVolume,
+            totalReps: newTotalReps,
+            maxWeight: newMaxWeight,
+            progress
+          }
+        });
+      }
+    }
+  }
+}
+
+async function updateProgressOnWorkoutUpdate(userId, oldCategoryId, newCategoryId, oldWorkoutDate, newWorkoutDate, oldExercises, newExercises) {
+  await updateProgressOnWorkoutDelete(userId, oldCategoryId, oldWorkoutDate, oldExercises);
+  await updateProgressOnWorkoutCreate(userId, newCategoryId, newWorkoutDate, newExercises);
+}
+
 async function getProgressByCategory(userId, categoryId) {
   return await prisma.exerciseProgress.findMany({
     where: { userId, categoryId },
@@ -90,67 +141,6 @@ async function getProgressByCategory(userId, categoryId) {
   });
 }
 
-async function recalculateProgressForCategory(userId, categoryId) {
-  const workouts = await prisma.workout.findMany({
-    where: { userId, categoryId },
-    include: {
-      exercises: {
-        include: { setsDetail: true }
-      }
-    },
-    orderBy: { createdAt: 'asc' }
-  });
-  
-  const progressMap = new Map();
-  
-  for (const workout of workouts) {
-    const dateString = workout.createdAt.toISOString();
-    
-    for (const exercise of workout.exercises) {
-      const normalizedName = normalizeExerciseName(exercise.name);
-      const stats = calculateExerciseStats(exercise.setsDetail);
-      
-      const workoutEntry = {
-        date: dateString,
-        volume: stats.totalVolume,
-        sets: exercise.setsDetail.length,
-        reps: stats.totalReps,
-        maxWeight: stats.maxWeight,
-        unit: exercise.unit || null
-      };
-      
-      if (progressMap.has(normalizedName)) {
-        const existing = progressMap.get(normalizedName);
-        existing.totalVolume += stats.totalVolume;
-        existing.totalReps += stats.totalReps;
-        existing.maxWeight = Math.max(existing.maxWeight, stats.maxWeight);
-        existing.progress.push(workoutEntry);
-      } else {
-        progressMap.set(normalizedName, {
-          name: exercise.name,
-          normalizedName,
-          type: exercise.type,
-          unit: exercise.unit || null,
-          userId,
-          categoryId,
-          totalVolume: stats.totalVolume,
-          totalReps: stats.totalReps,
-          maxWeight: stats.maxWeight,
-          progress: [workoutEntry]
-        });
-      }
-    }
-  }
-  
-  await prisma.$transaction([
-    prisma.exerciseProgress.deleteMany({
-      where: { userId, categoryId }
-    }),
-    ...Array.from(progressMap.values()).map(progress =>
-      prisma.exerciseProgress.create({ data: progress })
-    )
-  ]);
-}
 
 const workoutInclude = {
   category: true,
@@ -183,7 +173,6 @@ class WorkoutService extends PrismaCrudService {
         
         // Build cursor condition based on sort order
         if (sortOrder === 'desc') {
-          // For descending: find records where sortField < cursorValue OR (sortField = cursorValue AND id < cursorId)
           where.OR = [
             { [sortBy]: { lt: sortValue } },
             {
@@ -194,7 +183,6 @@ class WorkoutService extends PrismaCrudService {
             }
           ];
         } else {
-          // For ascending: find records where sortField > cursorValue OR (sortField = cursorValue AND id > cursorId)
           where.OR = [
             { [sortBy]: { gt: sortValue } },
             {
@@ -263,6 +251,8 @@ class WorkoutService extends PrismaCrudService {
   }
 
   async updateWorkout(workoutId, userId, data, oldCategoryId) {
+    const oldWorkout = await this.getOne({ id: workoutId, userId });
+    
     const workout = await this.update(
       { id: workoutId, userId },
       {
@@ -281,18 +271,32 @@ class WorkoutService extends PrismaCrudService {
       }
     );
     
-    await recalculateProgressForCategory(userId, oldCategoryId);
-    
-    if (data.categoryId && data.categoryId !== oldCategoryId) {
-      await recalculateProgressForCategory(userId, data.categoryId);
-    }
+    const newCategoryId = data.categoryId || oldCategoryId;
+    await updateProgressOnWorkoutUpdate(
+      userId,
+      oldCategoryId,
+      newCategoryId,
+      oldWorkout.createdAt,
+      workout.createdAt,
+      oldWorkout.exercises,
+      workout.exercises
+    );
     
     return workout;
   }
 
   async deleteWorkout(workoutId, userId, categoryId) {
+    const workout = await this.getOne({ id: workoutId, userId });
+    
     await this.delete({ id: workoutId, userId });
-    await recalculateProgressForCategory(userId, categoryId);
+    
+    await updateProgressOnWorkoutDelete(
+      userId,
+      categoryId,
+      workout.createdAt,
+      workout.exercises
+    );
+    
     return { success: true };
   }
 

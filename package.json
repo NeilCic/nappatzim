@@ -8,6 +8,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "dev:worker": "nodemon backend/worker.js",
     "dev:mobile": "cd mobile && npx expo start",
     "dev:all": "powershell -ExecutionPolicy Bypass -File ./dev.ps1",
     "docker:up": "cd backend && docker compose up -d",
