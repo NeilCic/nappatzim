@@ -1,10 +1,13 @@
+import 'dotenv/config';
 import express, { json } from 'express';
-import workoutRouter from './routes/workouts.js';
-import authRouter from './routes/auth.js';
-import categoryRouter from './routes/category.js'
+import workoutRouter from './backend/routes/workouts.js';
+import authRouter from './backend/routes/auth.js';
+import categoryRouter from './backend/routes/category.js'
 import cors from 'cors';
+import compression from 'compression';
 
 const app = express();
+app.use(compression());
 app.use(json());
 app.use(cors());
 

@@ -30,7 +30,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
 
   const unitOptionsMap = {
     weight: ["kg", "g"],
-    time: ["seconds", "minutes", "hours"],
+    time: ["seconds", "minutes"],
     distance: ["km", "m"],
   };
 
@@ -63,22 +63,22 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                 ? ex.name
                 : `Exercise ${idx + 1}`,
             unit: ex.unit || "",
-            basicSets: ex.setsDetail ? ex.setsDetail.length : "",
-            basicReps: ex.setsDetail.every(
+            sets: ex.setsDetail ? ex.setsDetail.length : "",
+            reps: ex.setsDetail.every(
               (set) => set.reps === ex.setsDetail[0].reps
             )
               ? String(ex.setsDetail[0].reps)
-              : "adv", // todo not happening, consider removing
-            basicWeight: ex.setsDetail.every(
+              : "",
+            weight: ex.setsDetail.every(
               (set) => set.value === ex.setsDetail[0].value
             )
               ? String(ex.setsDetail[0].value)
-              : "adv",
-            basicRestMinutes: ex.setsDetail.every(
+              : "",
+            restMinutes: ex.setsDetail.every(
               (set) => set.restMinutes === ex.setsDetail[0].restMinutes
             )
               ? String(ex.setsDetail[0].restMinutes)
-              : "adv",
+              : "",
             notes: ex.notes || "",
             order: idx + 1,
             setsDetail: ex.setsDetail || [
@@ -125,10 +125,10 @@ export default function CreateWorkoutScreen({ navigation, route }) {
       unit: unitOptionsMap["weight"][0],
       notes: "",
       order: exercises.length + 1,
-      basicSets: "1",
-      basicReps: "1",
-      basicWeight: "0",
-      basicRestMinutes: "1",
+      sets: "1",
+      reps: "1",
+      weight: "0",
+      restMinutes: "1",
       setsDetail: [{ order: 1, reps: 1, value: 0, restMinutes: 1 }],
     };
     const newIndex = exercises.length;
@@ -164,18 +164,18 @@ export default function CreateWorkoutScreen({ navigation, route }) {
   const applyBasicSetup = (index) => {
     handleDataChange();
     const exercise = exercises[index];
-    if (!exercise.basicSets || !exercise.basicReps) {
+    if (!exercise.sets || !exercise.reps) {
       Alert.alert("Error", "Please enter both sets and reps");
       return;
     }
 
     const newSetsDetail = [];
-    for (let i = 0; i < exercise.basicSets; i++) {
+    for (let i = 0; i < exercise.sets; i++) {
       newSetsDetail.push({
         order: i + 1,
-        reps: exercise.basicReps,
-        value: exercise.basicWeight || 0,
-        restMinutes: exercise.basicRestMinutes || 0,
+        reps: exercise.reps,
+        value: exercise.weight || 0,
+        restMinutes: exercise.restMinutes || 0,
       });
     }
 
@@ -185,10 +185,10 @@ export default function CreateWorkoutScreen({ navigation, route }) {
   const cleanExercises = (exercises) => {
     return exercises.map((exercise) => {
       const {
-        basicReps,
-        basicRestMinutes,
-        basicSets,
-        basicWeight,
+        reps,
+        restMinutes,
+        sets,
+        weight,
         ...cleanExercise
       } = exercise;
       return cleanExercise;
@@ -377,7 +377,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
 
                 {isExpanded && (
                   <>
-                    <View style={styles.exerciseRow}>
+                    {/* <View style={styles.exerciseRow}> todo - figure out how i want to add and track these
                       <View style={styles.exerciseField}>
                         <Text style={styles.fieldLabel}>Type</Text>
                         <View style={styles.typeButtons}>
@@ -401,13 +401,12 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                                 ]}
                               >
                                 {type.charAt(0).toUpperCase() + type.slice(1)}{" "}
-                                {/* i have a util for this */}
                               </Text>
                             </TouchableOpacity>
                           ))}
                         </View>
                       </View>
-                    </View>
+                    </View> */}
 
                     <View style={styles.basicSetupSection}>
                       <Text style={styles.sectionTitle}>Basic Setup</Text>
@@ -417,11 +416,11 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                           <Text style={styles.fieldLabel}>Sets</Text>
                           <TextInput
                             style={styles.smallInput}
-                            value={exercise.basicSets} // todo get rid of basic sets, its just the number of sets, no basic/advanced
+                            value={exercise.sets}
                             onChangeText={(value) =>
                               updateExercise(
                                 index,
-                                "basicSets",
+                                "sets",
                                 String(parseInt(value) || "")
                               )
                             }
@@ -435,11 +434,11 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                           <Text style={styles.fieldLabel}>Reps</Text>
                           <TextInput
                             style={styles.smallInput}
-                            value={exercise.basicReps}
+                            value={exercise.reps}
                             onChangeText={(value) =>
                               updateExercise(
                                 index,
-                                "basicReps",
+                                "reps",
                                 String(parseInt(value) || "")
                               )
                             }
@@ -453,11 +452,11 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                           <Text style={styles.fieldLabel}>Weight</Text>
                           <TextInput
                             style={styles.smallInput}
-                            value={exercise.basicWeight}
+                            value={exercise.weight}
                             onChangeText={(value) =>
                               updateExercise(
                                 index,
-                                "basicWeight",
+                                "weight",
                                 String(value)
                               )
                             }
@@ -471,11 +470,11 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                           <Text style={styles.fieldLabel}>Rest (mins)</Text>
                           <TextInput
                             style={styles.smallInput}
-                            value={exercise.basicRestMinutes}
+                            value={exercise.restMinutes}
                             onChangeText={(value) =>
                               updateExercise(
                                 index,
-                                "basicRestMinutes",
+                                "restMinutes",
                                 String(value)
                               )
                             }
@@ -626,22 +625,22 @@ export default function CreateWorkoutScreen({ navigation, route }) {
             setsDetail: detailed,
           };
           updated.forEach((ex) => {
-            ex.basicSets = ex.setsDetail ? ex.setsDetail.length : "";
-            ex.basicReps = ex.setsDetail.every(
+            ex.sets = ex.setsDetail ? ex.setsDetail.length : "";
+            ex.reps = ex.setsDetail.every(
               (set) => set.reps === ex.setsDetail[0].reps
             )
               ? String(ex.setsDetail[0].reps)
-              : "adv";
-            ex.basicWeight = ex.setsDetail.every(
+              : "";
+            ex.weight = ex.setsDetail.every(
               (set) => set.value === ex.setsDetail[0].value
             )
               ? String(ex.setsDetail[0].value)
-              : "adv";
-            ex.basicRestMinutes = ex.setsDetail.every(
+              : "";
+            ex.restMinutes = ex.setsDetail.every(
               (set) => set.restMinutes === ex.setsDetail[0].restMinutes
             )
               ? String(ex.setsDetail[0].restMinutes)
-              : "adv";
+              : "";
           });
 
           setExercises(updated);

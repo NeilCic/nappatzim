@@ -47,7 +47,7 @@ export default function HomeScreen({ navigation, onLogout }) {
     navigation.navigate("Create Workout", { categories });
   };
 
-  const renderCategory = ({ item, index }) => {
+  const renderCategory = ({ item: category, index }) => {
     if (index === categories.length) {
       return (
         <TouchableOpacity
@@ -63,8 +63,6 @@ export default function HomeScreen({ navigation, onLogout }) {
         </TouchableOpacity>
       );
     }
-
-    const category = item;  // todo why dont we just name this category from the start?
     return (
       <TouchableOpacity
         style={styles.categoryCard}

@@ -1,11 +1,4 @@
-import {
-  createWorkout,
-  getWorkouts,
-  getWorkoutsByCategory,
-  updateWorkout,
-  deleteWorkout,
-  hasPreviousWorkout,
-} from "../services/workoutService.js";
+import workoutService from "../services/workoutService.js";
 
 import { z } from "zod";
 import logger from "../lib/logger.js";
@@ -13,7 +6,7 @@ import logger from "../lib/logger.js";
 const exerciseSetSchema = z.object({
   order: z.coerce.number().int().min(1),
   value: z.coerce.number().optional(),
-  reps: z.coerce.number().optional(),
+  reps: z.coerce.number().int().min(1, "Reps must be at least 1"),
   restMinutes: z.coerce.number().optional(),
 });
 
@@ -31,7 +24,7 @@ const workoutSchema = z.object({
         setsDetail: z.array(exerciseSetSchema).optional(),
       })
     )
-    .optional(),
+    .min(1, "Workout must have at least one exercise"),
 });
 
 const querySchema = z.object({
@@ -39,8 +32,9 @@ const querySchema = z.object({
     .string()
     .optional()
     .transform((val) => (val ? parseInt(val, 10) : undefined)),
-  sortBy: z.enum(["createdAt", "updatedAt", "name"]).optional(),
+  sortBy: z.enum(["createdAt", "updatedAt", "id"]).optional(),
   sortOrder: z.enum(["asc", "desc"]).optional(),
+  cursor: z.string().optional(),
 });
 
 const categoryQuerySchema = z.object({
@@ -67,7 +61,7 @@ const addWorkoutController = async (req, res) => {
     );
 
     const validatedData = workoutSchema.parse(req.body);
-    const workout = await createWorkout({
+    const workout = await workoutService.createWorkout({
       ...validatedData,
       userId: req.user.userId,
     });
@@ -110,18 +104,24 @@ const getWorkoutController = async (req, res) => {
       "Getting workouts"
     );
 
-    const { limit, sortBy, sortOrder } = querySchema.parse(req.query);
-    const workouts = await getWorkouts(req.user.userId, {
+    const { limit, sortBy, sortOrder, cursor } = querySchema.parse(req.query);
+    const result = await workoutService.getWorkouts(req.user.userId, {
       limit,
       sortBy,
       sortOrder,
+      cursor,
     });
 
     logger.info(
-      { requestId, userId: req.user.userId, count: workouts.length },
+      { 
+        requestId, 
+        userId: req.user.userId, 
+        count: result.workouts.length,
+        hasMore: result.pagination.hasMore 
+      },
       "Workouts retrieved"
     );
-    res.json(workouts);
+    res.json(result);
   } catch (error) {
     if (error.name === "ZodError") {
       logger.warn(
@@ -176,7 +176,7 @@ const getWorkoutsByCategoryController = async (req, res) => {
       };
     }
 
-    const workouts = await getWorkoutsByCategory(
+    const workouts = await workoutService.getWorkoutsByCategory(
       req.user.userId,
       categoryId,
       includeProgress,
@@ -226,16 +226,23 @@ const updateWorkoutController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
     const { workoutId } = req.params;
+    const { oldCategoryId } = req.body;
+    
+    if (!oldCategoryId) {
+      return res.status(400).json({ error: "oldCategoryId is required" });
+    }
+    
     logger.info(
       { requestId, userId: req.user.userId, workoutId, requestBody: req.body },
       "Updating workout"
     );
 
     const validatedData = workoutSchema.partial().parse(req.body);
-    const workout = await updateWorkout(
+    const workout = await workoutService.updateWorkout(
       workoutId,
       req.user.userId,
-      validatedData
+      validatedData,
+      oldCategoryId
     );
 
     logger.info(
@@ -276,12 +283,18 @@ const deleteWorkoutController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
     const { workoutId } = req.params;
+    const { categoryId } = req.body;
+    
+    if (!categoryId) {
+      return res.status(400).json({ error: "categoryId is required" });
+    }
+    
     logger.info(
-      { requestId, userId: req.user.userId, workoutId },
+      { requestId, userId: req.user.userId, workoutId, categoryId },
       "Deleting workout"
     );
 
-    await deleteWorkout(workoutId, req.user.userId);
+    await workoutService.deleteWorkout(workoutId, req.user.userId, categoryId);
 
     logger.info(
       { requestId, userId: req.user.userId, workoutId },
@@ -312,13 +325,13 @@ const hasPreviousWorkoutController = async (req, res) => {
       "Checking for previous workout"
     );
 
-    const hasPrevious = await hasPreviousWorkout(req.user.userId, categoryId);
+    const hasPrevious = await workoutService.hasPreviousWorkout(req.user.userId, categoryId);
 
     logger.info(
       { requestId, userId: req.user.userId, categoryId, hasPrevious },
       "Checked for previous workout"
     );
-    
+
     res.json({ hasPrevious });
   } catch (error) {
     logger.error(

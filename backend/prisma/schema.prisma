@@ -1,0 +1,115 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(uuid())
+  email            String   @unique
+  passwordHash     String                    // todo use signin with google and facebook later so as not to store passwords
+  role             String   @default("user") // could be "admin" or "user"
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workouts         Workout[]
+  categories       WorkoutCategory[]
+  exerciseProgress ExerciseProgress[]
+}
+
+model WorkoutCategory {
+  id               String    @id @default(cuid())
+  name             String    
+  color            String?   
+  userId           String    
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workouts         Workout[]
+  exerciseProgress ExerciseProgress[]
+
+  @@index([userId])
+  @@index([userId, name])
+}
+
+model Workout {
+  id          String    @id @default(cuid())
+  notes String?
+  categoryId  String
+  userId      String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  category    WorkoutCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercises   Exercise[]
+
+  @@index([userId, createdAt])
+  @@index([userId, categoryId])
+  @@index([categoryId, createdAt])
+}
+
+model Exercise {
+  id          String    @id @default(cuid())
+  workoutId   String
+  type        String    
+  name        String
+  unit        String?   
+  notes       String?
+  order       Int       
+  
+  workout     Workout   @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  setsDetail  ExerciseSet[]
+
+  @@index([workoutId, order])
+}
+
+model ExerciseSet {
+  id           String  @id @default(cuid())
+  exerciseId   String
+  order        Int
+  value        Float?
+  reps         Int?
+  restMinutes  Float?
+
+  exercise     Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([exerciseId, order])
+}
+
+model ExerciseProgress {
+  id             String   @id @default(cuid())
+  name           String   // Display name (original casing)
+  normalizedName String   // Lowercase for matching
+  type           String   // Exercise type (strength, cardio, etc.)
+  unit           String?  // Unit of measurement
+  
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  categoryId     String
+  category       WorkoutCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  // Aggregates for quick stats
+  totalVolume    Float    @default(0)
+  totalReps      Int      @default(0)
+  maxWeight      Float    @default(0)
+  
+  // Per-workout breakdown for charts: [{ date, volume, sets, reps, maxWeight }]
+  progress       Json     @default("[]")
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  @@unique([userId, categoryId, normalizedName])
+  @@index([userId])
+  @@index([categoryId])
+}

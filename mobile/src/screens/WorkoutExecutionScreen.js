@@ -7,17 +7,19 @@ import {
   Image,
   Alert,
   ScrollView,
+  TextInput,
 } from "react-native";
 import { useApi } from "../ApiProvider";
 import { playSound, stopSound } from "../utils/soundUtils";
 
 export default function WorkoutExecutionScreen({ navigation, route }) {
-  const { workoutData } = route.params;
+  // const { workoutData } = route.params;
+  const [workoutData, setWorkoutData] = useState(route.params.workoutData);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [completedExercises, setCompletedExercises] = useState([]);
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(0); // time left in seconds - rename
   const [isRunning, setIsRunning] = useState(false);
-  const [currentSet, setCurrentSet] = useState(0);
+  const [currentSet, setCurrentSet] = useState(0);  // current set index - rename
   const [totalSets, setTotalSets] = useState(0);
   const intervalRef = useRef(null);
   const { api } = useApi();
@@ -57,7 +59,7 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
       const currentSetData = currentExercise?.setsDetail?.[currentSet];
       if (exercises.length === completedExercises.length) {
         setTimeLeft(0);
-      } else {
+      } else if (timeLeft === 0) {
         setTimeLeft((currentSetData?.restMinutes || 0) * 60);
       }
     }
@@ -79,10 +81,11 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
   };
 
   const finishRestNow = () => {
+    currentExercise.setsDetail[currentSet].restMinutes = timeLeft / 60;
     clearInterval(intervalRef.current);
     setIsRunning(false);
     setTimeLeft(0);
-    
+
     completeSet()
   };
 
@@ -132,7 +135,7 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
         ...workoutData,
         exercises: workoutData.exercises.map((exercise) => {
           const {
-            basicSets,
+            sets,
             basicWeight,
             basicRestMinutes,
             basicReps,
@@ -208,6 +211,31 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
     );
   }
 
+  const EditableStat = ({ label, field, suffix = '' }) => {
+    const value = currentExercise.setsDetail?.[currentSet]?.[field] || 0;
+
+    const handleChange = (newValue) => {
+      setWorkoutData(prev => {
+        const newData = structuredClone(prev);
+        newData.exercises[currentExerciseIndex].setsDetail[currentSet][field] = newValue;
+        return newData;
+      });
+    }
+
+    return (
+      <View style={styles.statItem}>
+        <Text style={styles.statLabel}>{label}</Text>
+        <TextInput
+          style={styles.statValue}
+          value={`${value}${suffix}`}
+          onChangeText={handleChange}
+          keyboardType="numeric"
+          selectTextOnFocus={true}
+        />
+      </View>
+    )
+  }
+
   return (
     <ScrollView
       style={styles.container}
@@ -223,6 +251,7 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
       <TouchableOpacity
         onPress={!isRunning && timeLeft === 0 ? handleStopSound : toggleTimer}
       >
+        {/*clock functionality*/}
         <View style={styles.timerSection}>
           <View style={styles.timerDisplay}>
             <View
@@ -290,32 +319,9 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
                 </View>
               </View>
               <View style={styles.exerciseStats}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statLabel}>Sets</Text>
-                  <Text style={styles.statValue}>
-                    {currentExercise.setsDetail?.length || 0}
-                  </Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statLabel}>Reps</Text>
-                  <Text style={styles.statValue}>
-                    {currentExercise.setsDetail?.[currentSet]?.reps || 0}
-                  </Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statLabel}>Weight</Text>
-                  <Text style={styles.statValue}>
-                    {currentExercise.setsDetail?.[currentSet]?.value || 0}
-                    {currentExercise.unit}
-                  </Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statLabel}>Rest</Text>
-                  <Text style={styles.statValue}>
-                    {currentExercise.setsDetail?.[currentSet]?.restMinutes || 0}
-                    m
-                  </Text>
-                </View>
+                <EditableStat label="Reps" field="reps" />
+                <EditableStat label="Weight" field="value" suffix={currentExercise.unit} />
+                <EditableStat label="Rest" field="restMinutes" suffix="m" />
               </View>
             </>
           ) : (

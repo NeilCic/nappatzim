@@ -20,7 +20,7 @@ export default function CreateCategoryScreen({ navigation, route }) {
     navigation.goBack();
   } catch (error) {
     if (axios.isCancel(error)) return;
-    alert('Error creating category: ' + (error.response?.data?.message || error.message));
+    alert('Error creating category: ' + (error.response?.data?.error || error.message));
   }
 };
 

@@ -1,10 +1,10 @@
-import { getCategories, createCategory, getCategoryById, updateCategory, deleteCategory } from '../services/categoryService.js';
+import categoryService from '../services/categoryService.js';
 import logger from '../lib/logger.js';
 import { z } from 'zod';
 
 const categorySchema = z.object({
     name: z.string().min(1, "Category name is required"),
-    color: z.string().optional(),
+    color: z.string().optional(), // todo open a palette here which would show later
 });
 
 const getCategoriesController = async (req, res) => {
@@ -15,7 +15,7 @@ const getCategoriesController = async (req, res) => {
             "Getting categories"
         );
 
-        const categories = await getCategories(req.user.userId);
+        const categories = await categoryService.getCategories(req.user.userId);
 
         logger.info({ requestId, userId: req.user.userId, count: categories.length }, "Categories retrieved");
         res.json(categories);
@@ -42,7 +42,12 @@ const createCategoryController = async (req, res) => {
         );
 
         const validatedData = categorySchema.parse(req.body);
-        const category_id = await createCategory({
+        const exists = await categoryService.checkCategoryExists(validatedData.name, req.user.userId);
+        if (exists) {
+            logger.warn({ requestId, userId: req.user.userId, name: validatedData.name }, "Category name already exists");
+            return res.status(409).json({ error: "Category name already exists" });
+        }
+        const category_id = await categoryService.createCategory({
             ...validatedData,
             userId: req.user.userId,
         });
@@ -67,7 +72,6 @@ const createCategoryController = async (req, res) => {
                     userId: req.user.userId,
                     error: error.message,
                     stack: error.stack,
-                    requestBody: req.body,
                 },
                 "Failed to create category - server error"
             );
@@ -85,7 +89,7 @@ const getCategoryByIdController = async (req, res) => {
             "Getting category by ID"
         );
 
-        const category = await getCategoryById(id, req.user.userId);
+        const category = await categoryService.getCategoryById(id, req.user.userId);
         
         if (!category) {
             logger.warn(
@@ -122,7 +126,7 @@ const updateCategoryController = async (req, res) => {
         );
 
         const validatedData = categorySchema.partial().parse(req.body);
-        const category = await updateCategory(id, validatedData, req.user.userId);
+        const category = await categoryService.updateCategory(id, validatedData, req.user.userId);
 
         logger.info({ requestId, userId: req.user.userId, categoryId: id }, "Category updated");
         res.json(category);
@@ -164,7 +168,7 @@ const deleteCategoryController = async (req, res) => {
             "Deleting category"
         );
 
-        await deleteCategory(id, req.user.userId);
+        await categoryService.deleteCategory(id, req.user.userId);
 
         logger.info({ requestId, userId: req.user.userId, categoryId: id }, "Category deleted");
         res.status(204).send();

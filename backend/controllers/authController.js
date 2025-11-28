@@ -1,4 +1,4 @@
-import { registerUser, loginUser, refreshAccessToken } from '../services/authService.js'
+import { authService, refreshAccessToken } from '../services/authService.js'
 import logger from '../lib/logger.js'
 import { z } from 'zod'
 
@@ -8,10 +8,37 @@ const userSchema = z.object({
     role: z.enum(['user', 'admin']).default('user')
 });
 
+// for after testing
+// const userSchema = z.object({
+//     email: z.string()
+//         .email("Email must be a valid email address")
+//         .min(3, "Email must be at least 3 characters")
+//         .max(50, "Email can't be more than 50 characters"),
+//     password: z.string()
+//         .min(8, "Password must be at least 8 characters")
+//         .max(32, "Password can't be more than 32 characters")
+//         .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+//         .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+//         .regex(/[0-9]/, "Password must contain at least one number")
+//         .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
+//     role: z.enum(['user', 'admin']).default('user')
+// });
+
 const loginSchema = z.object({
     email: z.string().min(3, "User name has to be at least 3 characters").max(20, "User name can't be more than 20 characters"),
     password: z.string().min(6, "Password has to be at least 6 characters").max(20, "Password can't be more than 20 characters")
 });
+
+// for after testing
+// const loginSchema = z.object({
+//     email: z.string()
+//         .email("Email must be a valid email address")
+//         .min(3, "Email must be at least 3 characters")
+//         .max(50, "Email can't be more than 50 characters"),
+//     password: z.string()
+//         .min(8, "Password must be at least 8 characters")
+//         .max(32, "Password can't be more than 32 characters")
+// });
 
 const refreshSchema = z.object({
     refreshToken: z.string().min(1, "Refresh token is required")
@@ -28,7 +55,13 @@ const addUser = async(req, res) => {
         const validatedData = userSchema.parse(req.body);
         const { email, password } = validatedData;
 
-        const user_id = await registerUser({ email, password });
+        const exists = await authService.checkUserExists(email);
+        if (exists) {
+            logger.warn({ requestId, email }, "User already exists");
+            return res.status(409).json({ error: "User already exists" });
+        }
+
+        const user_id = await authService.registerUser({ email, password });
 
         logger.info({ requestId, userId: user_id, email }, "User registered successfully");
         res.status(201).json({ id: user_id });
@@ -50,9 +83,8 @@ const addUser = async(req, res) => {
                     email: req.body.email,
                     error: error.message,
                     stack: error.stack,
-                    requestBody: req.body,
                 },
-                "Failed to register user - server error"
+                "User registration failed"
             );
             res.status(500).json({ error: "Internal server error" });
         }
@@ -69,8 +101,7 @@ const login = async(req, res) => {
 
         const validatedData = loginSchema.parse(req.body);
         const { email, password } = validatedData;
-
-        const result = await loginUser({ email, password });
+        const result = await authService.loginUser({ email, password });
 
         logger.info({ requestId, userId: result.userId, email }, "User logged in successfully");
         res.json(result)
@@ -85,17 +116,26 @@ const login = async(req, res) => {
                 "User login validation failed"
             );
             res.status(400).json({ error: error.message });
-        } else {
+        } else if (error.message === 'Invalid credentials') {
             logger.warn(
                 {
                     requestId,
                     email: req.body.email,
-                    error: error.message,
-                    requestBody: req.body,
                 },
-                "User login failed"
+                "User login failed - invalid credentials"
             );
             res.status(401).json({ error: error.message });
+        } else {
+            logger.error(
+                {
+                    requestId,
+                    email: req.body.email,
+                    error: error.message,
+                    stack: error.stack,
+                },
+                "User login failed - unexpected error"
+            );
+            res.status(500).json({ error: "Login failed. Please try again." });
         }
     }
 }
