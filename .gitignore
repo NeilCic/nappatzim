@@ -6,3 +6,6 @@ node_modules
  
 # Ignore React Native app entry (managed locally)
 /mobile/App.js
+
+# Local development notes
+SCALABILITY_TODO.md

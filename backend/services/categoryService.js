@@ -2,9 +2,6 @@ import PrismaCrudService from "./prismaCrudService.js";
 import { CATEGORY_MODEL } from "../lib/dbModels.js";
 import { getCache, setCache, invalidateCache, cacheKeys } from "../lib/cache.js";
 
-const categoryInclude = {
-    workouts: true,
-};
 const categoryOrderBy = { name: "asc" };
 
 // cache TTL: 10 minutes for categories (they rarely change)
@@ -12,7 +9,7 @@ const CATEGORY_CACHE_TTL = 600;
 
 class CategoryService extends PrismaCrudService {
     constructor() {
-      super(CATEGORY_MODEL, categoryInclude, categoryOrderBy);
+      super(CATEGORY_MODEL, undefined, categoryOrderBy);
     }
 
     async getCategories(userId) {
@@ -24,7 +21,10 @@ class CategoryService extends PrismaCrudService {
 
         const categories = await this.getAll({
             where: { userId },
-            include: {
+            select: {
+                id: true,
+                name: true,
+                color: true,
                 _count: {
                     select: { workouts: true }
                 }

@@ -7,17 +7,34 @@ class PrismaCrudService {
     this.orderBy = defaultOrderBy;
   }
 
-  async getAll({ where = {}, include, orderBy, limit } = {}) {
-    return await prisma[this.model].findMany({
+  async getAll({ where = {}, include, orderBy, limit, select } = {}) {
+    const query = {
       where,
-      include: include || this.include,
       orderBy: orderBy || this.orderBy,
       ...(limit && { take: parseInt(limit, 10) }),
-    });
+    };
+    
+    // select and include are mutually exclusive in Prisma
+    if (select) {
+      query.select = select;
+    } else {
+      query.include = include || this.include;
+    }
+    
+    return await prisma[this.model].findMany(query);
   }
 
-  async getOne(where, include) {
-    return await prisma[this.model].findFirst({ where, include: include || this.include });
+  async getOne(where, include, select) {
+    const query = { where };
+    
+    // select and include are mutually exclusive in Prisma
+    if (select) {
+      query.select = select;
+    } else {
+      query.include = include || this.include;
+    }
+    
+    return await prisma[this.model].findFirst(query);
   }
 
   async create(data, include) {

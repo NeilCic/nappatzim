@@ -94,9 +94,12 @@ async function updateProgressOnWorkoutDelete(userId, categoryId, workoutDate, ex
       const newTotalVolume = Math.max(0, existing.totalVolume - stats.totalVolume);
       const newTotalReps = Math.max(0, existing.totalReps - stats.totalReps);
       
-      const newMaxWeight = progress.length > 0
-        ? Math.max(...progress.map(e => e.maxWeight || 0), 0)
-        : 0;
+      let newMaxWeight = existing.maxWeight;
+      if (stats.maxWeight >= existing.maxWeight) {
+        newMaxWeight = progress.length > 0
+          ? Math.max(...progress.map(e => e.maxWeight || 0), 0)
+          : 0;
+      }
       
       if (progress.length === 0 && newTotalVolume === 0 && newTotalReps === 0) {
         await prisma.exerciseProgress.delete({
