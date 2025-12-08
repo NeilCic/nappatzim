@@ -55,6 +55,10 @@ class AuthService extends PrismaCrudService {
         return await this.hasOne({ email });
     }
 
+    async checkUsernameExists(username) {
+        return await this.hasOne({ username });
+    }
+
     async loginUser(credentials) {
         const { email, password } = credentials;
 
@@ -79,8 +83,35 @@ class AuthService extends PrismaCrudService {
     async registerUser(data) {
         const { email, password } = data;
         const passwordHash = await hashPassword(password);
-        const user = await this.create({ email, passwordHash, role: 'user' });
+        
+        // Extract username from email (part before @)
+        let username = email.includes('@') ? email.split('@')[0] : email;
+        
+        // If username is already taken, append a number
+        let finalUsername = username;
+        let counter = 1;
+        while (await this.checkUsernameExists(finalUsername)) {
+            finalUsername = `${username}${counter}`;
+            counter++;
+        }
+        
+        const user = await this.create({ 
+            email, 
+            passwordHash, 
+            role: 'user',
+            username: finalUsername 
+        });
         return { id: user.id };
+    }
+
+    async updateUsername(userId, username) {
+        // Check if username is already taken by another user
+        const existing = await this.getOne({ username });
+        if (existing && existing.id !== userId) {
+            throw new Error("Username already taken");
+        }
+        
+        return await this.update({ id: userId }, { username });
     }
 }
 

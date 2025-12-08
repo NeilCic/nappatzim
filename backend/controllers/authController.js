@@ -3,7 +3,7 @@ import logger from '../lib/logger.js'
 import { z } from 'zod'
 
 const userSchema = z.object({
-    email: z.string().min(3, "User name has to be at least 3 characters").max(20, "User name can't be more than 20 characters"),
+    email: z.string().min(3, "Email has to be at least 3 characters").max(20, "Email can't be more than 20 characters"),
     password: z.string().min(6, "Password has to be at least 6 characters").max(20, "Password can't be more than 20 characters"),
     role: z.enum(['user', 'admin']).default('user')
 });
@@ -55,10 +55,10 @@ const addUser = async(req, res) => {
         const validatedData = userSchema.parse(req.body);
         const { email, password } = validatedData;
 
-        const exists = await authService.checkUserExists(email);
-        if (exists) {
-            logger.warn({ requestId, email }, "User already exists");
-            return res.status(409).json({ error: "User already exists" });
+        const emailExists = await authService.checkUserExists(email);
+        if (emailExists) {
+            logger.warn({ requestId, email }, "User with this email already exists");
+            return res.status(409).json({ error: "User with this email already exists" });
         }
 
         const user_id = await authService.registerUser({ email, password });
@@ -179,4 +179,82 @@ const refresh = async(req, res) => {
     }
 };
 
-export { addUser, login, refresh };
+const updateUsernameSchema = z.object({
+    username: z.string().min(3, "Username must be at least 3 characters").max(20, "Username can't be more than 20 characters"),
+});
+
+const updateUsername = async (req, res) => {
+    const requestId = Date.now().toString();
+    try {
+        logger.info(
+            { requestId, userId: req.user.userId, username: req.body.username },
+            "Updating username"
+        );
+
+        const validatedData = updateUsernameSchema.parse(req.body);
+        const { username } = validatedData;
+
+        const user = await authService.updateUsername(req.user.userId, username);
+
+        logger.info({ requestId, userId: req.user.userId, username }, "Username updated successfully");
+        res.json({ id: user.id, username: user.username });
+    } catch (error) {
+        if (error.name === "ZodError") {
+            logger.warn(
+                {
+                    requestId,
+                    userId: req.user.userId,
+                    validationError: error,
+                },
+                "Username update validation failed"
+            );
+            res.status(400).json({ error: error.message });
+        } else if (error.message === "Username already taken") {
+            logger.warn({ requestId, userId: req.user.userId, username: req.body.username }, "Username already taken");
+            res.status(409).json({ error: error.message });
+        } else {
+            logger.error(
+                {
+                    requestId,
+                    userId: req.user.userId,
+                    error: error.message,
+                    stack: error.stack,
+                },
+                "Username update failed"
+            );
+            res.status(500).json({ error: "Internal server error" });
+        }
+    }
+};
+
+const getCurrentUser = async (req, res) => {
+    const requestId = Date.now().toString();
+    try {
+        logger.info(
+            { requestId, userId: req.user.userId },
+            "Fetching current user"
+        );
+
+        const user = await authService.getOne({ id: req.user.userId }, undefined, { id: true, email: true, username: true });
+        
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        logger.info({ requestId, userId: req.user.userId }, "Current user fetched");
+        res.json(user);
+    } catch (error) {
+        logger.error(
+            {
+                requestId,
+                userId: req.user.userId,
+                error: error.message,
+                stack: error.stack,
+            },
+            "Failed to fetch current user"
+        );
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export { addUser, login, refresh, updateUsername, getCurrentUser };
