@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import ExerciseAdvancedModal from "../components/ExerciseAdvancedModal";
 import { showError } from "../utils/errorHandler";
 
 export default function CreateWorkoutScreen({ navigation, route }) {
-  const { categories } = route.params || {};
+  const { categories, initialCategoryId } = route.params || {};
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [notes, setNotes] = useState("");
   const [showCategoryList, setShowCategoryList] = useState(false);
@@ -117,6 +117,25 @@ export default function CreateWorkoutScreen({ navigation, route }) {
       setHasPreviousWorkout(false);
     }
   };
+
+  useEffect(() => {
+    if (categories && categories.length > 0) {
+      let categoryToSelect = null;
+      
+      if (initialCategoryId) {
+        categoryToSelect = categories.find(cat => cat.id === initialCategoryId);
+      }
+      
+      if (!categoryToSelect && categories.length === 1) {
+        categoryToSelect = categories[0];
+      }
+      
+      if (categoryToSelect) {
+        setSelectedCategoryId(categoryToSelect.id);
+        checkForPreviousWorkout(categoryToSelect.id);
+      }
+    }
+  }, [categories, initialCategoryId]);
 
   const addExercise = () => {
     handleDataChange();
