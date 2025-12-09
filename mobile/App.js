@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { TouchableOpacity, StyleSheet, Image } from "react-native";
+import { TouchableOpacity, StyleSheet, Image, Text, View } from "react-native";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
@@ -11,12 +11,15 @@ import CreateWorkoutScreen from "./src/screens/CreateWorkoutScreen";
 import CategoryWorkoutsScreen from "./src/screens/CategoryWorkoutScreen";
 import TimerScreen from "./src/screens/TimerScreen";
 import WorkoutExecutionScreen from "./src/screens/WorkoutExecutionScreen";
+import ConversationsListScreen from "./src/screens/ConversationsListScreen";
+import ConversationScreen from "./src/screens/ConversationScreen";
+import PreferencesScreen from "./src/screens/PreferencesScreen";
 
 import { ApiProvider } from "./src/ApiProvider";
 import { createApi } from "./src/ApiClient";
 
 const Stack = createNativeStackNavigator();
-const USE_PRODUCTION = false;
+const USE_PRODUCTION = true;
 
 const API_BASE_URL = USE_PRODUCTION
   ? "https://nappatzim.onrender.com"
@@ -52,16 +55,34 @@ export default function App() {
     bootstrapAuth();
   }, [setAuthToken]);
 
-  const TimerButton = ({ navigation }) => (
+  const PreferencesButton = ({ navigation }) => (
     <TouchableOpacity
-      style={styles.timerButton}
-      onPress={() => navigation.navigate("Timer")}
+      style={styles.preferencesButton}
+      onPress={() => navigation.navigate("Preferences")}
     >
-      <Image
-        source={require("./assets/timer-icon.png")}
-        style={styles.timerIcon}
-      />
+      <Text style={styles.preferencesIcon}>⚙️</Text>
     </TouchableOpacity>
+  );
+
+  const HeaderRightButtons = ({ navigation }) => (
+    <View style={styles.headerRightContainer}>
+      <PreferencesButton navigation={navigation} />
+      <TouchableOpacity
+        style={styles.chatButton}
+        onPress={() => navigation.navigate("Conversations")}
+      >
+        <Text style={styles.chatIcon}>💬</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.timerButton}
+        onPress={() => navigation.navigate("Timer")}
+      >
+        <Image
+          source={require("./assets/timer-icon.png")}
+          style={styles.timerIcon}
+        />
+      </TouchableOpacity>
+    </View>
   );
 
   const handleLogout = async () => {
@@ -80,7 +101,7 @@ export default function App() {
                 name="Home"
                 options={({ navigation }) => ({
                   title: "Workout",
-                  headerRight: () => <TimerButton navigation={navigation} />,
+                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
                 })}
               >
                 {(props) => (
@@ -91,27 +112,42 @@ export default function App() {
                 name="Create Category"
                 component={CreateCategoryScreen}
                 options={({ navigation }) => ({
-                  headerRight: () => <TimerButton navigation={navigation} />,
+                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
                 })}
               />
               <Stack.Screen
                 name="Create Workout"
                 component={CreateWorkoutScreen}
                 options={({ navigation }) => ({
-                  headerRight: () => <TimerButton navigation={navigation} />,
+                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
                 })}
               />
               <Stack.Screen
                 name="Category Workouts"
                 component={CategoryWorkoutsScreen}
                 options={({ navigation }) => ({
-                  headerRight: () => <TimerButton navigation={navigation} />,
+                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
                 })}
               />
               <Stack.Screen name="Timer" component={TimerScreen} />
               <Stack.Screen
                 name="Workout Execution"
                 component={WorkoutExecutionScreen}
+              />
+              <Stack.Screen
+                name="Conversations"
+                component={ConversationsListScreen}
+                options={{ title: "Messages" }}
+              />
+              <Stack.Screen
+                name="Conversation"
+                component={ConversationScreen}
+                options={{ title: "Chat" }}
+              />
+              <Stack.Screen
+                name="Preferences"
+                component={PreferencesScreen}
+                options={{ title: "Preferences" }}
               />
             </>
           ) : (
@@ -128,9 +164,27 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  headerRightContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 8,
+  },
+  preferencesButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  preferencesIcon: {
+    fontSize: 24,
+  },
+  chatButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  chatIcon: {
+    fontSize: 24,
+  },
   timerButton: {
     padding: 8,
-    marginRight: 16,
   },
   timerIcon: {
     width: 32,

@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useApi } from "../ApiProvider";
 import { playSound, stopSound } from "../utils/soundUtils";
+import { showError } from "../utils/errorHandler";
 
 export default function WorkoutExecutionScreen({ navigation, route }) {
   // const { workoutData } = route.params;
@@ -147,7 +148,7 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
       await api.post("/workouts", cleanData);
       Alert.alert("Success!", "The workout has been logged.");
     } catch (error) {
-      Alert.alert("Error", "Failed to create workout: " + error.message);
+      showError(error, "Error", "Failed to create workout");
     }
   };
 

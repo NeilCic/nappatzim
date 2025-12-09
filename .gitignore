@@ -5,7 +5,7 @@ node_modules
 /generated/prisma
  
 # Ignore React Native app entry (managed locally)
-/mobile/App.js
+# /mobile/App.js - commented out for EAS builds
 
 # Local development notes
 SCALABILITY_TODO.md

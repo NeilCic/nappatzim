@@ -3,6 +3,7 @@ import { View, TextInput, Button, Text } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useApi } from "../ApiProvider";
 import axios from 'axios';
+import { getErrorMessage } from "../utils/errorHandler";
 
 export default function LoginScreen({ onLoggedIn }) {
   const [email, setEmail] = useState("");
@@ -27,20 +28,20 @@ export default function LoginScreen({ onLoggedIn }) {
     } catch (e) {
       setLoading(false);
       if (axios.isCancel(e)) return;
-      setErr(e?.response?.data?.message || "Login failed");
+      setErr(getErrorMessage(e, "Login failed"));
     }
   };
 
   const register = async () => {
     try {
       setLoading(true);
-      await api.post("/auth/register", {email, password });
+      await api.post("/auth/register", { email, password });
       setLoading(false);
       await login();
     } catch (e) {
       setLoading(false);
       if (axios.isCancel(e)) return;
-      setErr(e?.response?.data?.message || "Register failed");
+      setErr(getErrorMessage(e, "Register failed"));
     }
   };
 

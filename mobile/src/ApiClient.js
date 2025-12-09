@@ -1,6 +1,7 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Alert } from "react-native";
+import { getErrorMessage } from "./utils/errorHandler";
 
 export function createApi({ baseURL, onAuthFailure }) {
   const api = axios.create({ baseURL });
@@ -49,8 +50,7 @@ export function createApi({ baseURL, onAuthFailure }) {
         original.url?.includes("/auth/login") ||
         original.url?.includes("/auth/register")
       ) {
-        const errorMessage =
-          error.response?.data?.error || "Authentication failed";
+        const errorMessage = getErrorMessage(error, "Authentication failed");
         Alert.alert("Login Failed", errorMessage);
       }
       

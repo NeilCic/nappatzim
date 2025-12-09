@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
 import { useApi } from '../ApiProvider';
 import axios from 'axios';
+import { showError } from '../utils/errorHandler';
 
 export default function CreateCategoryScreen({ navigation, route }) {
   const onCategoryCreated = route.params.onCategoryCreated;
@@ -20,7 +21,7 @@ export default function CreateCategoryScreen({ navigation, route }) {
     navigation.goBack();
   } catch (error) {
     if (axios.isCancel(error)) return;
-    alert('Error creating category: ' + (error.response?.data?.error || error.message));
+    showError(error, "Error", "Failed to create category");
   }
 };
 

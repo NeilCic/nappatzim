@@ -12,6 +12,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Dimensions } from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import { useApi } from "../ApiProvider";
+import { showError } from "../utils/errorHandler";
 import {formatDate} from "../utils/stringUtils";
 import axios from "axios";
 
@@ -59,7 +60,7 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
     } catch (error) {
       if (axios.isCancel(error)) return;
       console.error("Error fetching workouts:", error);
-      Alert.alert("Error", "Failed to fetch workouts");
+      showError(error, "Error", "Failed to fetch workouts");
     } finally {
       setLoading(false);
     }

@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useApi } from "../ApiProvider";
 import ExerciseAdvancedModal from "../components/ExerciseAdvancedModal";
+import { showError } from "../utils/errorHandler";
 
 export default function CreateWorkoutScreen({ navigation, route }) {
   const { categories } = route.params || {};
@@ -95,7 +96,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error("Error fetching previous workout:", error);
-      Alert.alert("Error", "Failed to load previous workout");
+      showError(error, "Error", "Failed to load previous workout");
     } finally {
       setIsLoadingPrevious(false);
     }
@@ -211,7 +212,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
       await api.post("/workouts", workoutData);
       navigation.goBack();
     } catch (error) {
-      Alert.alert("Error", "Failed to create workout: " + error.message);
+      showError(error, "Error", "Failed to create workout");
     }
   };
 
