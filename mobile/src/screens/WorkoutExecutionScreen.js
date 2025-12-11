@@ -45,6 +45,13 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
   }, [currentExerciseIndex]);
 
   useEffect(() => {
+    if (currentExercise && !isRunning) {
+      const currentSetData = currentExercise.setsDetail?.[currentSet];
+      setTimeLeft((currentSetData?.restMinutes || 0) * 60);
+    }
+  }, [currentExerciseIndex, currentSet]);
+
+  useEffect(() => {
     if (isRunning && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
         setTimeLeft((prev) => {
@@ -56,11 +63,8 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
         });
       }, 1000);
     } else {
-      const currentSetData = currentExercise?.setsDetail?.[currentSet];
       if (exercises.length === completedExercises.length) {
         setTimeLeft(0);
-      } else if (timeLeft === 0) {
-        setTimeLeft((currentSetData?.restMinutes || 0) * 60);
       }
     }
 
