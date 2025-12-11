@@ -3,6 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { TouchableOpacity, StyleSheet, Image, Text, View } from "react-native";
+import axios from "axios";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
@@ -51,17 +52,24 @@ export default function App() {
         
         if (token) {
           setAuthToken(token);
+          
           // Verify token is valid by making a test request
           try {
             await api.get("/auth/me");
             setIsAuthed(true);
           } catch (error) {
-            if (error.response?.status === 401) {
+            const status = error.response?.status;
+            
+            if (status === 401) {
               if (refreshToken) {
                 try {
-                  const response = await api.post("/auth/refresh", { refreshToken });
-                  const newAccessToken = response.data.accessToken;
-                  if (!newAccessToken) throw new Error("No access token in response");
+                  // Use axios directly to avoid interceptor issues
+                  const response = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
+                  const newAccessToken = response.data?.accessToken;
+                  
+                  if (!newAccessToken) {
+                    throw new Error("No access token in response");
+                  }
                   
                   await AsyncStorage.setItem("token", newAccessToken);
                   setAuthToken(newAccessToken);
@@ -70,11 +78,12 @@ export default function App() {
                   await clearAuth();
                 }
               } else {
-                console.log("No refresh token, clearing auth");
                 await clearAuth();
               }
+            } else if (status === 404) {
+              await clearAuth();
             } else {
-              console.log("Auth check failed (network/server error), keeping token:", error.message);
+              // Network error or other error - don't authenticate
               setIsAuthed(false);
             }
           }
@@ -82,12 +91,15 @@ export default function App() {
           setIsAuthed(false);
         }
       } catch (error) {
-        console.error("Bootstrap auth error:", error);
-        await clearAuth();
+        if (!error.message?.includes("Network") && error.code !== "NETWORK_ERROR") {
+          await clearAuth();
+        } else {
+          setIsAuthed(false);
+        }
       }
     };
     bootstrapAuth();
-  }, [setAuthToken, api]);
+  }, [setAuthToken]);
 
   const PreferencesButton = ({ navigation }) => (
     <TouchableOpacity

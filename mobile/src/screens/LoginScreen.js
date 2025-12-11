@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, TextInput, Button, Text } from "react-native";
+import { View, TextInput, Button, Text, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useApi } from "../ApiProvider";
 import axios from 'axios';
@@ -18,10 +18,12 @@ export default function LoginScreen({ onLoggedIn }) {
       setLoading(true);
       const res = await api.post("/auth/login", { email, password });
       const { accessToken, refreshToken } = res.data;
+      
       await AsyncStorage.multiSet([
         ["token", accessToken],
         ["refreshToken", refreshToken],
       ]);
+      
       setAuthToken(accessToken);
       onLoggedIn();
       setLoading(false);
