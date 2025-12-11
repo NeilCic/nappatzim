@@ -37,23 +37,57 @@ export default function App() {
     []
   );
 
+  const clearAuth = async () => {
+    await AsyncStorage.multiRemove(["token", "refreshToken"]);
+    setAuthToken(undefined);
+    setIsAuthed(false);
+  };
+
   useEffect(() => {
     const bootstrapAuth = async () => {
       try {
         const token = await AsyncStorage.getItem("token");
+        const refreshToken = await AsyncStorage.getItem("refreshToken");
+        
         if (token) {
           setAuthToken(token);
-          setIsAuthed(true);
+          // Verify token is valid by making a test request
+          try {
+            await api.get("/auth/me");
+            setIsAuthed(true);
+          } catch (error) {
+            if (error.response?.status === 401) {
+              if (refreshToken) {
+                try {
+                  const response = await api.post("/auth/refresh", { refreshToken });
+                  const newAccessToken = response.data.accessToken;
+                  if (!newAccessToken) throw new Error("No access token in response");
+                  
+                  await AsyncStorage.setItem("token", newAccessToken);
+                  setAuthToken(newAccessToken);
+                  setIsAuthed(true);
+                } catch (refreshError) {
+                  await clearAuth();
+                }
+              } else {
+                console.log("No refresh token, clearing auth");
+                await clearAuth();
+              }
+            } else {
+              console.log("Auth check failed (network/server error), keeping token:", error.message);
+              setIsAuthed(false);
+            }
+          }
         } else {
           setIsAuthed(false);
         }
-      } catch {
-        await AsyncStorage.multiRemove(["token", "refreshToken"]);
-        setIsAuthed(false);
+      } catch (error) {
+        console.error("Bootstrap auth error:", error);
+        await clearAuth();
       }
     };
     bootstrapAuth();
-  }, [setAuthToken]);
+  }, [setAuthToken, api]);
 
   const PreferencesButton = ({ navigation }) => (
     <TouchableOpacity
@@ -86,9 +120,17 @@ export default function App() {
   );
 
   const handleLogout = async () => {
-    await AsyncStorage.multiRemove(["token", "refreshToken"]);
-    setAuthToken(undefined);
-    setIsAuthed(false);
+    try {
+      // Clear tokens immediately (don't wait for API calls)
+      await AsyncStorage.multiRemove(["token", "refreshToken"]);
+      setAuthToken(undefined);
+      setIsAuthed(false);
+    } catch (error) {
+      // Even if clearing storage fails, force logout
+      console.error("Logout error:", error);
+      setAuthToken(undefined);
+      setIsAuthed(false);
+    }
   };
 
   return (

@@ -14,7 +14,6 @@ import { playSound, stopSound } from "../utils/soundUtils";
 import { showError } from "../utils/errorHandler";
 
 export default function WorkoutExecutionScreen({ navigation, route }) {
-  // const { workoutData } = route.params;
   const [workoutData, setWorkoutData] = useState(route.params.workoutData);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [completedExercises, setCompletedExercises] = useState([]);
@@ -216,11 +215,19 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
     const value = currentExercise.setsDetail?.[currentSet]?.[field] || 0;
 
     const handleChange = (newValue) => {
+      // Remove suffix if present (e.g., "2.5m" -> "2.5")
+      const cleanedValue = suffix ? newValue.replace(suffix, '') : newValue;
+      const numericValue = parseFloat(cleanedValue) || 0;
+      
       setWorkoutData(prev => {
         const newData = structuredClone(prev);
-        newData.exercises[currentExerciseIndex].setsDetail[currentSet][field] = newValue;
+        newData.exercises[currentExerciseIndex].setsDetail[currentSet][field] = numericValue;
         return newData;
       });
+
+      if (field === 'restMinutes' && !isRunning) {
+        setTimeLeft(numericValue * 60);
+      }
     }
 
     return (

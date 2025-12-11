@@ -104,9 +104,11 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
                 <Text style={styles.exerciseDetails}>
                   {exercise.type} • {exercise.setsDetail?.length || 0} sets
                 </Text>
-                {exercise.setsDetail?.[0]?.value > 0 && (
+                {exercise.setsDetail && exercise.setsDetail.length > 0 && (
                   <Text style={styles.exerciseValue}>
-                    {exercise.setsDetail[0].value} {exercise.unit || ""}
+                    {exercise.setsDetail
+                      .map(set => `${set.value} ${exercise.unit || ""}`)
+                      .join(", ")}
                   </Text>
                 )}
                 {exercise.notes && (
