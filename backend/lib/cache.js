@@ -4,6 +4,8 @@ import logger from './logger.js';
 const DEFAULT_TTL = 300;
 
 export async function getCache(key) {
+  if (!redis) return null;
+  
   try {
     const value = await redis.get(key);
     if (value) {
@@ -19,6 +21,8 @@ export async function getCache(key) {
 }
 
 export async function setCache(key, value, ttl = DEFAULT_TTL) {
+  if (!redis) return; // No Redis, skip caching
+  
   try {
     await redis.set(key, JSON.stringify(value), 'EX', ttl);
     logger.debug({ key, ttl }, 'Cache set');
@@ -29,6 +33,8 @@ export async function setCache(key, value, ttl = DEFAULT_TTL) {
 }
 
 export async function invalidateCache(keyOrPattern) {
+  if (!redis) return; // No Redis, nothing to invalidate
+  
   try {
     if (keyOrPattern.includes('*')) {
       // Pattern-based deletion
