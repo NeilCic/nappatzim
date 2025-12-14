@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
   const [hasPreviousWorkout, setHasPreviousWorkout] = useState(false);
   const [expandedExercises, setExpandedExercises] = useState(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const { api } = useApi();
 
   const unitOptionsMap = {
@@ -217,7 +218,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
   };
 
   const handleCreateWorkout = async () => {
-    if (isSubmitting) return;
+    if (isSubmittingRef.current) return;
 
     if (!selectedCategoryId) {
       Alert.alert("Error", "Please select a category");
@@ -232,7 +233,9 @@ export default function CreateWorkoutScreen({ navigation, route }) {
       return;
     }
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
+
     try {
       const workoutData = {
         categoryId: selectedCategoryId,
@@ -245,6 +248,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Failed to create workout";
       Alert.alert("Error", errorMessage);
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };

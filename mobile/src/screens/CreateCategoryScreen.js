@@ -52,5 +52,6 @@ export default function CreateCategoryScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
   title: { fontSize: 24, marginBottom: 20 },
-  input: { borderWidth: 1, padding: 10, marginBottom: 10, borderRadius: 8 }
+  input: { borderWidth: 1, padding: 10, marginBottom: 10, borderRadius: 8 },
+  gap: 4
 });
