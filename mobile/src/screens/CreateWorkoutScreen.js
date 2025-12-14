@@ -27,6 +27,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
   const [hasLoadedPrevious, setHasLoadedPrevious] = useState(false);
   const [hasPreviousWorkout, setHasPreviousWorkout] = useState(false);
   const [expandedExercises, setExpandedExercises] = useState(new Set());
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { api } = useApi();
 
   const unitOptionsMap = {
@@ -216,6 +217,8 @@ export default function CreateWorkoutScreen({ navigation, route }) {
   };
 
   const handleCreateWorkout = async () => {
+    if (isSubmitting) return;
+
     if (!selectedCategoryId) {
       Alert.alert("Error", "Please select a category");
       return;
@@ -229,6 +232,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const workoutData = {
         categoryId: selectedCategoryId,
@@ -241,6 +245,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Failed to create workout";
       Alert.alert("Error", errorMessage);
+      setIsSubmitting(false);
     }
   };
 
@@ -632,10 +637,19 @@ export default function CreateWorkoutScreen({ navigation, route }) {
             <Text style={styles.buttonText}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.createButton}
+            style={[
+              styles.createButton,
+              isSubmitting && styles.disabledButton,
+            ]}
             onPress={handleCreateWorkout}
+            disabled={isSubmitting}
           >
-            <Text style={styles.buttonText}>Create Workout</Text>
+            <Text style={[
+              styles.buttonText,
+              isSubmitting && styles.disabledText,
+            ]}>
+              {isSubmitting ? "Creating..." : "Create Workout"}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -905,5 +919,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#007AFF",
     marginRight: 8,
+  },
+  disabledButton: {
+    backgroundColor: "#ccc",
+    opacity: 0.6,
+  },
+  disabledText: {
+    color: "#999",
   },
 });
