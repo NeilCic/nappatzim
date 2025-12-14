@@ -221,17 +221,26 @@ export default function CreateWorkoutScreen({ navigation, route }) {
       return;
     }
 
+    if (!exercises || exercises.length === 0) {
+      Alert.alert(
+        "Validation Error",
+        "Workout must have at least one exercise. Please add at least one exercise before saving."
+      );
+      return;
+    }
+
     try {
       const workoutData = {
         categoryId: selectedCategoryId,
         notes: notes.trim() || undefined,
-        exercises: exercises.length > 0 ? cleanExercises(exercises) : undefined,
+        exercises: cleanExercises(exercises),
       };
 
       await api.post("/workouts", workoutData);
       navigation.goBack();
     } catch (error) {
-      showError(error, "Error", "Failed to create workout");
+      const errorMessage = error.response?.data?.error || "Failed to create workout";
+      Alert.alert("Error", errorMessage);
     }
   };
 
