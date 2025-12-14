@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, TextInput, Button, Text, Alert, StyleSheet } from "react-native";
+import { View, TextInput, Button, Text, StyleSheet } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useApi } from "../ApiProvider";
 import axios from 'axios';
@@ -74,12 +74,10 @@ export default function LoginScreen({ onLoggedIn }) {
   };
 
   const login = async () => {
-    // Clear previous errors
     setEmailError(null);
     setPasswordError(null);
     setGeneralError(null);
 
-    // Validate before API call
     if (!validateForm()) {
       return;
     }
@@ -101,21 +99,35 @@ export default function LoginScreen({ onLoggedIn }) {
       setLoading(false);
       if (axios.isCancel(e)) return;
       
-      // Check if it's a validation error that we should show as field errors
       const errorMessage = getErrorMessage(e, "Login failed");
-      setGeneralError(errorMessage);
       
-      // Try to parse field-specific errors from the response
       if (e.response?.data?.fields) {
         const fields = e.response.data.fields;
-        if (fields.email) setEmailError(fields.email);
-        if (fields.password) setPasswordError(fields.password);
+        if (fields.email) {
+          setEmailError(fields.email);
+        }
+        if (fields.password) {
+          setPasswordError(fields.password);
+        }
+        // If we have field errors, don't show general error
+        if (fields.email || fields.password) {
+          return;
+        }
+      }
+      
+      if (errorMessage.toLowerCase().includes("password")) {
+        setPasswordError(errorMessage);
+      }
+      else if (errorMessage.toLowerCase().includes("email") || errorMessage.toLowerCase().includes("user name")) {
+        setEmailError(errorMessage);
+      }
+      else {
+        setGeneralError(errorMessage);
       }
     }
   };
 
   const register = async () => {
-    // Clear previous errors
     setEmailError(null);
     setPasswordError(null);
     setGeneralError(null);
@@ -134,15 +146,29 @@ export default function LoginScreen({ onLoggedIn }) {
       setLoading(false);
       if (axios.isCancel(e)) return;
       
-      // Check if it's a validation error that we should show as field errors
       const errorMessage = getErrorMessage(e, "Register failed");
-      setGeneralError(errorMessage);
       
-      // Try to parse field-specific errors from the response
       if (e.response?.data?.fields) {
         const fields = e.response.data.fields;
-        if (fields.email) setEmailError(fields.email);
-        if (fields.password) setPasswordError(fields.password);
+        if (fields.email) {
+          setEmailError(fields.email);
+        }
+        if (fields.password) {
+          setPasswordError(fields.password);
+        }
+        if (fields.email || fields.password) {
+          return;
+        }
+      }
+      
+      if (errorMessage.toLowerCase().includes("password")) {
+        setPasswordError(errorMessage);
+      }
+      else if (errorMessage.toLowerCase().includes("email") || errorMessage.toLowerCase().includes("user name")) {
+        setEmailError(errorMessage);
+      }
+      else {
+        setGeneralError(errorMessage);
       }
     }
   };
