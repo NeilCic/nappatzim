@@ -44,7 +44,9 @@ export default function CreateCategoryScreen({ navigation, route }) {
       />
       
       <View style={styles.buttonContainer}>
-        <Button title="Create Category" onPress={handleCreate} />
+        <View style={styles.buttonWrapper}>
+          <Button title="Create Category" onPress={handleCreate} />
+        </View>
         <Button title="Cancel" onPress={() => navigation.goBack()} />
       </View>
     </View>
@@ -56,4 +58,5 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, marginBottom: 20 },
   input: { borderWidth: 1, padding: 10, marginBottom: 10, borderRadius: 8 },
   buttonContainer: { gap: 12 },
+  buttonWrapper: { marginBottom: 12 },
 });
