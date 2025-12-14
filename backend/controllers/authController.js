@@ -1,6 +1,7 @@
 import { authService, refreshAccessToken } from '../services/authService.js'
 import logger from '../lib/logger.js'
 import { z } from 'zod'
+import { formatZodError } from '../lib/zodErrorFormatter.js'
 
 const userSchema = z.object({
     email: z.string().min(3, "Email has to be at least 3 characters").max(20, "Email can't be more than 20 characters"),
@@ -75,7 +76,8 @@ const addUser = async(req, res) => {
                 },
                 "User registration validation failed"
             );
-            res.status(400).json({ error: error.message });
+            const formattedError = formatZodError(error);
+            res.status(400).json({ error: formattedError });
         } else {
             logger.error(
                 {
@@ -115,7 +117,8 @@ const login = async(req, res) => {
                 },
                 "User login validation failed"
             );
-            res.status(400).json({ error: error.message });
+            const formattedError = formatZodError(error);
+            res.status(400).json({ error: formattedError });
         } else if (error.message === 'Invalid credentials') {
             logger.warn(
                 {
@@ -164,7 +167,8 @@ const refresh = async(req, res) => {
                 },
                 "Token refresh validation failed"
             );
-            res.status(400).json({ error: error.message });
+            const formattedError = formatZodError(error);
+            res.status(400).json({ error: formattedError });
         } else {
             logger.warn(
                 {
@@ -208,7 +212,8 @@ const updateUsername = async (req, res) => {
                 },
                 "Username update validation failed"
             );
-            res.status(400).json({ error: error.message });
+            const formattedError = formatZodError(error);
+            res.status(400).json({ error: formattedError });
         } else if (error.message === "Username already taken") {
             logger.warn({ requestId, userId: req.user.userId, username: req.body.username }, "Username already taken");
             res.status(409).json({ error: error.message });
