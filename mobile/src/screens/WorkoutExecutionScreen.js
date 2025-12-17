@@ -85,7 +85,7 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
   };
 
   const finishRestNow = () => {
-    currentExercise.setsDetail[currentSet].restMinutes = timeLeft / 60;
+    // currentExercise.setsDetail[currentSet].restMinutes = timeLeft / 60; todo. the idea was for user to keep track if finished early but its just annoying since it ruins consistency
     clearInterval(intervalRef.current);
     setIsRunning(false);
     setTimeLeft(0);
@@ -109,7 +109,11 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
   };
 
   const toggleTimer = () => {
-    setIsRunning(!isRunning);
+    if (isLastExercise && currentSet === totalSets - 1) {
+      finishRestNow();
+    } else {
+      setIsRunning(!isRunning);
+    }
   };
 
   const formatTime = (seconds) => {
@@ -288,7 +292,15 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
                   },
                 ]}
               >
-                {!isRunning && timeLeft === 0 ? "DONE" : formatTime(timeLeft)}
+                {(() => {
+                  if (timeLeft === 0) {
+                    return "DONE";
+                  } else if (!isRunning && isLastExercise && currentSet === totalSets - 1) {
+                    return "FINISH";
+                  } else {
+                    return formatTime(timeLeft);
+                  }
+                })()}
               </Text>
             </View>
           </View>
