@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   FlatList,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ExerciseAdvancedModal({
   visible,
@@ -36,7 +37,8 @@ export default function ExerciseAdvancedModal({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, padding: 16, backgroundColor: "white" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
+        <View style={{ flex: 1, padding: 16 }}>
         <Text style={{ fontSize: 18, fontWeight: "600", marginBottom: 12 }}>
           Advanced Setup for {exerciseName}
         </Text>
@@ -231,7 +233,8 @@ export default function ExerciseAdvancedModal({
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+        </View>
+      </SafeAreaView>
     </Modal>
   );
 }
