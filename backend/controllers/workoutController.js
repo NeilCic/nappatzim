@@ -2,6 +2,7 @@ import workoutService from "../services/workoutService.js";
 
 import { z } from "zod";
 import logger from "../lib/logger.js";
+import { formatZodError } from "../lib/zodErrorFormatter.js";
 
 const exerciseSetSchema = z.object({
   order: z.coerce.number().int().min(1),
@@ -79,7 +80,8 @@ const addWorkoutController = async (req, res) => {
         },
         "Workout validation failed"
       );
-      res.status(400).json({ error: error.message });
+      const formattedError = formatZodError(error);
+      res.status(400).json({ error: formattedError });
     } else {
       logger.error(
         {
@@ -132,7 +134,8 @@ const getWorkoutController = async (req, res) => {
         },
         "Workout query validation failed"
       );
-      res.status(400).json({ error: error.message });
+      const formattedError = formatZodError(error);
+      res.status(400).json({ error: formattedError });
     } else {
       logger.error(
         {
@@ -204,7 +207,8 @@ const getWorkoutsByCategoryController = async (req, res) => {
         },
         "Workout category query validation failed"
       );
-      res.status(400).json({ error: error.message });
+      const formattedError = formatZodError(error);
+      res.status(400).json({ error: formattedError });
     } else {
       logger.error(
         {
@@ -261,7 +265,8 @@ const updateWorkoutController = async (req, res) => {
         },
         "Workout update validation failed"
       );
-      res.status(400).json({ error: error.message });
+      const formattedError = formatZodError(error);
+      res.status(400).json({ error: formattedError });
     } else {
       logger.error(
         {
