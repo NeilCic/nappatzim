@@ -13,8 +13,8 @@ const validateEmail = (email) => {
   if (email.length < 3) {
     return "Email has to be at least 3 characters";
   }
-  if (email.length > 20) {
-    return "Email can't be more than 20 characters";
+  if (email.length > 80) {
+    return "Email can't be more than 80 characters";
   }
   return null;
 };
@@ -26,8 +26,8 @@ const validatePassword = (password) => {
   if (password.length < 6) {
     return "Password has to be at least 6 characters";
   }
-  if (password.length > 20) {
-    return "Password can't be more than 20 characters";
+  if (password.length > 80) {
+    return "Password can't be more than 80 characters";
   }
   return null;
 };
