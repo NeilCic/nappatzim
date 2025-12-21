@@ -4,8 +4,8 @@ import { z } from 'zod'
 import { formatZodError } from '../lib/zodErrorFormatter.js'
 
 const userSchema = z.object({
-    email: z.string().min(3, "Email has to be at least 3 characters").max(20, "Email can't be more than 20 characters"),
-    password: z.string().min(6, "Password has to be at least 6 characters").max(20, "Password can't be more than 20 characters"),
+    email: z.string().min(3, "Email has to be at least 3 characters").max(80, "Email can't be more than 20 characters"),
+    password: z.string().min(6, "Password has to be at least 6 characters").max(80, "Password can't be more than 20 characters"),
     role: z.enum(['user', 'admin']).default('user')
 });
 
@@ -14,7 +14,7 @@ const userSchema = z.object({
 //     email: z.string()
 //         .email("Email must be a valid email address")
 //         .min(3, "Email must be at least 3 characters")
-//         .max(50, "Email can't be more than 50 characters"),
+//         .max(80, "Email can't be more than 50 characters"),
 //     password: z.string()
 //         .min(8, "Password must be at least 8 characters")
 //         .max(32, "Password can't be more than 32 characters")
@@ -26,8 +26,8 @@ const userSchema = z.object({
 // });
 
 const loginSchema = z.object({
-    email: z.string().min(3, "User name has to be at least 3 characters").max(20, "User name can't be more than 20 characters"),
-    password: z.string().min(6, "Password has to be at least 6 characters").max(20, "Password can't be more than 20 characters")
+    email: z.string().min(3, "User name has to be at least 3 characters").max(80, "User name can't be more than 20 characters"),
+    password: z.string().min(6, "Password has to be at least 6 characters").max(80, "Password can't be more than 20 characters")
 });
 
 // for after testing
@@ -184,7 +184,7 @@ const refresh = async(req, res) => {
 };
 
 const updateUsernameSchema = z.object({
-    username: z.string().min(3, "Username must be at least 3 characters").max(20, "Username can't be more than 20 characters"),
+    username: z.string().min(3, "Username must be at least 3 characters").max(80, "Username can't be more than 20 characters"),
 });
 
 const updateUsername = async (req, res) => {

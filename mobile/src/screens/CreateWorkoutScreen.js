@@ -13,6 +13,7 @@ import {
 import { useApi } from "../ApiProvider";
 import ExerciseAdvancedModal from "../components/ExerciseAdvancedModal";
 import { showError } from "../utils/errorHandler";
+import DraggableList from "../components/DraggableList";
 
 export default function CreateWorkoutScreen({ navigation, route }) {
   const { categories, initialCategoryId } = route.params || {};
@@ -415,7 +416,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
 
                 {isExpanded && (
                   <>
-                    {/* <View style={styles.exerciseRow}> todo - figure out how i want to add and track these
+                    {/* <View style={styles.exerciseRow}> todo - figure out how i want to add and track these (workout types)
                       <View style={styles.exerciseField}>
                         <Text style={styles.fieldLabel}>Type</Text>
                         <View style={styles.typeButtons}>
