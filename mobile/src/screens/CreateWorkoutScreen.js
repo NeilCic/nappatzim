@@ -13,7 +13,6 @@ import {
 import { useApi } from "../ApiProvider";
 import ExerciseAdvancedModal from "../components/ExerciseAdvancedModal";
 import { showError } from "../utils/errorHandler";
-import DraggableList from "../components/DraggableList";
 
 export default function CreateWorkoutScreen({ navigation, route }) {
   const { categories, initialCategoryId } = route.params || {};
