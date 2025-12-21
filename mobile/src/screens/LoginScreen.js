@@ -4,17 +4,18 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useApi } from "../ApiProvider";
 import axios from 'axios';
 import { getErrorMessage } from "../utils/errorHandler";
+import { VALIDATION } from "../../../shared/constants.js";
 
 // Validation functions matching backend schema
 const validateEmail = (email) => {
   if (!email || email.trim().length === 0) {
     return "Email is required";
   }
-  if (email.length < 3) {
-    return "Email has to be at least 3 characters";
+  if (email.length < VALIDATION.EMAIL.MIN_LENGTH) {
+    return `Email has to be at least ${VALIDATION.EMAIL.MIN_LENGTH} characters`;
   }
-  if (email.length > 80) {
-    return "Email can't be more than 80 characters";
+  if (email.length > VALIDATION.EMAIL.MAX_LENGTH) {
+    return `Email can't be more than ${VALIDATION.EMAIL.MAX_LENGTH} characters`;
   }
   return null;
 };
@@ -23,11 +24,11 @@ const validatePassword = (password) => {
   if (!password || password.trim().length === 0) {
     return "Password is required";
   }
-  if (password.length < 6) {
-    return "Password has to be at least 6 characters";
+  if (password.length < VALIDATION.PASSWORD.MIN_LENGTH) {
+    return `Password has to be at least ${VALIDATION.PASSWORD.MIN_LENGTH} characters`;
   }
-  if (password.length > 80) {
-    return "Password can't be more than 80 characters";
+  if (password.length > VALIDATION.PASSWORD.MAX_LENGTH) {
+    return `Password can't be more than ${VALIDATION.PASSWORD.MAX_LENGTH} characters`;
   }
   return null;
 };

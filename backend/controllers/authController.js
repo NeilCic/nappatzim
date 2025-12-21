@@ -2,10 +2,15 @@ import { authService, refreshAccessToken } from '../services/authService.js'
 import logger from '../lib/logger.js'
 import { z } from 'zod'
 import { formatZodError } from '../lib/zodErrorFormatter.js'
+import { VALIDATION } from '../../shared/constants.js'
 
 const userSchema = z.object({
-    email: z.string().min(3, "Email has to be at least 3 characters").max(80, "Email can't be more than 20 characters"),
-    password: z.string().min(6, "Password has to be at least 6 characters").max(80, "Password can't be more than 20 characters"),
+    email: z.string()
+        .min(VALIDATION.EMAIL.MIN_LENGTH, `Email has to be at least ${VALIDATION.EMAIL.MIN_LENGTH} characters`)
+        .max(VALIDATION.EMAIL.MAX_LENGTH, `Email can't be more than ${VALIDATION.EMAIL.MAX_LENGTH} characters`),
+    password: z.string()
+        .min(VALIDATION.PASSWORD.MIN_LENGTH, `Password has to be at least ${VALIDATION.PASSWORD.MIN_LENGTH} characters`)
+        .max(VALIDATION.PASSWORD.MAX_LENGTH, `Password can't be more than ${VALIDATION.PASSWORD.MAX_LENGTH} characters`),
     role: z.enum(['user', 'admin']).default('user')
 });
 
@@ -26,8 +31,12 @@ const userSchema = z.object({
 // });
 
 const loginSchema = z.object({
-    email: z.string().min(3, "User name has to be at least 3 characters").max(80, "User name can't be more than 20 characters"),
-    password: z.string().min(6, "Password has to be at least 6 characters").max(80, "Password can't be more than 20 characters")
+    email: z.string()
+        .min(VALIDATION.EMAIL.MIN_LENGTH, `User name has to be at least ${VALIDATION.EMAIL.MIN_LENGTH} characters`)
+        .max(VALIDATION.EMAIL.MAX_LENGTH, `User name can't be more than ${VALIDATION.EMAIL.MAX_LENGTH} characters`),
+    password: z.string()
+        .min(VALIDATION.PASSWORD.MIN_LENGTH, `Password has to be at least ${VALIDATION.PASSWORD.MIN_LENGTH} characters`)
+        .max(VALIDATION.PASSWORD.MAX_LENGTH, `Password can't be more than ${VALIDATION.PASSWORD.MAX_LENGTH} characters`)
 });
 
 // for after testing
@@ -184,7 +193,9 @@ const refresh = async(req, res) => {
 };
 
 const updateUsernameSchema = z.object({
-    username: z.string().min(3, "Username must be at least 3 characters").max(80, "Username can't be more than 20 characters"),
+    username: z.string()
+        .min(VALIDATION.USERNAME.MIN_LENGTH, `Username must be at least ${VALIDATION.USERNAME.MIN_LENGTH} characters`)
+        .max(VALIDATION.USERNAME.MAX_LENGTH, `Username can't be more than ${VALIDATION.USERNAME.MAX_LENGTH} characters`),
 });
 
 const updateUsername = async (req, res) => {
