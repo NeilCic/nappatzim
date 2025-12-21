@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useApi } from "../ApiProvider";
 import axios from 'axios';
 import { getErrorMessage } from "../utils/errorHandler";
-import { VALIDATION } from "../../../shared/constants.js";
+import { VALIDATION } from "../shared/constants.js";
 
 // Validation functions matching backend schema
 const validateEmail = (email) => {

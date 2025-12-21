@@ -2,7 +2,7 @@ import { authService, refreshAccessToken } from '../services/authService.js'
 import logger from '../lib/logger.js'
 import { z } from 'zod'
 import { formatZodError } from '../lib/zodErrorFormatter.js'
-import { VALIDATION } from '../../shared/constants.js'
+import { VALIDATION } from '../../mobile/src/shared/constants.js'
 
 const userSchema = z.object({
     email: z.string()
