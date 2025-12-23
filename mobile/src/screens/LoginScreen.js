@@ -179,6 +179,7 @@ export default function LoginScreen({ onLoggedIn }) {
       <View style={styles.inputGroup}>
         <TextInput
           placeholder="Email"
+          placeholderTextColor="#222222"
           autoCapitalize="none"
           value={email}
           onChangeText={handleEmailChange}
@@ -195,6 +196,7 @@ export default function LoginScreen({ onLoggedIn }) {
       <View style={styles.inputGroup}>
         <TextInput
           placeholder="Password"
+          placeholderTextColor="#222222"
           secureTextEntry
           value={password}
           onChangeText={handlePasswordChange}
