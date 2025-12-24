@@ -216,7 +216,7 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
               if (!exercise.progress || exercise.progress.length === 0)
                 return null;
 
-              const sortedProgress = [...exercise.progress].reverse();
+              const sortedProgress = [...exercise.progress];
               const chartData = {
                 labels: sortedProgress.map((p, index) =>
                   index %

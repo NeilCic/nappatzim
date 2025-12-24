@@ -29,6 +29,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
   const [expandedExercises, setExpandedExercises] = useState(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
+  const [appliedBasicSetup, setAppliedBasicSetup] = useState({});
   const { api } = useApi();
 
   const unitOptionsMap = {
@@ -58,37 +59,36 @@ export default function CreateWorkoutScreen({ navigation, route }) {
 
       if (workout) {
         setNotes(workout.notes || "");
-        setExercises(
-          (workout.exercises || []).map((ex, idx) => ({
-            type: ex.type || "weight",
-            name:
-              ex.name && ex.name.trim() !== ""
-                ? ex.name
-                : `Exercise ${idx + 1}`,
-            unit: ex.unit || "",
-            sets: ex.setsDetail ? ex.setsDetail.length : "",
-            reps: ex.setsDetail.every(
-              (set) => set.reps === ex.setsDetail[0].reps
-            )
-              ? String(ex.setsDetail[0].reps)
-              : "",
-            weight: ex.setsDetail.every(
-              (set) => set.value === ex.setsDetail[0].value
-            )
-              ? String(ex.setsDetail[0].value)
-              : "",
-            restMinutes: ex.setsDetail.every(
-              (set) => set.restMinutes === ex.setsDetail[0].restMinutes
-            )
-              ? String(ex.setsDetail[0].restMinutes)
-              : "",
-            notes: ex.notes || "",
-            order: idx + 1,
-            setsDetail: ex.setsDetail || [
-              { order: 1, reps: 1, value: 0, restMinutes: 1 },
-            ],
-          }))
-        );
+        const loadedExercises = (workout.exercises || []).map((ex, idx) => ({
+          type: ex.type || "weight",
+          name:
+            ex.name && ex.name.trim() !== ""
+              ? ex.name
+              : `Exercise ${idx + 1}`,
+          unit: ex.unit || "",
+          sets: ex.setsDetail ? ex.setsDetail.length : "",
+          reps: ex.setsDetail.every(
+            (set) => set.reps === ex.setsDetail[0].reps
+          )
+            ? String(ex.setsDetail[0].reps)
+            : "",
+          weight: ex.setsDetail.every(
+            (set) => set.value === ex.setsDetail[0].value
+          )
+            ? String(ex.setsDetail[0].value)
+            : "",
+          restMinutes: ex.setsDetail.every(
+            (set) => set.restMinutes === ex.setsDetail[0].restMinutes
+          )
+            ? String(ex.setsDetail[0].restMinutes)
+            : "",
+          notes: ex.notes || "",
+          order: idx + 1,
+          setsDetail: ex.setsDetail || [
+            { order: 1, reps: 1, value: 0, restMinutes: 1 },
+          ],
+        }));
+        setExercises(loadedExercises);
         setHasLoadedPrevious(true);
       } else {
         Alert.alert(
@@ -181,6 +181,35 @@ export default function CreateWorkoutScreen({ navigation, route }) {
     handleDataChange();
     const updatedExercises = exercises.filter((_, i) => i !== index);
     setExercises(updatedExercises);
+    // Clean up applied state for removed exercise and reindex remaining ones
+    setAppliedBasicSetup((prev) => {
+      const newState = {};
+      updatedExercises.forEach((_, i) => {
+        const oldIndex = i < index ? i : i + 1;
+        if (prev[oldIndex]) {
+          newState[i] = prev[oldIndex];
+        }
+      });
+      return newState;
+    });
+  };
+
+  const hasUnappliedBasicSetup = (index) => {
+    const exercise = exercises[index];
+    if (!exercise) return false;
+    
+    if (!(index in appliedBasicSetup)) {
+      return true;
+    }
+    
+    const applied = appliedBasicSetup[index];
+    // Compare current values with applied values - show red if out of sync
+    return (
+      exercise.sets !== applied.sets ||
+      exercise.reps !== applied.reps ||
+      exercise.weight !== applied.weight ||
+      exercise.restMinutes !== applied.restMinutes
+    );
   };
 
   const applyBasicSetup = (index) => {
@@ -200,6 +229,16 @@ export default function CreateWorkoutScreen({ navigation, route }) {
         restMinutes: exercise.restMinutes || 0,
       });
     }
+
+    setAppliedBasicSetup((prev) => ({
+      ...prev,
+      [index]: {
+        sets: exercise.sets,
+        reps: exercise.reps,
+        weight: exercise.weight,
+        restMinutes: exercise.restMinutes,
+      },
+    }));
 
     updateExercise(index, "setsDetail", newSetsDetail);
   };
@@ -311,6 +350,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                       setNotes("");
                       setExercises([]);
                       setHasPreviousWorkout(false);
+                      setAppliedBasicSetup({});
                       // Check for previous workout
                       checkForPreviousWorkout(category.id);
                     }
@@ -353,6 +393,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                 setNotes("");
                 setExercises([]);
                 setHasLoadedPrevious(false);
+                setAppliedBasicSetup({});
               }}
             >
               <Text style={styles.clearButtonText}>Start Fresh</Text>
@@ -446,7 +487,10 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                       </View>
                     </View> */}
 
-                    <View style={styles.basicSetupSection}>
+                    <View style={[
+                      styles.basicSetupSection,
+                      hasUnappliedBasicSetup(index) ? styles.basicSetupSectionUnapplied : null
+                    ]}>
                       <Text style={styles.sectionTitle}>Basic Setup</Text>
 
                       <View style={styles.exerciseRow}>
@@ -690,6 +734,17 @@ export default function CreateWorkoutScreen({ navigation, route }) {
               : "";
           });
 
+          // Update applied state since advanced setup also updates basic setup fields
+          setAppliedBasicSetup((prev) => ({
+            ...prev,
+            [selectedExerciseIndex]: {
+              sets: updated[selectedExerciseIndex].sets,
+              reps: updated[selectedExerciseIndex].reps,
+              weight: updated[selectedExerciseIndex].weight,
+              restMinutes: updated[selectedExerciseIndex].restMinutes,
+            },
+          }));
+
           setExercises(updated);
           setShowAdvancedModal(false);
         }}
@@ -877,6 +932,13 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: "#e0e0e0",
+  },
+  basicSetupSectionUnapplied: {
+    backgroundColor: "#ffe0e0",
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 14,
