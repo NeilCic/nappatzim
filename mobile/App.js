@@ -15,12 +15,13 @@ import WorkoutExecutionScreen from "./src/screens/WorkoutExecutionScreen";
 import ConversationsListScreen from "./src/screens/ConversationsListScreen";
 import ConversationScreen from "./src/screens/ConversationScreen";
 import PreferencesScreen from "./src/screens/PreferencesScreen";
+import LayoutSelectionScreen from "./src/screens/LayoutSelectionScreen";
 
 import { ApiProvider } from "./src/ApiProvider";
 import { createApi } from "./src/ApiClient";
 
 const Stack = createNativeStackNavigator();
-const USE_PRODUCTION = true;
+const USE_PRODUCTION = false;
 
 const API_BASE_URL = USE_PRODUCTION
   ? "https://nappatzim.onrender.com"
@@ -120,6 +121,12 @@ export default function App() {
         <Text style={styles.chatIcon}>💬</Text>
       </TouchableOpacity>
       <TouchableOpacity
+        style={styles.mapButton}
+        onPress={() => navigation.navigate("Layout Selection")}
+      >
+        <Text style={styles.mapIcon}>🗺️</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
         style={styles.timerButton}
         onPress={() => navigation.navigate("Timer")}
       >
@@ -203,6 +210,14 @@ export default function App() {
                 component={PreferencesScreen}
                 options={{ title: "Preferences" }}
               />
+              <Stack.Screen
+                name="Layout Selection"
+                component={LayoutSelectionScreen}
+                options={({ navigation }) => ({
+                  title: "Gym Layouts",
+                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
+                })}
+              />
             </>
           ) : (
             <Stack.Screen name="Login">
@@ -235,6 +250,13 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   chatIcon: {
+    fontSize: 24,
+  },
+  mapButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  mapIcon: {
     fontSize: 24,
   },
   timerButton: {
