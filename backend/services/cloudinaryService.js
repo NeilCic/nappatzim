@@ -1,0 +1,96 @@
+import { v2 as cloudinary } from 'cloudinary';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+/**
+ * Upload a file to Cloudinary
+ * @param {Buffer|string} file - File buffer or file path
+ * @param {string} folder - Optional folder path in Cloudinary
+ * @param {Object} options - Additional Cloudinary options
+ * @returns {Promise<Object>} Upload result with URL
+ */
+export async function uploadToCloudinary(file, folder = 'nappatzim', options = {}) {
+  try {
+    const uploadOptions = {
+      folder,
+      resource_type: 'auto', // Automatically detect image/video/raw
+      ...options,
+    };
+
+    const result = await cloudinary.uploader.upload(file, uploadOptions);
+    
+    return {
+      url: result.secure_url,
+      publicId: result.public_id,
+      resourceType: result.resource_type,
+      width: result.width,
+      height: result.height,
+      bytes: result.bytes,
+      format: result.format,
+    };
+  } catch (error) {
+    console.error('Cloudinary upload error:', error);
+    throw new Error(`Failed to upload file: ${error.message}`);
+  }
+}
+
+/**
+ * Delete a file from Cloudinary
+ * @param {string} publicId - Public ID of the file to delete
+ * @returns {Promise<Object>} Deletion result
+ */
+export async function deleteFromCloudinary(publicId) {
+  try {
+    const result = await cloudinary.uploader.destroy(publicId);
+    return result;
+  } catch (error) {
+    console.error('Cloudinary delete error:', error);
+    throw new Error(`Failed to delete file: ${error.message}`);
+  }
+}
+
+/**
+ * Delete multiple files from Cloudinary in parallel
+ * @param {string[]} publicIds - Array of public IDs to delete
+ * @returns {Promise<Array>} Array of deletion results
+ */
+export async function deleteMultipleFromCloudinary(publicIds) {
+  if (!publicIds || publicIds.length === 0) {
+    return [];
+  }
+
+  // Delete all in parallel
+  const deletePromises = publicIds.map((publicId) =>
+    deleteFromCloudinary(publicId).catch((error) => {
+      // Return error instead of throwing so Promise.all doesn't fail completely
+      return { publicId, error: error.message };
+    })
+  );
+
+  return await Promise.all(deletePromises);
+}
+
+/**
+ * Generate a video thumbnail
+ * @param {string} publicId - Public ID of the video
+ * @returns {string} Thumbnail URL
+ */
+export function getVideoThumbnail(publicId) {
+  return cloudinary.url(publicId, {
+    resource_type: 'video',
+    transformation: [
+      { width: 400, height: 300, crop: 'fill' },
+      { quality: 'auto' },
+    ],
+  });
+}
+
+export default cloudinary;
+

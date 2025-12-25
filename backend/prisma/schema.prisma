@@ -25,6 +25,7 @@ model User {
   exerciseProgress ExerciseProgress[]
   conversationParticipants ConversationParticipant[]
   sentMessages     Message[]
+  spots            Spot[]
 }
 
 model WorkoutCategory {
@@ -153,4 +154,57 @@ model Message {
 
   @@index([conversationId, createdAt])
   @@index([senderId])
+}
+
+model Layout {
+  id                  String   @id @default(cuid())
+  name                String
+  layoutImageUrl      String   // Cloudinary URL for the layout image
+  layoutImagePublicId String   // Cloudinary public ID for deletion
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  spots               Spot[]
+  
+  @@index([createdAt])
+}
+
+model Spot {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  color       String?    // Color for the spot marker (hex code)
+  x           Float       // X coordinate as percentage (0-100) of layout image width
+  y           Float       // Y coordinate as percentage (0-100) of layout image height
+  layoutId    String
+  userId      String      // User who created this spot
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  layout      Layout      @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videos      SpotVideo[]
+  
+  @@index([layoutId])
+  @@index([userId])
+  @@index([layoutId, userId])
+}
+
+model SpotVideo {
+  id              String   @id @default(cuid())
+  title            String?
+  description      String?
+  videoUrl         String   // Cloudinary URL for the video
+  videoPublicId    String   // Cloudinary public ID for deletion
+  thumbnailUrl     String?  // Cloudinary URL for video thumbnail
+  fileSize         Int      // File size in bytes
+  duration         Float    // Video duration in seconds
+  spotId           String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  spot             Spot     @relation(fields: [spotId], references: [id], onDelete: Cascade)
+  
+  @@index([spotId])
+  @@index([spotId, createdAt])
 }

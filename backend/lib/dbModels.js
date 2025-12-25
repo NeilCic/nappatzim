@@ -5,3 +5,6 @@ export const EXERCISE_MODEL = "exercise";
 export const EXERCISE_SET_MODEL = "exerciseSet";
 export const CONVERSATION_MODEL = "conversation";
 export const MESSAGE_MODEL = "message";
+export const LAYOUT_MODEL = "layout";
+export const SPOT_MODEL = "spot";
+export const SPOT_VIDEO_MODEL = "spotVideo";
