@@ -12,12 +12,6 @@ const isValidUrl = (val) => {
   }
 };
 
-const layoutSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  layoutImageUrl: z.string().refine(isValidUrl, "Invalid image URL"),
-  layoutImagePublicId: z.string().min(1, "Public ID is required"),
-});
-
 // Schema for creating layout (without image URLs - they come from Cloudinary)
 const createLayoutSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -32,7 +26,7 @@ const createVideoSchema = z.object({
 
 const spotSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
+  description: z.string().nullable().optional(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Color must be a valid hex code").optional(),
   x: z.number().min(0).max(100, "X coordinate must be between 0 and 100"),
   y: z.number().min(0).max(100, "Y coordinate must be between 0 and 100"),
@@ -41,7 +35,7 @@ const spotSchema = z.object({
 
 const spotVideoSchema = z.object({
   title: z.string().optional(),
-  description: z.string().optional(),
+  description: z.string().nullable().optional(),
   videoUrl: z.string().refine(isValidUrl, "Invalid video URL"),
   videoPublicId: z.string().min(1, "Public ID is required"),
   thumbnailUrl: z.string().refine((val) => !val || isValidUrl(val), "Invalid thumbnail URL").optional(),

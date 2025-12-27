@@ -16,6 +16,7 @@ import ConversationsListScreen from "./src/screens/ConversationsListScreen";
 import ConversationScreen from "./src/screens/ConversationScreen";
 import PreferencesScreen from "./src/screens/PreferencesScreen";
 import LayoutSelectionScreen from "./src/screens/LayoutSelectionScreen";
+import LayoutDetailScreen from "./src/screens/LayoutDetailScreen";
 
 import { ApiProvider } from "./src/ApiProvider";
 import { createApi } from "./src/ApiClient";
@@ -215,6 +216,14 @@ export default function App() {
                 component={LayoutSelectionScreen}
                 options={({ navigation }) => ({
                   title: "Gym Layouts",
+                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
+                })}
+              />
+              <Stack.Screen
+                name="Layout Detail"
+                component={LayoutDetailScreen}
+                options={({ navigation }) => ({
+                  title: "Layout Detail",
                   headerRight: () => <HeaderRightButtons navigation={navigation} />,
                 })}
               />

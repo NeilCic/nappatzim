@@ -3,7 +3,7 @@
     "name": "Beta Nappatzim",
     "slug": "mobile",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/nappatzim.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,

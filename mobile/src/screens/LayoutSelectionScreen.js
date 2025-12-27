@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image, Dimensions } from 'react-native';
 import { useApi } from '../ApiProvider';
 import { showError } from '../utils/errorHandler';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function LayoutSelectionScreen({ navigation }) {
   const [layouts, setLayouts] = useState([]);
@@ -16,7 +18,7 @@ export default function LayoutSelectionScreen({ navigation }) {
     try {
       setLoading(true);
       const response = await api.get('/layouts');
-      setLayouts(response.data || []);
+      setLayouts(response.data.layouts || []);
     } catch (error) {
       showError(error, "Error", "Failed to load layouts");
     } finally {
@@ -51,6 +53,11 @@ export default function LayoutSelectionScreen({ navigation }) {
               style={styles.layoutItem}
               onPress={() => handleLayoutPress(item)}
             >
+              <Image 
+                source={{ uri: item.layoutImageUrl }} 
+                style={styles.layoutImage}
+                resizeMode="cover"
+              />
               <Text style={styles.layoutName}>{item.name}</Text>
             </TouchableOpacity>
           )}
@@ -77,14 +84,28 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   layoutItem: {
-    padding: 16,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f8f8',
     borderRadius: 8,
     marginBottom: 12,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    borderWidth: 2,
+    borderColor: '#d0d0d0',
+  },
+  layoutImage: {
+    width: '100%',
+    height: screenWidth * 0.6,
+    backgroundColor: '#f5f5f5',
   },
   layoutName: {
     fontSize: 18,
     fontWeight: '500',
+    padding: 16,
+    color: '#333',
   },
 });
 

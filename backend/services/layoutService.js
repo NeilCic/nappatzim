@@ -1,6 +1,6 @@
 import PrismaCrudService from "./prismaCrudService.js";
 import { LAYOUT_MODEL, SPOT_MODEL, SPOT_VIDEO_MODEL } from "../lib/dbModels.js";
-import { uploadToCloudinary, deleteFromCloudinary, deleteMultipleFromCloudinary, getVideoThumbnail } from "./cloudinaryService.js";
+import { uploadToCloudinary, deleteFromCloudinary, deleteMultipleFromCloudinary, getVideoThumbnail, getCloudinaryFolderPrefix } from "./cloudinaryService.js";
 import cloudinary from "./cloudinaryService.js";
 import logger from "../lib/logger.js";
 
@@ -45,7 +45,7 @@ class LayoutService extends PrismaCrudService {
     // Upload image to Cloudinary
     const uploadResult = await uploadToCloudinary(
       imageFile,
-      'nappatzim/layouts'
+      `${getCloudinaryFolderPrefix()}/layouts`
     );
 
     // Save to database
@@ -66,7 +66,7 @@ class LayoutService extends PrismaCrudService {
     if (imageFile) {
       const uploadResult = await uploadToCloudinary(
         imageFile,
-        'nappatzim/layouts'
+        `${getCloudinaryFolderPrefix()}/layouts`
       );
       
       updateData.layoutImageUrl = uploadResult.url;
@@ -152,7 +152,7 @@ class LayoutService extends PrismaCrudService {
     let cloudinaryPublicIds = new Set();
     try {
       const result = await cloudinary.search
-        .expression('folder:nappatzim/layouts')
+        .expression(`folder:${getCloudinaryFolderPrefix()}/layouts`)
         .execute();
 
       if (result.resources) {
@@ -283,7 +283,7 @@ class SpotVideoService extends PrismaCrudService {
     // Upload video to Cloudinary
     const uploadResult = await uploadToCloudinary(
       videoFile,
-      'nappatzim/videos',
+      `${getCloudinaryFolderPrefix()}/videos`,
       {
         resource_type: 'video',
       }

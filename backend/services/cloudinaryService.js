@@ -10,6 +10,15 @@ cloudinary.config({
 });
 
 /**
+ * Get the Cloudinary folder prefix based on environment
+ * Development uses 'nappatzim/dev', production uses 'nappatzim'
+ * @returns {string} Folder prefix
+ */
+export function getCloudinaryFolderPrefix() {
+  return process.env.NODE_ENV === 'production' ? 'nappatzim' : 'nappatzim/dev';
+}
+
+/**
  * Upload a file to Cloudinary
  * @param {Buffer|string} file - File buffer or file path
  * @param {string} folder - Optional folder path in Cloudinary
@@ -24,7 +33,19 @@ export async function uploadToCloudinary(file, folder = 'nappatzim', options = {
       ...options,
     };
 
-    const result = await cloudinary.uploader.upload(file, uploadOptions);
+    // Handle Buffer by using upload_stream, or file path with regular upload
+    const result = Buffer.isBuffer(file)
+      ? await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            uploadOptions,
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          uploadStream.end(file);
+        })
+      : await cloudinary.uploader.upload(file, uploadOptions);
     
     return {
       url: result.secure_url,
