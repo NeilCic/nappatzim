@@ -149,8 +149,7 @@ export default function App() {
 
   const HeaderRightButtons = ({ navigation }) => (
     <View style={styles.headerRightContainer}>
-      {/* All buttons commented out for testing */}
-      {/* <PreferencesButton navigation={navigation} />
+      <PreferencesButton navigation={navigation} />
       <TouchableOpacity
         style={styles.chatButton}
         onPress={() => navigation.navigate("Conversations")}
@@ -171,7 +170,7 @@ export default function App() {
           source={require("./assets/timer-icon.png")}
           style={styles.timerIcon}
         />
-      </TouchableOpacity> */}
+      </TouchableOpacity>
     </View>
   );
 
