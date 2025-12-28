@@ -13,6 +13,24 @@ import axios from 'axios';
 
 const { width: screenWidth } = Dimensions.get("window");
 
+// Helper function to calculate brightness of a color (0-255)
+// Returns true if color is light (should use black text), false if dark (should use white text)
+const isLightColor = (hex) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return false; // Default to dark (white text)
+  
+  const r = parseInt(result[1], 16);
+  const g = parseInt(result[2], 16);
+  const b = parseInt(result[3], 16);
+  
+  // Calculate relative luminance using the formula from WCAG
+  // https://www.w3.org/WAI/GL/wiki/Relative_luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // If luminance is greater than 0.5, it's a light color (use black text)
+  return luminance > 0.5;
+};
+
 export default function HomeScreen({ navigation, onLogout }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,21 +81,21 @@ export default function HomeScreen({ navigation, onLogout }) {
         </TouchableOpacity>
       );
     }
+    const cardColor = category.color || "#007AFF";
+    const textColor = isLightColor(cardColor) ? "#000000" : "#FFFFFF";
+    
     return (
       <TouchableOpacity
-        style={styles.categoryCard}
+        style={[
+          styles.categoryCard,
+          { backgroundColor: cardColor },
+        ]}
         onPress={() => {
           navigation.navigate("Category Workouts", { category });
         }}
       >
-        <View
-          style={[
-            styles.categoryColor,
-            { backgroundColor: category.color || "#007AFF" },
-          ]}
-        />
-        <Text style={styles.categoryName}>{category.name}</Text>
-        <Text style={styles.categoryCount}>
+        <Text style={[styles.categoryName, { color: textColor }]}>{category.name}</Text>
+        <Text style={[styles.categoryCount, { color: textColor, opacity: 0.8 }]}>
           {category.workoutCount} workouts
         </Text>
       </TouchableOpacity>
@@ -117,7 +135,7 @@ export default function HomeScreen({ navigation, onLogout }) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesList}
           decelerationRate="fast"
-          snapToInterval={screenWidth * 0.4 + 15}
+          snapToInterval={screenWidth * 0.35 + 15}
           snapToAlignment="start"
         />
       </View>
@@ -196,39 +214,28 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     color: "#333",
   },
-  categoriesList: {
-    paddingHorizontal: 10,
-  },
   categoryCard: {
     backgroundColor: "white",
     width: screenWidth * 0.4,
     marginRight: 15,
-    padding: 20,
+    padding: 25,
     borderRadius: 15,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "rgba(0, 0, 0, 0.1)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 12,
   },
-  categoryColor: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginBottom: 10,
-  },
   categoryName: {
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 5,
-    color: "#333",
   },
   categoryCount: {
     fontSize: 12,
-    color: "#666",
   },
   logoutButton: {
     position: "absolute",
@@ -264,6 +271,7 @@ const styles = StyleSheet.create({
   },
   categoriesList: {
     paddingHorizontal: 20,
+    paddingBottom: 30, // Extra padding to avoid Android navigation bar overlap
   },
   disabledButton: {
     opacity: 0.5,
