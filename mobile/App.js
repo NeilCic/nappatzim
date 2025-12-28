@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { TouchableOpacity, StyleSheet, Image, Text, View } from "react-native";
+import { TouchableOpacity, StyleSheet, Image, Text, View, Alert } from "react-native";
 import axios from "axios";
 import * as Updates from "expo-updates";
 
@@ -52,25 +52,32 @@ export default function App() {
     const checkForUpdates = async () => {
       try {
         if (!__DEV__ && Updates.isEnabled) {
-          console.log("Checking for updates...");
-          console.log("Updates enabled:", Updates.isEnabled);
-          console.log("Update ID:", Updates.updateId);
-          console.log("Channel:", Updates.channel);
           const update = await Updates.checkForUpdateAsync();
-          console.log("Update check result:", update);
           if (update.isAvailable) {
-            console.log("Update available, fetching...");
+            Alert.alert(
+              "Update Available",
+              `Channel: ${Updates.channel || 'unknown'}\nCurrent ID: ${Updates.updateId || 'unknown'}\nFetching update...`,
+              [{ text: "OK" }]
+            );
             await Updates.fetchUpdateAsync();
-            console.log("Update fetched, reloading...");
+            Alert.alert("Update Ready", "Reloading app...", [{ text: "OK" }]);
             await Updates.reloadAsync();
           } else {
-            console.log("No update available");
+            Alert.alert(
+              "No Update",
+              `Channel: ${Updates.channel || 'unknown'}\nCurrent ID: ${Updates.updateId || 'unknown'}\nUpdates enabled: ${Updates.isEnabled}`,
+              [{ text: "OK" }]
+            );
           }
         } else {
-          console.log("Updates disabled or in dev mode");
+          Alert.alert(
+            "Updates Status",
+            `Dev mode: ${__DEV__}\nUpdates enabled: ${Updates.isEnabled}`,
+            [{ text: "OK" }]
+          );
         }
       } catch (error) {
-        console.error("Error checking for updates:", error);
+        Alert.alert("Update Error", error.message, [{ text: "OK" }]);
       }
     };
     checkForUpdates();
