@@ -19,7 +19,7 @@ export default function CreateCategoryScreen({ navigation, route }) {
     }
 
     try {
-      const res = await api.post('/categories', { 
+      await api.post('/categories', { 
         name: name.trim(), 
         color: color || undefined 
       });

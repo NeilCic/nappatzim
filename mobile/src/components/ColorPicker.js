@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
-// Predefined color palette - nice, accessible colors
 const COLOR_PALETTE = [
   '#FF6B6B', // Red
   '#4ECDC4', // Teal
