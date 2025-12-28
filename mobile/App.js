@@ -114,8 +114,9 @@ export default function App() {
 
   const HeaderRightButtons = ({ navigation }) => (
     <View style={styles.headerRightContainer}>
-      <PreferencesButton navigation={navigation} />
-      {/* <TouchableOpacity
+      {/* All buttons commented out for testing */}
+      {/* <PreferencesButton navigation={navigation} />
+      <TouchableOpacity
         style={styles.chatButton}
         onPress={() => navigation.navigate("Conversations")}
       >
