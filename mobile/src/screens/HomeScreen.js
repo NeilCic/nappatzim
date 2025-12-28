@@ -95,7 +95,6 @@ export default function HomeScreen({ navigation, onLogout }) {
   return (
     <View style={styles.container}>
       <View style={styles.topHalf}>
-        <Text style={styles.title}>Home</Text>
 
         <TouchableOpacity
           style={[styles.newWorkoutButton, categories.length === 0 && styles.disabledButton]}

@@ -161,7 +161,7 @@ export default function App() {
               <Stack.Screen
                 name="Home"
                 options={({ navigation }) => ({
-                  title: "Workout",
+                  title: "Home",
                   headerRight: () => <HeaderRightButtons navigation={navigation} />,
                 })}
               >
