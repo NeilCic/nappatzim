@@ -214,6 +214,7 @@ export default function ConversationScreen({ route }) {
           value={messageText}
           onChangeText={setMessageText}
           placeholder="Type a message..."
+          placeholderTextColor="#222222"
           multiline
           maxLength={1000}
         />

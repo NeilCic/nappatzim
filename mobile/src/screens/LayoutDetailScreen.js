@@ -453,6 +453,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
             <TextInput
               style={styles.input}
               placeholder="Spot name *"
+              placeholderTextColor="#222222"
               value={newSpotData.name}
               onChangeText={(text) => setNewSpotData({ ...newSpotData, name: text })}
             />
@@ -460,6 +461,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
             <TextInput
               style={[styles.input, styles.textArea]}
               placeholder="Description (optional)"
+              placeholderTextColor="#222222"
               value={newSpotData.description}
               onChangeText={(text) => setNewSpotData({ ...newSpotData, description: text })}
               multiline
@@ -565,12 +567,14 @@ export default function LayoutDetailScreen({ navigation, route }) {
                       <TextInput
                         style={styles.input}
                         placeholder="Video title (optional)"
+                        placeholderTextColor="#222222"
                         value={newVideoTitle}
                         onChangeText={setNewVideoTitle}
                       />
                       <TextInput
                         style={[styles.input, styles.textArea]}
                         placeholder="Description (optional)"
+                        placeholderTextColor="#222222"
                         value={newVideoDescription}
                         onChangeText={setNewVideoDescription}
                         multiline

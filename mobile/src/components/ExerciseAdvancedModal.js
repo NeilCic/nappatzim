@@ -144,6 +144,7 @@ export default function ExerciseAdvancedModal({
                 }}
                 keyboardType="numeric"
                 placeholder="0"
+                placeholderTextColor="#222222"
                 selectTextOnFocus={true}
               />
 
@@ -167,6 +168,7 @@ export default function ExerciseAdvancedModal({
                 }}
                 keyboardType="numeric"
                 placeholder="0"
+                placeholderTextColor="#222222"
                 selectTextOnFocus={true}
               />
 
@@ -192,6 +194,7 @@ export default function ExerciseAdvancedModal({
                 }}
                 keyboardType="numeric"
                 placeholder="0"
+                placeholderTextColor="#222222"
                 selectTextOnFocus={true}
               />
             </View>

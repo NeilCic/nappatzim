@@ -191,6 +191,7 @@ export default function ConversationsListScreen({ navigation }) {
               <TextInput
                 style={styles.userIdInput}
                 placeholder="Username"
+                placeholderTextColor="#222222"
                 value={peerUsername}
                 onChangeText={setPeerUsername}
                 autoCapitalize="none"

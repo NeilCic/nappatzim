@@ -411,6 +411,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
               setNotes(text);
             }}
             placeholder="Add workout notes..."
+            placeholderTextColor="#222222"
             multiline
             numberOfLines={3}
           />
@@ -436,6 +437,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                       updateExercise(index, "name", value)
                     }
                     placeholder={`Exercise ${index + 1}`}
+                    placeholderTextColor="#222222"
                     multiline={false}
                     selectTextOnFocus={true}
                   />
@@ -508,6 +510,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                             }
                             keyboardType="numeric"
                             placeholder={"1"}
+                            placeholderTextColor="#222222"
                             selectTextOnFocus={true}
                           />
                         </View>
@@ -526,6 +529,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                             }
                             keyboardType="numeric"
                             placeholder={"1"}
+                            placeholderTextColor="#222222"
                             selectTextOnFocus={true}
                           />
                         </View>
@@ -544,6 +548,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                             }
                             keyboardType="numeric"
                             placeholder={"12.5"}
+                            placeholderTextColor="#222222"
                             selectTextOnFocus={true}
                           />
                         </View>
@@ -562,6 +567,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                             }
                             keyboardType="numeric"
                             placeholder={"2.5"}
+                            placeholderTextColor="#222222"
                             selectTextOnFocus={true}
                           />
                         </View>
@@ -627,6 +633,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                         updateExercise(index, "notes", value)
                       }
                       placeholder="Exercise notes..."
+                      placeholderTextColor="#222222"
                       multiline
                     />
                     <TouchableOpacity

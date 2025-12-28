@@ -32,6 +32,7 @@ export default function CreateCategoryScreen({ navigation, route }) {
       <TextInput
         style={styles.input}
         placeholder="Category name"
+        placeholderTextColor="#222222"
         value={name}
         onChangeText={setName}
       />
@@ -39,6 +40,7 @@ export default function CreateCategoryScreen({ navigation, route }) {
       <TextInput
         style={styles.input}
         placeholder="Color (optional)"
+        placeholderTextColor="#222222"
         value={color}
         onChangeText={setColor}
       />

@@ -178,6 +178,7 @@ export default function TimerScreen() {
                 onChangeText={setCustomMinutes}
                 keyboardType="numeric"
                 placeholder="0"
+                placeholderTextColor="#222222"
                 maxLength={2}
                 editable={timerType !== "stopwatch"}
               />
@@ -193,6 +194,7 @@ export default function TimerScreen() {
                 onChangeText={setCustomSeconds}
                 keyboardType="numeric"
                 placeholder="0"
+                placeholderTextColor="#222222"
                 maxLength={2}
                 editable={timerType !== "stopwatch"}
               />

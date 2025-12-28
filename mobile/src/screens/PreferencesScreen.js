@@ -88,6 +88,7 @@ export default function PreferencesScreen() {
         <TextInput
           style={styles.input}
           placeholder="Enter username"
+          placeholderTextColor="#222222"
           value={username}
           onChangeText={setUsername}
           autoCapitalize="none"
