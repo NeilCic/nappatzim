@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { View, TextInput, Button, Text, StyleSheet } from "react-native";
+import { View, Button, Text, StyleSheet } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useApi } from "../ApiProvider";
 import axios from 'axios';
 import { getErrorMessage } from "../utils/errorHandler";
 import { VALIDATION } from "../shared/constants.js";
+import StyledTextInput from "../components/StyledTextInput";
 
 // Validation functions matching backend schema
 const validateEmail = (email) => {
@@ -177,9 +178,8 @@ export default function LoginScreen({ onLoggedIn }) {
   return (
     <View style={styles.container}>
       <View style={styles.inputGroup}>
-        <TextInput
+        <StyledTextInput
           placeholder="Email"
-          placeholderTextColor="#222222"
           autoCapitalize="none"
           value={email}
           onChangeText={handleEmailChange}
@@ -194,9 +194,8 @@ export default function LoginScreen({ onLoggedIn }) {
       </View>
 
       <View style={styles.inputGroup}>
-        <TextInput
+        <StyledTextInput
           placeholder="Password"
-          placeholderTextColor="#222222"
           secureTextEntry
           value={password}
           onChangeText={handlePasswordChange}

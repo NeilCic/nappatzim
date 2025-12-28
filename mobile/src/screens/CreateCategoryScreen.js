@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
+import { View, Text, Button, StyleSheet } from 'react-native';
 import { useApi } from '../ApiProvider';
 import axios from 'axios';
 import { showError } from '../utils/errorHandler';
+import StyledTextInput from '../components/StyledTextInput';
 
 export default function CreateCategoryScreen({ navigation, route }) {
   const onCategoryCreated = route.params.onCategoryCreated;
@@ -29,18 +30,16 @@ export default function CreateCategoryScreen({ navigation, route }) {
     <View style={styles.container}>
       <Text style={styles.title}>Create Category</Text>
       
-      <TextInput
+      <StyledTextInput
         style={styles.input}
         placeholder="Category name"
-        placeholderTextColor="#222222"
         value={name}
         onChangeText={setName}
       />
       
-      <TextInput
+      <StyledTextInput
         style={styles.input}
         placeholder="Color (optional)"
-        placeholderTextColor="#222222"
         value={color}
         onChangeText={setColor}
       />

@@ -3,11 +3,11 @@ import {
   Modal,
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import StyledTextInput from "./StyledTextInput";
 
 export default function ExerciseAdvancedModal({
   visible,
@@ -124,7 +124,7 @@ export default function ExerciseAdvancedModal({
                 Set {index + 1}
               </Text>
 
-              <TextInput
+              <StyledTextInput
                 style={{
                   flex: 1,
                   marginRight: 8,
@@ -144,11 +144,10 @@ export default function ExerciseAdvancedModal({
                 }}
                 keyboardType="numeric"
                 placeholder="0"
-                placeholderTextColor="#222222"
                 selectTextOnFocus={true}
               />
 
-              <TextInput
+              <StyledTextInput
                 style={{
                   flex: 1,
                   marginRight: 8,
@@ -168,11 +167,10 @@ export default function ExerciseAdvancedModal({
                 }}
                 keyboardType="numeric"
                 placeholder="0"
-                placeholderTextColor="#222222"
                 selectTextOnFocus={true}
               />
 
-              <TextInput
+              <StyledTextInput
                 style={{
                   flex: 1,
                   backgroundColor: "#f8f8f8",
@@ -194,7 +192,6 @@ export default function ExerciseAdvancedModal({
                 }}
                 keyboardType="numeric"
                 placeholder="0"
-                placeholderTextColor="#222222"
                 selectTextOnFocus={true}
               />
             </View>

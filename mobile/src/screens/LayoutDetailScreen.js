@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   ScrollView,
   Modal,
-  TextInput,
   Alert,
   FlatList
 } from 'react-native';
@@ -18,6 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useApi } from '../ApiProvider';
 import { showError } from '../utils/errorHandler';
+import StyledTextInput from '../components/StyledTextInput';
 
 export default function LayoutDetailScreen({ navigation, route }) {
   const { layoutId } = route.params;
@@ -450,18 +450,16 @@ export default function LayoutDetailScreen({ navigation, route }) {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Add New Spot</Text>
             
-            <TextInput
+            <StyledTextInput
               style={styles.input}
               placeholder="Spot name *"
-              placeholderTextColor="#222222"
               value={newSpotData.name}
               onChangeText={(text) => setNewSpotData({ ...newSpotData, name: text })}
             />
             
-            <TextInput
+            <StyledTextInput
               style={[styles.input, styles.textArea]}
               placeholder="Description (optional)"
-              placeholderTextColor="#222222"
               value={newSpotData.description}
               onChangeText={(text) => setNewSpotData({ ...newSpotData, description: text })}
               multiline
@@ -564,17 +562,15 @@ export default function LayoutDetailScreen({ navigation, route }) {
 
                     <View style={styles.addVideoSection}>
                       <Text style={styles.sectionTitle}>Add New Video</Text>
-                      <TextInput
+                      <StyledTextInput
                         style={styles.input}
                         placeholder="Video title (optional)"
-                        placeholderTextColor="#222222"
                         value={newVideoTitle}
                         onChangeText={setNewVideoTitle}
                       />
-                      <TextInput
+                      <StyledTextInput
                         style={[styles.input, styles.textArea]}
                         placeholder="Description (optional)"
-                        placeholderTextColor="#222222"
                         value={newVideoDescription}
                         onChangeText={setNewVideoDescription}
                         multiline

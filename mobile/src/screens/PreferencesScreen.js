@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
@@ -12,6 +11,7 @@ import { useApi } from "../ApiProvider";
 import { getCurrentUserId } from "../utils/jwtUtils";
 import handleApiCall from "../utils/apiUtils";
 import { showError } from "../utils/errorHandler";
+import StyledTextInput from "../components/StyledTextInput";
 
 export default function PreferencesScreen() {
   const [username, setUsername] = useState("");
@@ -85,10 +85,9 @@ export default function PreferencesScreen() {
         <Text style={styles.description}>
           Choose a username that others can use to find and message you
         </Text>
-        <TextInput
+        <StyledTextInput
           style={styles.input}
           placeholder="Enter username"
-          placeholderTextColor="#222222"
           value={username}
           onChangeText={setUsername}
           autoCapitalize="none"

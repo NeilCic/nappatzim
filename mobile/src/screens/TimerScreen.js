@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  TextInput,
   Alert,
   Dimensions,
   ScrollView,
@@ -12,6 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { playSound, stopSound } from "../utils/soundUtils";
+import StyledTextInput from "../components/StyledTextInput";
 
 const { width } = Dimensions.get("window");
 
@@ -169,7 +169,7 @@ export default function TimerScreen() {
           <View style={styles.customInputRow}>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Minutes</Text>
-              <TextInput
+              <StyledTextInput
                 style={[
                   styles.input,
                   timerType === "stopwatch" && styles.disabledInput,
@@ -178,14 +178,13 @@ export default function TimerScreen() {
                 onChangeText={setCustomMinutes}
                 keyboardType="numeric"
                 placeholder="0"
-                placeholderTextColor="#222222"
                 maxLength={2}
                 editable={timerType !== "stopwatch"}
               />
             </View>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Seconds</Text>
-              <TextInput
+              <StyledTextInput
                 style={[
                   styles.input,
                   timerType === "stopwatch" && styles.disabledInput,
@@ -194,7 +193,6 @@ export default function TimerScreen() {
                 onChangeText={setCustomSeconds}
                 keyboardType="numeric"
                 placeholder="0"
-                placeholderTextColor="#222222"
                 maxLength={2}
                 editable={timerType !== "stopwatch"}
               />

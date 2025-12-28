@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   Alert,
@@ -13,6 +12,7 @@ import {
 import { useApi } from "../ApiProvider";
 import ExerciseAdvancedModal from "../components/ExerciseAdvancedModal";
 import { showError } from "../utils/errorHandler";
+import StyledTextInput from "../components/StyledTextInput";
 
 export default function CreateWorkoutScreen({ navigation, route }) {
   const { categories, initialCategoryId } = route.params || {};
@@ -403,7 +403,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
 
         <View style={styles.section}>
           <Text style={styles.label}>Notes (Optional)</Text>
-          <TextInput
+          <StyledTextInput
             style={styles.textInput}
             value={notes}
             onChangeText={(text) => {
@@ -411,7 +411,6 @@ export default function CreateWorkoutScreen({ navigation, route }) {
               setNotes(text);
             }}
             placeholder="Add workout notes..."
-            placeholderTextColor="#222222"
             multiline
             numberOfLines={3}
           />
@@ -430,14 +429,13 @@ export default function CreateWorkoutScreen({ navigation, route }) {
             return (
               <View key={index} style={styles.exerciseCard}>
                 <View style={styles.exerciseHeader}>
-                  <TextInput
+                  <StyledTextInput
                     style={styles.exerciseNumber}
                     value={exercise.name}
                     onChangeText={(value) =>
                       updateExercise(index, "name", value)
                     }
                     placeholder={`Exercise ${index + 1}`}
-                    placeholderTextColor="#222222"
                     multiline={false}
                     selectTextOnFocus={true}
                   />
@@ -498,7 +496,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                       <View style={styles.exerciseRow}>
                         <View style={styles.exerciseField}>
                           <Text style={styles.fieldLabel}>Sets</Text>
-                          <TextInput
+                          <StyledTextInput
                             style={styles.smallInput}
                             value={exercise.sets}
                             onChangeText={(value) =>
@@ -510,14 +508,13 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                             }
                             keyboardType="numeric"
                             placeholder={"1"}
-                            placeholderTextColor="#222222"
                             selectTextOnFocus={true}
                           />
                         </View>
 
                         <View style={styles.exerciseField}>
                           <Text style={styles.fieldLabel}>Reps</Text>
-                          <TextInput
+                          <StyledTextInput
                             style={styles.smallInput}
                             value={exercise.reps}
                             onChangeText={(value) =>
@@ -529,14 +526,13 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                             }
                             keyboardType="numeric"
                             placeholder={"1"}
-                            placeholderTextColor="#222222"
                             selectTextOnFocus={true}
                           />
                         </View>
 
                         <View style={styles.exerciseField}>
                           <Text style={styles.fieldLabel}>Weight</Text>
-                          <TextInput
+                          <StyledTextInput
                             style={styles.smallInput}
                             value={exercise.weight}
                             onChangeText={(value) =>
@@ -548,14 +544,13 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                             }
                             keyboardType="numeric"
                             placeholder={"12.5"}
-                            placeholderTextColor="#222222"
                             selectTextOnFocus={true}
                           />
                         </View>
 
                         <View style={styles.exerciseField}>
                           <Text style={styles.fieldLabel}>Rest (mins)</Text>
-                          <TextInput
+                          <StyledTextInput
                             style={styles.smallInput}
                             value={exercise.restMinutes}
                             onChangeText={(value) =>
@@ -567,7 +562,6 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                             }
                             keyboardType="numeric"
                             placeholder={"2.5"}
-                            placeholderTextColor="#222222"
                             selectTextOnFocus={true}
                           />
                         </View>
@@ -626,14 +620,13 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                       </View>
                     </View>
 
-                    <TextInput
+                    <StyledTextInput
                       style={styles.exerciseNotes}
                       value={exercise.notes}
                       onChangeText={(value) =>
                         updateExercise(index, "notes", value)
                       }
                       placeholder="Exercise notes..."
-                      placeholderTextColor="#222222"
                       multiline
                     />
                     <TouchableOpacity

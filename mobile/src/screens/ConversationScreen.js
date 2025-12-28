@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   FlatList,
@@ -15,6 +14,7 @@ import { useApi } from "../ApiProvider";
 import { getCurrentUserId } from "../utils/jwtUtils";
 import handleApiCall from "../utils/apiUtils";
 import axios from "axios";
+import StyledTextInput from "../components/StyledTextInput";
 
 export default function ConversationScreen({ route }) {
   const { conversationId } = route.params;
@@ -209,12 +209,11 @@ export default function ConversationScreen({ route }) {
         }}
       />
       <View style={styles.inputContainer}>
-        <TextInput
+        <StyledTextInput
           style={styles.input}
           value={messageText}
           onChangeText={setMessageText}
           placeholder="Type a message..."
-          placeholderTextColor="#222222"
           multiline
           maxLength={1000}
         />

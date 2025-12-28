@@ -6,7 +6,6 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  TextInput,
   Alert,
   Modal,
   Platform,
@@ -16,6 +15,7 @@ import { useApi } from "../ApiProvider";
 import { getCurrentUserId } from "../utils/jwtUtils";
 import handleApiCall from "../utils/apiUtils";
 import { showError } from "../utils/errorHandler";
+import StyledTextInput from "../components/StyledTextInput";
 
 export default function ConversationsListScreen({ navigation }) {
   const [conversations, setConversations] = useState([]);
@@ -188,10 +188,9 @@ export default function ConversationsListScreen({ navigation }) {
               <Text style={styles.modalSubtitle}>
                 Enter the username of the person you want to message
               </Text>
-              <TextInput
+              <StyledTextInput
                 style={styles.userIdInput}
                 placeholder="Username"
-                placeholderTextColor="#222222"
                 value={peerUsername}
                 onChangeText={setPeerUsername}
                 autoCapitalize="none"
