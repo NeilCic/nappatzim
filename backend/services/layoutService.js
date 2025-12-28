@@ -3,6 +3,7 @@ import { LAYOUT_MODEL, SPOT_MODEL, SPOT_VIDEO_MODEL } from "../lib/dbModels.js";
 import { uploadToCloudinary, deleteFromCloudinary, deleteMultipleFromCloudinary, getVideoThumbnail, getCloudinaryFolderPrefix } from "./cloudinaryService.js";
 import cloudinary from "./cloudinaryService.js";
 import logger from "../lib/logger.js";
+import prisma from "../lib/prisma.js";
 
 class LayoutService extends PrismaCrudService {
   constructor() {
@@ -236,6 +237,40 @@ class SpotService extends PrismaCrudService {
   }
 
   async deleteSpot(spotId, userId) {
+    // Get spot with videos to delete from Cloudinary
+    const spot = await this.getSpotById(spotId);
+    
+    if (!spot) {
+      return null;
+    }
+
+    // Verify ownership
+    if (spot.userId !== userId) {
+      return null;
+    }
+
+    // Delete all videos from Cloudinary in bulk
+    if (spot.videos && spot.videos.length > 0) {
+      const publicIdsToDelete = spot.videos
+        .map((video) => video.videoPublicId)
+        .filter((id) => id); // Filter out null/undefined
+
+      if (publicIdsToDelete.length > 0) {
+        const deleteResults = await deleteMultipleFromCloudinary(publicIdsToDelete);
+        
+        // Log any failures
+        deleteResults.forEach((result) => {
+          if (result.error) {
+            logger.warn(
+              { error: result.error, publicId: result.publicId, spotId },
+              "Failed to delete video from Cloudinary during spot deletion - video may be orphaned"
+            );
+          }
+        });
+      }
+    }
+
+    // Delete spot from database (videos will be cascade deleted)
     return await this.delete({ id: spotId, userId });
   }
 }
@@ -251,6 +286,8 @@ class SpotVideoService extends PrismaCrudService {
       select: {
         id: true,
         title: true,
+        description: true,
+        videoUrl: true,
         thumbnailUrl: true,
         duration: true,
         createdAt: true,
@@ -280,7 +317,16 @@ class SpotVideoService extends PrismaCrudService {
   }
 
   async createVideo(spotId, title, description, videoFile) {
-    // Upload video to Cloudinary
+    // Verify spot exists before uploading to Cloudinary
+    const spot = await prisma.spot.findUnique({
+      where: { id: spotId },
+    });
+
+    if (!spot) {
+      throw new Error(`Spot with ID ${spotId} not found`);
+    }
+
+    // Upload video to Cloudinary (only after spot is verified)
     const uploadResult = await uploadToCloudinary(
       videoFile,
       `${getCloudinaryFolderPrefix()}/videos`,
@@ -305,16 +351,32 @@ class SpotVideoService extends PrismaCrudService {
     }
 
     // Save to database
-    return await this.create({
-      spotId,
-      title: title || null,
-      description: description || null,
-      videoUrl: uploadResult.url,
-      videoPublicId: uploadResult.publicId,
-      thumbnailUrl,
-      fileSize: uploadResult.bytes,
-      duration,
-    });
+    try {
+      // Use prisma directly with connect syntax for the relation
+      return await prisma.spotVideo.create({
+        data: {
+          spot: {
+            connect: { id: spotId },
+          },
+          title: title || null,
+          description: description || null,
+          videoUrl: uploadResult.url,
+          videoPublicId: uploadResult.publicId,
+          thumbnailUrl,
+          fileSize: uploadResult.bytes,
+          duration,
+        },
+      });
+    } catch (dbError) {
+      // If database save fails, try to clean up the Cloudinary upload
+      try {
+        await deleteFromCloudinary(uploadResult.publicId);
+        logger.warn({ publicId: uploadResult.publicId, spotId }, "Cleaned up Cloudinary upload after database save failure");
+      } catch (cleanupError) {
+        logger.error({ cleanupError, publicId: uploadResult.publicId, spotId }, "Failed to clean up Cloudinary upload after database save failure - video may be orphaned");
+      }
+      throw dbError;
+    }
   }
 
   async updateVideo(videoId, data) {

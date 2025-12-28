@@ -198,7 +198,7 @@ model SpotVideo {
   videoPublicId    String   // Cloudinary public ID for deletion
   thumbnailUrl     String?  // Cloudinary URL for video thumbnail
   fileSize         Int      // File size in bytes
-  duration         Float    // Video duration in seconds
+  duration         Float?   // Video duration in seconds (may be null if Cloudinary hasn't processed yet) // todo maybe force later on
   spotId           String
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

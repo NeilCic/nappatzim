@@ -1,5 +1,5 @@
 /**
- * Script to delete ALL resources from Cloudinary
+ * Script to delete ALL resources from Cloudinary and the database
  * This will delete resources based on the current environment:
  * - Development (NODE_ENV !== 'production'): deletes from 'nappatzim/dev'
  * - Production (NODE_ENV === 'production'): deletes from 'nappatzim'
@@ -7,10 +7,12 @@
  * Usage: node backend/scripts/deleteAllCloudinary.js
  * 
  * WARNING: This is destructive and cannot be undone!
+ * This will delete from BOTH Cloudinary and the database.
  */
 
 import { v2 as cloudinary } from 'cloudinary';
 import { getCloudinaryFolderPrefix } from '../services/cloudinaryService.js';
+import prisma from '../lib/prisma.js';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
@@ -56,10 +58,11 @@ async function deleteAllResources() {
     const folderPrefix = getCloudinaryFolderPrefix();
     const isProduction = process.env.NODE_ENV === 'production';
     
-    console.log('⚠️  WARNING: This will delete ALL resources from Cloudinary!');
+    console.log('⚠️  WARNING: This will delete ALL resources from Cloudinary AND the database!');
     console.log(`   Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
     console.log(`   Folder prefix: ${folderPrefix}`);
-    console.log(`   This will delete resources under "${folderPrefix}" folder only\n`);
+    console.log(`   This will delete resources under "${folderPrefix}" folder from Cloudinary`);
+    console.log(`   This will also delete ALL layouts, spots, and videos from the database\n`);
 
     // Delete everything under the environment-specific folder prefix
     console.log(`Deleting all resources under "${folderPrefix}" folder...`);
@@ -137,9 +140,33 @@ async function deleteAllResources() {
     }
 
     console.log('\n✅ All Cloudinary resources have been deleted!');
+
+    // Delete from database
+    console.log('\n🗑️  Deleting from database...');
+    
+    try {
+      // Delete all videos first (they reference spots)
+      const videosDeleted = await prisma.spotVideo.deleteMany({});
+      console.log(`   ✓ Deleted ${videosDeleted.count} videos from database`);
+
+      // Delete all spots (they reference layouts)
+      const spotsDeleted = await prisma.spot.deleteMany({});
+      console.log(`   ✓ Deleted ${spotsDeleted.count} spots from database`);
+
+      // Delete all layouts
+      const layoutsDeleted = await prisma.layout.deleteMany({});
+      console.log(`   ✓ Deleted ${layoutsDeleted.count} layouts from database`);
+
+      console.log('\n✅ All database records have been deleted!');
+    } catch (dbError) {
+      console.error('❌ Error deleting from database:', dbError);
+      throw dbError;
+    }
   } catch (error) {
     console.error('❌ Error deleting resources:', error);
     throw error;
+  } finally {
+    await prisma.$disconnect();
   }
 }
 

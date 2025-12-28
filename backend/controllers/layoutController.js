@@ -21,7 +21,6 @@ const createLayoutSchema = z.object({
 const createVideoSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
-  spotId: z.string().min(1, "Spot ID is required"),
 });
 
 const spotSchema = z.object({
@@ -228,29 +227,14 @@ export const updateSpotController = async (req, res) => {
 export const deleteSpotController = async (req, res) => {
   try {
     const { spotId } = req.params;
-    const spot = await layoutService.spot.getSpotById(spotId);
-    
-    if (!spot) {
-      return res.status(404).json({ error: "Spot not found" });
-    }
-
     const userId = req.user?.userId;
-    if (spot.userId !== userId) {
-      return res.status(403).json({ error: "You can only delete your own spots" });
+    
+    const deleted = await layoutService.spot.deleteSpot(spotId, userId);
+    
+    if (!deleted) {
+      return res.status(404).json({ error: "Spot not found or you don't have permission" });
     }
 
-    // Delete all videos from Cloudinary
-    for (const video of spot.videos || []) {
-      if (video.videoPublicId) {
-        try {
-          await deleteFromCloudinary(video.videoPublicId);
-        } catch (cloudinaryError) {
-          logger.warn({ cloudinaryError, publicId: video.videoPublicId }, "Failed to delete video from Cloudinary");
-        }
-      }
-    }
-
-    await layoutService.spot.deleteSpot(spotId, userId);
     res.status(204).send();
   } catch (error) {
     logger.error({ error, spotId: req.params.spotId, userId: req.user?.userId }, "Error deleting spot");
@@ -291,6 +275,11 @@ export const createVideoController = async (req, res) => {
       return res.status(400).json({ error: "Video file is required" });
     }
 
+    const { spotId } = req.params;
+    if (!spotId) {
+      return res.status(400).json({ error: "Spot ID is required" });
+    }
+
     const validation = createVideoSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
@@ -300,7 +289,7 @@ export const createVideoController = async (req, res) => {
     }
 
     const video = await layoutService.spotVideo.createVideo(
-      validation.data.spotId,
+      spotId,
       validation.data.title || null,
       validation.data.description || null,
       req.file.buffer
@@ -308,7 +297,13 @@ export const createVideoController = async (req, res) => {
 
     res.status(201).json({ video });
   } catch (error) {
-    logger.error({ error, spotId: req.body.spotId }, "Error creating video");
+    logger.error({ error, spotId: req.params.spotId }, "Error creating video");
+    
+    // Return appropriate error message
+    if (error.message?.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    
     res.status(500).json({ error: "Failed to create video" });
   }
 };

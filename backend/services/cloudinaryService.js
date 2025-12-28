@@ -1,7 +1,23 @@
 import { v2 as cloudinary } from 'cloudinary';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+import { existsSync } from 'fs';
 
-dotenv.config();
+// Try to load .env from backend folder first, then root
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const backendEnv = resolve(__dirname, '../.env');
+const rootEnv = resolve(__dirname, '../../.env');
+
+if (existsSync(backendEnv)) {
+  dotenv.config({ path: backendEnv });
+} else if (existsSync(rootEnv)) {
+  dotenv.config({ path: rootEnv });
+} else {
+  // Fallback to default dotenv.config() which looks in current working directory
+  dotenv.config();
+}
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -99,14 +115,18 @@ export async function deleteMultipleFromCloudinary(publicIds) {
 }
 
 /**
- * Generate a video thumbnail
+ * Generate a video thumbnail by extracting a frame from the video
  * @param {string} publicId - Public ID of the video
+ * @param {number} offset - Time offset in seconds (default: 0 for first frame)
  * @returns {string} Thumbnail URL
  */
-export function getVideoThumbnail(publicId) {
+export function getVideoThumbnail(publicId, offset = 0) {
   return cloudinary.url(publicId, {
     resource_type: 'video',
+    secure: true, // Use HTTPS
+    format: 'jpg', // Convert to image format
     transformation: [
+      { start_offset: offset }, // Extract frame at specified time (0 = first frame)
       { width: 400, height: 300, crop: 'fill' },
       { quality: 'auto' },
     ],

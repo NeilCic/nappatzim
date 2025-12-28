@@ -7,6 +7,9 @@
     },
     "android": {
       "package": "com.w00zup.nappatzim"
-    }
+    },
+    "plugins": [
+      "expo-video"
+    ]
   }
 }
