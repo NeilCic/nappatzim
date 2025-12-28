@@ -4,7 +4,6 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { TouchableOpacity, StyleSheet, Image, Text, View } from "react-native";
 import axios from "axios";
-import * as Updates from "expo-updates";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
@@ -48,24 +47,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Check for updates on app start
-    const checkForUpdates = async () => {
-      try {
-        if (__DEV__) {
-          // Updates are disabled in development
-          return;
-        }
-        const update = await Updates.checkForUpdateAsync();
-        if (update.isAvailable) {
-          await Updates.fetchUpdateAsync();
-          await Updates.reloadAsync();
-        }
-      } catch (error) {
-        console.error("Error checking for updates:", error);
-      }
-    };
-    checkForUpdates();
-
     const bootstrapAuth = async () => {
       try {
         const token = await AsyncStorage.getItem("token");
@@ -134,7 +115,7 @@ export default function App() {
   const HeaderRightButtons = ({ navigation }) => (
     <View style={styles.headerRightContainer}>
       <PreferencesButton navigation={navigation} />
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={styles.chatButton}
         onPress={() => navigation.navigate("Conversations")}
       >
@@ -154,7 +135,7 @@ export default function App() {
           source={require("./assets/timer-icon.png")}
           style={styles.timerIcon}
         />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   );
 
