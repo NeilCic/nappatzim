@@ -125,7 +125,7 @@ export default function App() {
         style={styles.mapButton}
         onPress={() => navigation.navigate("Layout Selection")}
       >
-        <Text style={styles.mapIcon}>🗺️</Text>
+        <Text style={styles.mapIcon}>📍</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.timerButton}
