@@ -52,7 +52,12 @@ export default function App() {
     const checkForUpdates = async () => {
       try {
         if (!__DEV__ && Updates.isEnabled) {
+          console.log("Checking for updates...");
+          console.log("Updates enabled:", Updates.isEnabled);
+          console.log("Update ID:", Updates.updateId);
+          console.log("Channel:", Updates.channel);
           const update = await Updates.checkForUpdateAsync();
+          console.log("Update check result:", update);
           if (update.isAvailable) {
             console.log("Update available, fetching...");
             await Updates.fetchUpdateAsync();
@@ -61,6 +66,8 @@ export default function App() {
           } else {
             console.log("No update available");
           }
+        } else {
+          console.log("Updates disabled or in dev mode");
         }
       } catch (error) {
         console.error("Error checking for updates:", error);
