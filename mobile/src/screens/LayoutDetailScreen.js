@@ -500,6 +500,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
             <ScrollView 
               style={styles.spotDetailScroll}
               contentContainerStyle={styles.spotDetailScrollContent}
+              showsVerticalScrollIndicator={true}
             >
               {selectedSpot && (
                 <>
@@ -782,6 +783,7 @@ const styles = StyleSheet.create({
     width: '90%',
     maxWidth: 400,
     maxHeight: '90%',
+    minHeight: 300,
   },
   modalTitle: {
     fontSize: 20,
@@ -829,10 +831,9 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   spotDetailScroll: {
-    flex: 1,
+    maxHeight: '100%',
   },
   spotDetailScrollContent: {
-    flexGrow: 1,
     paddingBottom: 20,
   },
   spotDescription: {
