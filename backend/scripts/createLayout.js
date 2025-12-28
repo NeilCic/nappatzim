@@ -4,14 +4,30 @@
  * Example: node backend/scripts/createLayout.js "Main Gym" "../mobile/assets/gym-layout.jpg"
  */
 
-import { uploadToCloudinary, getCloudinaryFolderPrefix } from '../services/cloudinaryService.js';
-import prisma from '../lib/prisma.js';
+// Load environment variables FIRST, before any imports that use them
+import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
-import { readFileSync } from 'fs';
+import { existsSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Try to load .env from backend folder first, then root
+const backendEnv = resolve(__dirname, '../.env');
+const rootEnv = resolve(__dirname, '../../.env');
+
+if (existsSync(backendEnv)) {
+  dotenv.config({ path: backendEnv });
+} else if (existsSync(rootEnv)) {
+  dotenv.config({ path: rootEnv });
+} else {
+  dotenv.config();
+}
+
+import { uploadToCloudinary, deleteFromCloudinary, getCloudinaryFolderPrefix } from '../services/cloudinaryService.js';
+import prisma from '../lib/prisma.js';
+import { readFileSync } from 'fs';
 
 async function createLayout(name, imagePath) {
   try {
@@ -41,17 +57,30 @@ async function createLayout(name, imagePath) {
 
     // Create database entry
     console.log('Creating database entry...');
-    const layout = await prisma.layout.create({
-      data: {
-        name,
-        layoutImageUrl: uploadResult.url,
-        layoutImagePublicId: uploadResult.publicId,
-      },
-    });
-    console.log('✓ Layout created in database');
-    console.log(`  ID: ${layout.id}`);
-    console.log(`  Name: ${layout.name}`);
-    console.log(`  Created at: ${layout.createdAt}`);
+    let layout;
+    try {
+      layout = await prisma.layout.create({
+        data: {
+          name,
+          layoutImageUrl: uploadResult.url,
+          layoutImagePublicId: uploadResult.publicId,
+        },
+      });
+      console.log('✓ Layout created in database');
+      console.log(`  ID: ${layout.id}`);
+      console.log(`  Name: ${layout.name}`);
+      console.log(`  Created at: ${layout.createdAt}`);
+    } catch (dbError) {
+      // Rollback: Delete from Cloudinary if database save fails
+      console.error('\n❌ Database save failed, rolling back Cloudinary upload...');
+      try {
+        await deleteFromCloudinary(uploadResult.publicId);
+        console.log('✓ Rolled back Cloudinary upload');
+      } catch (cleanupError) {
+        console.error('⚠️  Failed to rollback Cloudinary upload - image may be orphaned:', cleanupError.message);
+      }
+      throw dbError;
+    }
 
     console.log('\n✅ Layout created successfully!');
     return layout;

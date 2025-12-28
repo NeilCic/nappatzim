@@ -829,11 +829,11 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   spotDetailScroll: {
-    flexGrow: 0,
+    flex: 1,
   },
   spotDetailScrollContent: {
-    flexGrow: 0,
-    paddingBottom: 0,
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   spotDescription: {
     fontSize: 16,

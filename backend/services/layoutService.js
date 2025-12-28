@@ -50,44 +50,74 @@ class LayoutService extends PrismaCrudService {
     );
 
     // Save to database
-    return await this.create({
-      name,
-      layoutImageUrl: uploadResult.url,
-      layoutImagePublicId: uploadResult.publicId,
-    });
+    try {
+      return await this.create({
+        name,
+        layoutImageUrl: uploadResult.url,
+        layoutImagePublicId: uploadResult.publicId,
+      });
+    } catch (dbError) {
+      // If database save fails, rollback by deleting from Cloudinary
+      try {
+        await deleteFromCloudinary(uploadResult.publicId);
+        logger.warn({ publicId: uploadResult.publicId, name }, "Rolled back Cloudinary upload after database save failure");
+      } catch (cleanupError) {
+        logger.error({ cleanupError, publicId: uploadResult.publicId, name }, "Failed to rollback Cloudinary upload after database save failure - image may be orphaned");
+      }
+      throw dbError;
+    }
   }
 
   async updateLayout(layoutId, name, imageFile, oldPublicId) {
     const updateData = {};
+    let uploadResult = null;
     
     if (name) {
       updateData.name = name;
     }
     
     if (imageFile) {
-      const uploadResult = await uploadToCloudinary(
+      // Upload new image to Cloudinary
+      uploadResult = await uploadToCloudinary(
         imageFile,
         `${getCloudinaryFolderPrefix()}/layouts`
       );
       
       updateData.layoutImageUrl = uploadResult.url;
       updateData.layoutImagePublicId = uploadResult.publicId;
+    }
+    
+    // Update database
+    try {
+      const updatedLayout = await this.update({ id: layoutId }, updateData);
       
-      if (oldPublicId) {
+      // Only delete old image AFTER database update succeeds
+      if (uploadResult && oldPublicId) {
         try {
           await deleteFromCloudinary(oldPublicId);
         } catch (deleteError) {
-          // Log error but don't fail the update - old image might already be deleted
-          // This creates orphaned images in Cloudinary that should be cleaned up manually
+          // Log error but don't fail - old image might already be deleted
+          // The new image is already in DB, so this is just cleanup
           logger.warn(
             { deleteError, oldPublicId, layoutId },
             "Failed to delete old layout image from Cloudinary - image may be orphaned"
           );
         }
       }
+      
+      return updatedLayout;
+    } catch (dbError) {
+      // If database update fails, rollback by deleting the new Cloudinary upload
+      if (uploadResult) {
+        try {
+          await deleteFromCloudinary(uploadResult.publicId);
+          logger.warn({ publicId: uploadResult.publicId, layoutId }, "Rolled back Cloudinary upload after database update failure");
+        } catch (cleanupError) {
+          logger.error({ cleanupError, publicId: uploadResult.publicId, layoutId }, "Failed to rollback Cloudinary upload after database update failure - image may be orphaned");
+        }
+      }
+      throw dbError;
     }
-    
-    return await this.update({ id: layoutId }, updateData);
   }
 
   async deleteLayout(layoutId) {

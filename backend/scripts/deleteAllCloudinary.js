@@ -10,9 +10,7 @@
  * This will delete from BOTH Cloudinary and the database.
  */
 
-import { v2 as cloudinary } from 'cloudinary';
-import { getCloudinaryFolderPrefix } from '../services/cloudinaryService.js';
-import prisma from '../lib/prisma.js';
+// Load environment variables FIRST, before any imports that use them
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
@@ -32,6 +30,11 @@ if (existsSync(backendEnv)) {
 } else {
   dotenv.config(); // Try default location
 }
+
+// Now that env vars are loaded, import modules that depend on them
+import { v2 as cloudinary } from 'cloudinary';
+import { getCloudinaryFolderPrefix } from '../services/cloudinaryService.js';
+import prisma from '../lib/prisma.js';
 
 // Configure Cloudinary
 const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
