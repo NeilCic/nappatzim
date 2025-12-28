@@ -8,6 +8,9 @@ import {
   Alert,
   ScrollView,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
 } from "react-native";
 import { useApi } from "../ApiProvider";
 import { playSound, stopSound } from "../utils/soundUtils";
@@ -24,6 +27,7 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
   const intervalRef = useRef(null);
   const { api } = useApi();
   const soundRef = useRef();
+  const scrollViewRef = useRef(null);
 
   const exercises = workoutData.exercises || [];
   const currentExercise = exercises[currentExerciseIndex];
@@ -85,7 +89,6 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
   };
 
   const finishRestNow = () => {
-    // currentExercise.setsDetail[currentSet].restMinutes = timeLeft / 60; todo. the idea was for user to keep track if finished early but its just annoying since it ruins consistency
     clearInterval(intervalRef.current);
     setIsRunning(false);
     setTimeLeft(0);
@@ -221,10 +224,62 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
 
   const EditableStat = ({ label, field, suffix = '' }) => {
     const value = currentExercise.setsDetail?.[currentSet]?.[field] || 0;
+    const [inputValue, setInputValue] = useState(String(value));
+    const [isFocused, setIsFocused] = useState(false);
+    const [selection, setSelection] = useState(null);
+    const inputKey = `${currentExerciseIndex}-${currentSet}-${field}`;
+    const inputRef = useRef(null);
+    const hasSelectedOnThisFocus = useRef(false);
+
+    useEffect(() => {
+      if (!isFocused) {
+        setInputValue(String(value));
+        hasSelectedOnThisFocus.current = false;
+        setSelection(null);
+      }
+    }, [value, inputKey, isFocused]);
 
     const handleChange = (newValue) => {
-      const cleanedValue = suffix ? newValue.replace(suffix, '') : newValue;
-      const numericValue = parseFloat(cleanedValue) || 0;
+      const cleaned = newValue.replace(/[^0-9.]/g, '');
+      setInputValue(cleaned);
+      if (hasSelectedOnThisFocus.current) {
+        setSelection(null);
+        hasSelectedOnThisFocus.current = false;
+      }
+    };
+
+    useEffect(() => {
+      if (!isFocused) return;
+
+      const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      });
+
+      return () => {
+        keyboardDidShowListener.remove();
+      };
+    }, [isFocused]);
+
+    const handleFocus = () => {
+      setIsFocused(true);
+      hasSelectedOnThisFocus.current = false;
+      const numericOnly = inputValue.replace(/[^0-9.]/g, '');
+      if (numericOnly !== inputValue) {
+        setInputValue(numericOnly);
+      }
+      const valueToSelect = numericOnly || inputValue;
+      const length = valueToSelect.length;
+      
+      if (length > 0) {
+        setSelection({ start: 0, end: length });
+        hasSelectedOnThisFocus.current = true;
+      }
+    };
+
+    const handleBlur = () => {
+      setIsFocused(false);
+      
+      const numericValue = parseFloat(inputValue) || 0;
       
       setWorkoutData(prev => {
         const newData = structuredClone(prev);
@@ -235,27 +290,44 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
       if (field === 'restMinutes' && !isRunning) {
         setTimeLeft(numericValue * 60);
       }
-    }
+
+      // Update local value to show the parsed result (numeric only)
+      setInputValue(String(numericValue));
+    };
 
     return (
       <View style={styles.statItem}>
         <Text style={styles.statLabel}>{label}</Text>
-        <TextInput
-          style={styles.statValue}
-          value={`${value}${suffix}`}
-          onChangeText={handleChange}
-          keyboardType="numeric"
-          selectTextOnFocus={true}
-        />
+        <View style={styles.statValueContainer}>
+          <TextInput
+            ref={inputRef}
+            key={inputKey}
+            style={styles.statValue}
+            value={inputValue}
+            selection={selection}
+            onChangeText={handleChange}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            keyboardType="numeric"
+          />
+          {suffix ? <Text style={styles.statSuffix}>{suffix}</Text> : null}
+        </View>
       </View>
     )
   }
 
   return (
-    <ScrollView
+    <KeyboardAvoidingView
       style={styles.container}
-      contentContainerStyle={styles.scrollContent}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
     >
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
       <View style={styles.header}>
         <Text style={styles.title}>Workout Execution</Text>
         <Text style={styles.progress}>
@@ -369,7 +441,8 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
           ))}
         </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -484,10 +557,20 @@ const styles = StyleSheet.create({
     color: "#666",
     marginBottom: 5,
   },
+  statValueContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
   statValue: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#333",
+  },
+  statSuffix: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#666",
   },
   completeButton: {
     backgroundColor: "#007AFF",
