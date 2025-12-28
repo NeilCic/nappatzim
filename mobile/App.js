@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { TouchableOpacity, StyleSheet, Image, Text, View, Alert } from "react-native";
+import { TouchableOpacity, StyleSheet, Image, Text, View } from "react-native";
 import axios from "axios";
-import * as Updates from "expo-updates";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
@@ -48,40 +47,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Force check for updates on app start
-    const checkForUpdates = async () => {
-      try {
-        if (!__DEV__ && Updates.isEnabled) {
-          const update = await Updates.checkForUpdateAsync();
-          if (update.isAvailable) {
-            Alert.alert(
-              "Update Available",
-              `Channel: ${Updates.channel || 'unknown'}\nCurrent ID: ${Updates.updateId || 'unknown'}\nFetching update...`,
-              [{ text: "OK" }]
-            );
-            await Updates.fetchUpdateAsync();
-            Alert.alert("Update Ready", "Reloading app...", [{ text: "OK" }]);
-            await Updates.reloadAsync();
-          } else {
-            Alert.alert(
-              "No Update",
-              `Channel: ${Updates.channel || 'unknown'}\nCurrent ID: ${Updates.updateId || 'unknown'}\nUpdates enabled: ${Updates.isEnabled}`,
-              [{ text: "OK" }]
-            );
-          }
-        } else {
-          Alert.alert(
-            "Updates Status",
-            `Dev mode: ${__DEV__}\nUpdates enabled: ${Updates.isEnabled}`,
-            [{ text: "OK" }]
-          );
-        }
-      } catch (error) {
-        Alert.alert("Update Error", error.message, [{ text: "OK" }]);
-      }
-    };
-    checkForUpdates();
-
     const bootstrapAuth = async () => {
       try {
         const token = await AsyncStorage.getItem("token");
@@ -182,7 +147,6 @@ export default function App() {
       setIsAuthed(false);
     } catch (error) {
       // Even if clearing storage fails, force logout
-      console.error("Logout error:", error);
       setAuthToken(undefined);
       setIsAuthed(false);
     }
