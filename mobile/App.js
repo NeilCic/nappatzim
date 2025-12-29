@@ -8,6 +8,7 @@ import axios from "axios";
 import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import CreateCategoryScreen from "./src/screens/CreateCategoryScreen";
+import EditCategoryScreen from "./src/screens/EditCategoryScreen";
 import CreateWorkoutScreen from "./src/screens/CreateWorkoutScreen";
 import CategoryWorkoutsScreen from "./src/screens/CategoryWorkoutScreen";
 import TimerScreen from "./src/screens/TimerScreen";
@@ -172,6 +173,13 @@ export default function App() {
               <Stack.Screen
                 name="Create Category"
                 component={CreateCategoryScreen}
+                options={({ navigation }) => ({
+                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
+                })}
+              />
+              <Stack.Screen
+                name="Edit Category"
+                component={EditCategoryScreen}
                 options={({ navigation }) => ({
                   headerRight: () => <HeaderRightButtons navigation={navigation} />,
                 })}

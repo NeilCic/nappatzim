@@ -85,20 +85,35 @@ export default function HomeScreen({ navigation, onLogout }) {
     const textColor = isLightColor(cardColor) ? "#000000" : "#FFFFFF";
     
     return (
-      <TouchableOpacity
+      <View
         style={[
           styles.categoryCard,
           { backgroundColor: cardColor },
         ]}
-        onPress={() => {
-          navigation.navigate("Category Workouts", { category });
-        }}
       >
-        <Text style={[styles.categoryName, { color: textColor }]}>{category.name}</Text>
-        <Text style={[styles.categoryCount, { color: textColor, opacity: 0.8 }]}>
-          {category.workoutCount} workouts
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.categoryCardContent}
+          onPress={() => {
+            navigation.navigate("Category Workouts", { category });
+          }}
+        >
+          <Text style={[styles.categoryName, { color: textColor }]}>{category.name}</Text>
+          <Text style={[styles.categoryCount, { color: textColor, opacity: 0.8 }]}>
+            {category.workoutCount} workouts
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => {
+            navigation.navigate("Edit Category", {
+              category,
+              onCategoryUpdated: fetchCategories,
+            });
+          }}
+        >
+          <Text style={[styles.editButtonText, { color: textColor }]}>Edit</Text>
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -219,6 +234,7 @@ const styles = StyleSheet.create({
     width: screenWidth * 0.4,
     marginRight: 15,
     padding: 25,
+    paddingBottom: 15,
     borderRadius: 15,
     alignItems: "center",
     borderWidth: 1,
@@ -229,6 +245,11 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 12,
   },
+  categoryCardContent: {
+    flex: 1,
+    alignItems: "center",
+    width: "100%",
+  },
   categoryName: {
     fontSize: 16,
     fontWeight: "bold",
@@ -236,6 +257,18 @@ const styles = StyleSheet.create({
   },
   categoryCount: {
     fontSize: 12,
+  },
+  editButton: {
+    marginTop: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  editButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   logoutButton: {
     position: "absolute",
