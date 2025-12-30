@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 const categorySchema = z.object({
     name: z.string().min(1, "Category name is required"),
-    color: z.string().optional(), // todo open a palette here which would show later
+    color: z.string().optional(),
 });
 
 const getCategoriesController = async (req, res) => {
