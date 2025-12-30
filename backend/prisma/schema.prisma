@@ -146,6 +146,7 @@ model Message {
   conversationId String
   senderId       String
   content        String
+  workoutData    Json?        // Optional: structured workout data for importing
   createdAt      DateTime     @default(now())
   readAt         DateTime?
 

@@ -15,7 +15,8 @@ import { showError } from "../utils/errorHandler";
 import StyledTextInput from "../components/StyledTextInput";
 
 export default function CreateWorkoutScreen({ navigation, route }) {
-  const { categories, initialCategoryId } = route.params || {};
+  const { categories: categoriesFromParams, initialCategoryId } = route.params || {};
+  const [categories, setCategories] = useState([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [notes, setNotes] = useState("");
   const [showCategoryList, setShowCategoryList] = useState(false);
@@ -121,6 +122,22 @@ export default function CreateWorkoutScreen({ navigation, route }) {
   };
 
   useEffect(() => {
+    if (categoriesFromParams && categoriesFromParams.length > 0) {
+      setCategories(categoriesFromParams);
+    } else {
+      const fetchCategories = async () => {
+        try {
+          const res = await api.get("/categories");
+          setCategories(res.data || []);
+        } catch (error) {
+          console.error("Error fetching categories:", error);
+        }
+      };
+      fetchCategories();
+    }
+  }, [categoriesFromParams]);
+
+  useEffect(() => {
     if (categories && categories.length > 0) {
       let categoryToSelect = null;
       
@@ -138,6 +155,27 @@ export default function CreateWorkoutScreen({ navigation, route }) {
       }
     }
   }, [categories, initialCategoryId]);
+
+  // Handle shared workout import
+  useEffect(() => {
+    const { sharedWorkout } = route.params || {};
+    if (sharedWorkout && categories && categories.length > 0) {
+      if (sharedWorkout.exercises && sharedWorkout.exercises.length > 0) {
+        setExercises(sharedWorkout.exercises);
+        setExpandedExercises(new Set(sharedWorkout.exercises.map((_, idx) => idx)));
+      }
+      
+      if (sharedWorkout.notes) {
+        setNotes(sharedWorkout.notes);
+      }
+
+      Alert.alert(
+        "Workout Imported",
+        "Shared workout has been imported. Review and adjust as needed, then select a category and save.",
+        [{ text: "OK" }]
+      );
+    }
+  }, [route.params, categories]);
 
   const addExercise = () => {
     handleDataChange();

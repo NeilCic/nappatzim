@@ -110,6 +110,33 @@ class ChatService extends PrismaCrudService {
     return conversations;
   }
 
+  async listConversationsSummary(userId) {
+    const conversations = await this.getAll({
+      where: {
+        participants: {
+          some: { userId },
+        },
+      },
+      orderBy: {
+        updatedAt: "desc",
+      },
+      select: {
+        id: true,
+        participants: {
+          select: {
+            user: {
+              select: {
+                username: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return conversations;
+  }
+
   async listMessages(userId, conversationId, { limit = 50, before } = {}) {
     await assertUserInConversation(userId, conversationId);
 
@@ -127,8 +154,8 @@ class ChatService extends PrismaCrudService {
     return messages;
   }
 
-  async sendMessage(userId, conversationId, content) {
-    if (!content || !content.trim()) {
+  async sendMessage(userId, conversationId, content, workoutData = null) {
+    if ((!content || !content.trim()) && !workoutData) {
       throw new Error("Message content is required");
     }
 
@@ -138,7 +165,8 @@ class ChatService extends PrismaCrudService {
       data: {
         conversationId,
         senderId: userId,
-        content: content.trim(),
+        content: (content || "").trim(),
+        workoutData,
       },
     });
 

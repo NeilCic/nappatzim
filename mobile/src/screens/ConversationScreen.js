@@ -15,6 +15,7 @@ import { getCurrentUserId } from "../utils/jwtUtils";
 import handleApiCall from "../utils/apiUtils";
 import axios from "axios";
 import StyledTextInput from "../components/StyledTextInput";
+import { showError } from "../utils/errorHandler";
 
 export default function ConversationScreen({ route }) {
   const { conversationId } = route.params;
@@ -140,6 +141,12 @@ export default function ConversationScreen({ route }) {
     }
   };
 
+  const importWorkout = async (workoutData) => {
+    navigation.navigate("Create Workout", {
+      sharedWorkout: workoutData,
+    });
+  };
+
   const renderMessage = ({ item: message, index }) => {
     const prevMessage = index > 0 ? messages[index - 1] : null;
     const showDate =
@@ -148,6 +155,7 @@ export default function ConversationScreen({ route }) {
         new Date(prevMessage.createdAt).toDateString();
 
     const isCurrentUser = currentUserId && message.senderId === currentUserId;
+    const hasWorkoutData = message.workoutData != null;
 
     return (
       <View>
@@ -170,6 +178,14 @@ export default function ConversationScreen({ route }) {
           >
             {message.content}
           </Text>
+          {hasWorkoutData && !isCurrentUser && (
+            <TouchableOpacity
+              style={styles.importButton}
+              onPress={() => importWorkout(message.workoutData)}
+            >
+              <Text style={styles.importButtonText}>📥 Import Workout</Text>
+            </TouchableOpacity>
+          )}
           <Text
             style={[
               styles.messageTime,
@@ -333,6 +349,19 @@ const styles = StyleSheet.create({
   sendButtonText: {
     color: "white",
     fontSize: 16,
+    fontWeight: "600",
+  },
+  importButton: {
+    backgroundColor: "#007AFF",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 8,
+    alignSelf: "flex-start",
+  },
+  importButtonText: {
+    color: "white",
+    fontSize: 14,
     fontWeight: "600",
   },
 });

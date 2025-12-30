@@ -2,6 +2,7 @@ import express from "express";
 import {
   createDmConversationController,
   listConversationsController,
+  listConversationsSummaryController,
   listMessagesController,
   sendMessageController,
   markReadController,
@@ -13,6 +14,7 @@ const router = express.Router();
 router.use(verifyToken);
 
 router.get("/conversations", listConversationsController);
+router.get("/conversations/summary", listConversationsSummaryController);
 
 router.post("/conversations", createDmConversationController);
 

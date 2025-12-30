@@ -18,8 +18,15 @@ const listMessagesQuerySchema = z.object({
 });
 
 const sendMessageSchema = z.object({
-  content: z.string().min(1, "Message content is required"),
-});
+  content: z.string().optional(),
+  workoutData: z.any().optional(),
+}).refine(
+  (data) => data.content?.trim() || data.workoutData,
+  {
+    message: "Either message content or workoutData must be provided",
+    path: ["content"],
+  }
+);
 
 const markReadSchema = z.object({
   upTo: z
@@ -106,6 +113,41 @@ const listConversationsController = async (req, res) => {
   }
 };
 
+const listConversationsSummaryController = async (req, res) => {
+  const requestId = Date.now().toString();
+  try {
+    logger.info(
+      { requestId, userId: req.user.userId },
+      "Listing conversations summary"
+    );
+
+    const conversations = await chatService.listConversationsSummary(
+      req.user.userId
+    );
+
+    logger.info(
+      {
+        requestId,
+        userId: req.user.userId,
+        count: conversations.length,
+      },
+      "Conversations summary retrieved"
+    );
+    res.json(conversations);
+  } catch (error) {
+    logger.error(
+      {
+        requestId,
+        userId: req.user.userId,
+        error: error.message,
+        stack: error.stack,
+      },
+      "Failed to list conversations summary - server error"
+    );
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 const listMessagesController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
@@ -172,13 +214,14 @@ const sendMessageController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
     const { conversationId } = req.params;
-    const { content } = sendMessageSchema.parse(req.body);
+    const { content, workoutData } = sendMessageSchema.parse(req.body);
 
     logger.info(
       {
         requestId,
         userId: req.user.userId,
         conversationId,
+        hasWorkoutData: !!workoutData,
       },
       "Sending message"
     );
@@ -186,7 +229,8 @@ const sendMessageController = async (req, res) => {
     const message = await chatService.sendMessage(
       req.user.userId,
       conversationId,
-      content
+      content,
+      workoutData
     );
 
     logger.info(
@@ -301,6 +345,7 @@ const markReadController = async (req, res) => {
 export {
   createDmConversationController,
   listConversationsController,
+  listConversationsSummaryController,
   listMessagesController,
   sendMessageController,
   markReadController,

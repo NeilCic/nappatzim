@@ -7,6 +7,8 @@ import {
   FlatList,
   Alert,
   ScrollView,
+  Modal,
+  ActivityIndicator,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Dimensions } from "react-native";
@@ -15,6 +17,7 @@ import { useApi } from "../ApiProvider";
 import { showError } from "../utils/errorHandler";
 import {formatDate} from "../utils/stringUtils";
 import axios from "axios";
+import handleApiCall from "../utils/apiUtils";
 
 export default function CategoryWorkoutsScreen({ navigation, route }) {
   const { category } = route.params;
@@ -28,6 +31,10 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
     startDate: null,
     endDate: null,
   });
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [selectedWorkout, setSelectedWorkout] = useState(null);
+  const [conversations, setConversations] = useState([]);
+  const [sharing, setSharing] = useState(false);
   const { api } = useApi();
 
   useEffect(() => {
@@ -76,6 +83,116 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
     setExpandedWorkouts(newExpanded);
   };
 
+  const fetchConversations = async () => {
+    const data = await handleApiCall(
+      () => api.get("/chat/conversations/summary"),
+      null,
+      "Error fetching conversations"
+    );
+    if (data) {
+      setConversations(data);
+    }
+  };
+
+  const handleShareWorkout = (workout) => {
+    setSelectedWorkout(workout);
+    fetchConversations();
+    setShowShareModal(true);
+  };
+
+  const formatWorkoutAsText = (workout) => {
+    let text = `💪 ${category.name} Workout\n\n`;
+    
+    if (workout.notes) {
+      text += `${workout.notes}\n\n`;
+    }
+
+    workout.exercises?.forEach((exercise, index) => {
+      text += `${index + 1}. ${exercise.name}`;
+      if (exercise.type) {
+        text += ` (${exercise.type})`;
+      }
+      text += `\n`;
+
+      if (exercise.setsDetail && exercise.setsDetail.length > 0) {
+        exercise.setsDetail.forEach((set, setIndex) => {
+          const parts = [];
+          if (set.value !== null && set.value !== undefined) {
+            parts.push(`${set.value}${exercise.unit || ""}`);
+          }
+          if (set.reps !== null && set.reps !== undefined) {
+            parts.push(`${set.reps} reps`);
+          }
+          if (set.restMinutes !== null && set.restMinutes !== undefined) {
+            parts.push(`${set.restMinutes}min rest`);
+          }
+          if (parts.length > 0) {
+            text += `   Set ${setIndex + 1}: ${parts.join(" × ")}\n`;
+          }
+        });
+      }
+
+      if (exercise.notes) {
+        text += `   Note: ${exercise.notes}\n`;
+      }
+      text += `\n`;
+    });
+
+    return text.trim();
+  };
+
+  const shareToConversation = async (conversationId) => {
+    if (!selectedWorkout) return;
+
+    setSharing(true);
+    try {
+      const workoutText = formatWorkoutAsText(selectedWorkout);
+      
+      // Prepare structured workout data for importing
+      const workoutData = {
+        exercises: (selectedWorkout.exercises || []).map((ex, idx) => ({
+          type: ex.type || "weight",
+          name: ex.name || `Exercise ${idx + 1}`,
+          unit: ex.unit || "",
+          sets: ex.setsDetail ? ex.setsDetail.length : 1,
+          reps: ex.setsDetail && ex.setsDetail.length > 0 && ex.setsDetail.every(
+            (set) => set.reps === ex.setsDetail[0].reps
+          )
+            ? String(ex.setsDetail[0].reps)
+            : "",
+          weight: ex.setsDetail && ex.setsDetail.length > 0 && ex.setsDetail.every(
+            (set) => set.value === ex.setsDetail[0].value
+          )
+            ? String(ex.setsDetail[0].value)
+            : "",
+          restMinutes: ex.setsDetail && ex.setsDetail.length > 0 && ex.setsDetail.every(
+            (set) => set.restMinutes === ex.setsDetail[0].restMinutes
+          )
+            ? String(ex.setsDetail[0].restMinutes)
+            : "",
+          notes: ex.notes || "",
+          order: idx + 1,
+          setsDetail: ex.setsDetail || [{ order: 1, reps: 1, value: 0, restMinutes: 1 }],
+        })),
+        notes: selectedWorkout.notes || "",
+      };
+      
+      await api.post(`/chat/conversations/${conversationId}/messages`, {
+        content: workoutText,
+        workoutData: workoutData,
+      });
+
+      Alert.alert("Success", "Workout shared successfully!");
+      setShowShareModal(false);
+      setSelectedWorkout(null);
+    } catch (error) {
+      console.error("Error sharing workout:", error);
+      showError(error, "Error", "Failed to share workout");
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const renderWorkout = ({ item: workout }) => {
     const isExpanded = expandedWorkouts.has(workout.id);
 
@@ -85,13 +202,26 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
           style={styles.workoutHeader}
           onPress={() => toggleWorkout(workout.id)}
         >
-          <Text style={styles.workoutTitle}>
-            {workout.exercises?.length || 0} Exercises
-          </Text>
-          <Text style={styles.workoutDate}>
-            {new Date(workout.createdAt).toLocaleDateString()}
-          </Text>
-          <Text style={styles.expandIcon}>{isExpanded ? "▼" : "▶"}</Text>
+          <View style={styles.workoutHeaderContent}>
+            <Text style={styles.workoutTitle}>
+              {workout.exercises?.length || 0} Exercises
+            </Text>
+            <Text style={styles.workoutDate}>
+              {new Date(workout.createdAt).toLocaleDateString()}
+            </Text>
+          </View>
+          <View style={styles.workoutHeaderActions}>
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleShareWorkout(workout);
+              }}
+            >
+              <Text style={styles.shareButtonText}>Share</Text>
+            </TouchableOpacity>
+            <Text style={styles.expandIcon}>{isExpanded ? "▼" : "▶"}</Text>
+          </View>
         </TouchableOpacity>
 
         {isExpanded && (
@@ -321,6 +451,74 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
           }}
         />
       )}
+
+      <Modal
+        visible={showShareModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowShareModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Share Workout</Text>
+            <Text style={styles.modalSubtitle}>Select a conversation</Text>
+            
+            {conversations.length === 0 ? (
+              <View style={styles.emptyConversations}>
+                <Text style={styles.emptyText}>No conversations yet</Text>
+                <TouchableOpacity
+                  style={styles.newConversationButton}
+                  onPress={() => {
+                    setShowShareModal(false);
+                    navigation.navigate("Conversations");
+                  }}
+                >
+                  <Text style={styles.newConversationButtonText}>
+                    Start a Conversation
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <FlatList
+                data={conversations}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item: conversation }) => {
+                  const participants = conversation.participants || [];
+                  const usernames = participants
+                    .map(p => p.user?.username)
+                    .filter(Boolean)
+                    .join(", ");
+                  
+                  return (
+                    <TouchableOpacity
+                      style={styles.conversationItem}
+                      onPress={() => shareToConversation(conversation.id)}
+                      disabled={sharing}
+                    >
+                      <Text style={styles.conversationName}>
+                        {usernames || "Conversation"}
+                      </Text>
+                      {sharing && (
+                        <ActivityIndicator size="small" color="#007AFF" />
+                      )}
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )}
+
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => {
+                setShowShareModal(false);
+                setSelectedWorkout(null);
+              }}
+            >
+              <Text style={styles.modalCloseButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -340,16 +538,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  workoutHeaderContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  workoutHeaderActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   workoutTitle: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#333",
-    flex: 1,
+    marginRight: 10,
   },
   workoutDate: {
     fontSize: 14,
     color: "#666",
-    marginRight: 10,
   },
   expandIcon: {
     fontSize: 16,
@@ -550,5 +757,84 @@ const styles = StyleSheet.create({
     color: "#666",
     fontSize: 14,
     fontStyle: "italic",
+  },
+  shareButton: {
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  shareButtonText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 20,
+    width: "80%",
+    maxHeight: "70%",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 8,
+    color: "#333",
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 16,
+  },
+  emptyConversations: {
+    padding: 20,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 16,
+  },
+  newConversationButton: {
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  newConversationButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  conversationItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  conversationName: {
+    fontSize: 16,
+    color: "#333",
+  },
+  modalCloseButton: {
+    marginTop: 16,
+    padding: 12,
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
+  },
+  modalCloseButtonText: {
+    fontSize: 16,
+    color: "#007AFF",
+    fontWeight: "600",
   },
 });
