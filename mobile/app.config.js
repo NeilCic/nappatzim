@@ -1,0 +1,39 @@
+require('dotenv').config();
+
+module.exports = {
+  expo: {
+    name: "Beta Nappatzim",
+    slug: "mobile",
+    version: "1.0.0",
+    orientation: "default",
+    icon: "./assets/nappatzim.png",
+    userInterfaceStyle: "light",
+    newArchEnabled: true,
+    splash: {
+      backgroundColor: "#ffffff"
+    },
+    ios: {
+      supportsTablet: true
+    },
+    android: {
+      package: "com.nappatzim.mobile",
+      edgeToEdgeEnabled: true
+    },
+    extra: {
+      eas: {
+        projectId: "8b9ca94e-3ffa-4098-8081-29328a6da726"
+      },
+      useProduction: process.env.USE_PRODUCTION !== 'false'
+    },
+    runtimeVersion: {
+      policy: "appVersion"
+    },
+    updates: {
+      url: "https://u.expo.dev/8b9ca94e-3ffa-4098-8081-29328a6da726"
+    },
+    plugins: [
+      "expo-video"
+    ]
+  }
+};
+

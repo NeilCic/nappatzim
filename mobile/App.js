@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { TouchableOpacity, StyleSheet, Image, Text, View } from "react-native";
 import axios from "axios";
+import Constants from "expo-constants";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import HomeScreen from "./src/screens/HomeScreen";
@@ -23,7 +24,7 @@ import { ApiProvider } from "./src/ApiProvider";
 import { createApi } from "./src/ApiClient";
 
 const Stack = createNativeStackNavigator();
-const USE_PRODUCTION = true;
+const USE_PRODUCTION = Constants.expoConfig?.extra?.useProduction ?? true;
 
 const API_BASE_URL = USE_PRODUCTION
   ? "https://nappatzim.onrender.com"
