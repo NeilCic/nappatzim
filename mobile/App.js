@@ -24,22 +24,33 @@ import { ApiProvider } from "./src/ApiProvider";
 import { createApi } from "./src/ApiClient";
 
 const Stack = createNativeStackNavigator();
-const USE_PRODUCTION = Constants.expoConfig?.extra?.useProduction ?? true;
 
-const API_BASE_URL = USE_PRODUCTION
-  ? "https://nappatzim.onrender.com"
-  : "http://192.168.1.215:3000";
+const getApiBaseUrl = () => {
+  // Explicitly check for false, default to true (production)
+  const useProduction = Constants.expoConfig?.extra?.useProduction !== false;
+  const baseUrl = useProduction
+    ? "https://nappatzim.onrender.com"
+    : "http://192.168.1.215:3000";
+  
+  // Safety check: in production builds, always use production URL
+  if (__DEV__ === false && !baseUrl.includes('onrender.com')) {
+    return "https://nappatzim.onrender.com";
+  }
+  
+  return baseUrl;
+};
 
 export default function App() {
   const [isAuthed, setIsAuthed] = useState(null);
+  const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
 
   const { api, setAuthToken } = useMemo(
     () =>
       createApi({
-        baseURL: API_BASE_URL,
+        baseURL: apiBaseUrl,
         onAuthFailure: () => setIsAuthed(false),
       }),
-    []
+    [apiBaseUrl]
   );
 
   const clearAuth = async () => {
@@ -68,7 +79,7 @@ export default function App() {
               if (refreshToken) {
                 try {
                   // Use axios directly to avoid interceptor issues
-                  const response = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
+                  const response = await axios.post(`${apiBaseUrl}/auth/refresh`, { refreshToken });
                   const newAccessToken = response.data?.accessToken;
                   
                   if (!newAccessToken) {
