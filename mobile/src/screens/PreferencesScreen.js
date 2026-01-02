@@ -15,7 +15,8 @@ import StyledTextInput from "../components/StyledTextInput";
 
 export default function PreferencesScreen() {
   const [username, setUsername] = useState("");
-  const [currentUsername, setCurrentUsername] = useState(null);
+  const [weight, setWeight] = useState("");
+  const [height, setHeight] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { api } = useApi();
@@ -38,33 +39,32 @@ export default function PreferencesScreen() {
     );
 
     if (data) {
-      setCurrentUsername(data.username || "");
       setUsername(data.username || "");
+      setWeight(data.weight ? String(data.weight) : "");
+      setHeight(data.height ? String(data.height) : "");
     }
   };
 
-  const saveUsername = async () => {
-    if (!username.trim()) {
-      Alert.alert("Error", "Username cannot be empty");
-      return;
-    }
-
-    if (username.trim() === currentUsername) {
-      Alert.alert("Info", "No changes to save");
-      return;
-    }
-
+  const saveProfile = async () => {
     setSaving(true);
     try {
-      const res = await api.patch("/auth/username", {
-        username: username.trim(),
-      });
+      const updateData = {
+        username: username.trim() || undefined,
+        weight: weight.trim() === "" ? 0 : parseFloat(weight.trim()),
+        height: height.trim() === "" ? null : parseFloat(height.trim()),
+      };
 
-      setCurrentUsername(res.data.username);
-      Alert.alert("Success", "Username updated successfully");
+      const res = await api.patch("/auth/profile", updateData);
+
+      if (res.data) {
+        setUsername(res.data.username || "");
+        setWeight(res.data.weight ? String(res.data.weight) : "");
+        setHeight(res.data.height ? String(res.data.height) : "");
+      }
+      Alert.alert("Success", "Profile updated successfully");
     } catch (error) {
-      console.error("Error updating username:", error);
-      showError(error, "Error", "Failed to update username");
+      console.error("Error updating profile:", error);
+      showError(error, "Error", "Failed to update profile");
     } finally {
       setSaving(false);
     }
@@ -94,18 +94,40 @@ export default function PreferencesScreen() {
           autoCorrect={false}
           maxLength={20}
         />
-        <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-          onPress={saveUsername}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color="white" />
-          ) : (
-            <Text style={styles.saveButtonText}>Save</Text>
-          )}
-        </TouchableOpacity>
       </View>
+
+      <View style={styles.section}>
+        <Text style={styles.label}>Body Measurements</Text>
+        <Text style={styles.description}>
+          Your weight is used to calculate volume for bodyweight exercises. If not set, we'll use 1kg as default.
+        </Text>
+        <StyledTextInput
+          style={styles.input}
+          placeholder="Weight (kg)"
+          value={weight}
+          onChangeText={setWeight}
+          keyboardType="numeric"
+        />
+        <StyledTextInput
+          style={[styles.input, styles.inputMargin]}
+          placeholder="Height (cm)"
+          value={height}
+          onChangeText={setHeight}
+          keyboardType="numeric"
+        />
+      </View>
+
+      <TouchableOpacity
+        style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+        onPress={saveProfile}
+        disabled={saving}
+      >
+        {saving ? (
+          <ActivityIndicator size="small" color="white" />
+        ) : (
+          <Text style={styles.saveButtonText}>Save All Changes</Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
@@ -160,6 +182,9 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+  },
+  inputMargin: {
+    marginTop: 12,
   },
 });
 

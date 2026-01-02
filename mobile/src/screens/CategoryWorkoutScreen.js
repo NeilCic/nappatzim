@@ -117,7 +117,7 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
       if (exercise.setsDetail && exercise.setsDetail.length > 0) {
         exercise.setsDetail.forEach((set, setIndex) => {
           const parts = [];
-          if (set.value !== null && set.value !== undefined) {
+          if (set.value > 0) {
             parts.push(`${set.value}${exercise.unit || ""}`);
           }
           if (set.reps !== null && set.reps !== undefined) {

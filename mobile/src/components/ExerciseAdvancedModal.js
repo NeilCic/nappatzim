@@ -159,7 +159,7 @@ export default function ExerciseAdvancedModal({
                   fontSize: 14,
                   textAlign: "center",
                 }}
-                value={String(item.value ?? "")}
+                value={String(item.value)}
                 onChangeText={(t) => {
                   const next = [...localSets];
                   next[index] = { ...next[index], value: t || 0 };
