@@ -59,7 +59,6 @@ export default function PreferencesScreen() {
       }
       Alert.alert("Success", "Profile updated successfully");
     } catch (error) {
-      console.error("Error updating profile:", error);
       showError(error, "Error", "Failed to update profile");
     } finally {
       setSaving(false);

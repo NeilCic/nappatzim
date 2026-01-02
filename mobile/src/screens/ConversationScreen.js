@@ -29,7 +29,6 @@ export default function ConversationScreen({ route }) {
 
   const fetchMessages = async () => {
     if (!api) {
-      console.error("fetchMessages: api is not available");
       return;
     }
     
@@ -108,7 +107,6 @@ export default function ConversationScreen({ route }) {
       }, 100);
     } catch (error) {
       if (axios.isCancel(error)) return;
-      console.error("Error sending message:", error);
       setMessageText(content);
     } finally {
       setSending(false);

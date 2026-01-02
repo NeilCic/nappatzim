@@ -4,7 +4,6 @@ import { getErrorMessage } from "./errorHandler";
 
 const handleApiCall = async (apiCall, setLoading, errorMessage = null, showAlert = false) => {
   if (typeof apiCall !== "function") {
-    console.error("handleApiCall: apiCall must be a function, got:", typeof apiCall, apiCall);
     return null;
   }
 
@@ -18,7 +17,6 @@ const handleApiCall = async (apiCall, setLoading, errorMessage = null, showAlert
     if (axios.isCancel(error)) return null;
     
     const message = getErrorMessage(error, errorMessage || "API call failed");
-    console.error(message, error);
     
     if (showAlert) {
       Alert.alert("Error", message);

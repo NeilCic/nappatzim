@@ -98,7 +98,6 @@ export default function CreateWorkoutScreen({ navigation, route }) {
         );
       }
     } catch (error) {
-      console.error("Error fetching previous workout:", error);
       showError(error, "Error", "Failed to load previous workout");
     } finally {
       setIsLoadingPrevious(false);
@@ -116,7 +115,6 @@ export default function CreateWorkoutScreen({ navigation, route }) {
       );
       setHasPreviousWorkout(res.data.hasPrevious || false);
     } catch (error) {
-      console.error("Error checking for previous workout:", error);
       setHasPreviousWorkout(false);
     }
   };
@@ -130,7 +128,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
           const res = await api.get("/categories");
           setCategories(res.data || []);
         } catch (error) {
-          console.error("Error fetching categories:", error);
+          // Silently fail - categories might be provided via route params
         }
       };
       fetchCategories();

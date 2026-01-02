@@ -67,7 +67,6 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
       setProgressData(res.data.progress || {});
     } catch (error) {
       if (axios.isCancel(error)) return;
-      console.error("Error fetching workouts:", error);
       showError(error, "Error", "Failed to fetch workouts");
     } finally {
       setLoading(false);
@@ -187,7 +186,6 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
       setShowShareModal(false);
       setSelectedWorkout(null);
     } catch (error) {
-      console.error("Error sharing workout:", error);
       showError(error, "Error", "Failed to share workout");
     } finally {
       setSharing(false);

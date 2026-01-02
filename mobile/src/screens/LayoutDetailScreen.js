@@ -58,7 +58,6 @@ export default function LayoutDetailScreen({ navigation, route }) {
       errorLoggedRef.current = false;
       hasAutoPlayedRef.current = false;
     } catch (error) {
-      console.error('Error replacing video source:', error);
       setVideoError('Failed to load video source');
     }
   }, [selectedVideo?.videoUrl, videoPlayer, showVideoPlayer]);
@@ -89,7 +88,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
             videoPlayer.play();
             hasAutoPlayedRef.current = true;
           } catch (error) {
-            console.error('Error auto-playing video:', error);
+            // Auto-play failed, user can manually play
           }
         }
       } else if (status === 'error') {
@@ -97,7 +96,6 @@ export default function LayoutDetailScreen({ navigation, route }) {
         
         // Only log error details once to avoid spam
         if (!errorLoggedRef.current) {
-          console.error('Video player error:', errorDetails?.message || 'Unknown error');
           errorLoggedRef.current = true;  // todo need to make this mechanism more robust
         }
         
@@ -164,7 +162,6 @@ export default function LayoutDetailScreen({ navigation, route }) {
       
       videoLoadTimeoutRef.current = setTimeout(() => {
         if (videoPlayer && videoPlayer.status !== 'readyToPlay') {
-          console.warn('Video loading timeout after 10 seconds');
           setVideoError('Video is taking too long to load. Please check your internet connection and try again.');
         }
         videoLoadTimeoutRef.current = null;
@@ -229,7 +226,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
           setImageAspectRatio(aspectRatio);
         },
         (error) => {
-          console.error('Error getting image size:', error);
+          // Image size calculation failed, use default
         }
       );
     }
@@ -655,7 +652,6 @@ export default function LayoutDetailScreen({ navigation, route }) {
                           try {
                             videoPlayer.replace(selectedVideo.videoUrl);
                           } catch (error) {
-                            console.error('Error retrying video:', error);
                             setVideoError('Failed to retry loading video');
                           }
                         }
@@ -676,7 +672,6 @@ export default function LayoutDetailScreen({ navigation, route }) {
                           setVideoError(null);
                         }}
                         onError={(error) => {
-                          console.error('VideoView error:', error?.message || 'Failed to load video');
                           const errorMessage = error?.message || error?.localizedDescription || 'Failed to load video';
                           setVideoError(errorMessage);
                           setIsVideoLoaded(false);

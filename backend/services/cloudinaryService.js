@@ -73,7 +73,6 @@ export async function uploadToCloudinary(file, folder = 'nappatzim', options = {
       format: result.format,
     };
   } catch (error) {
-    console.error('Cloudinary upload error:', error);
     throw new Error(`Failed to upload file: ${error.message}`);
   }
 }
@@ -88,7 +87,6 @@ export async function deleteFromCloudinary(publicId) {
     const result = await cloudinary.uploader.destroy(publicId);
     return result;
   } catch (error) {
-    console.error('Cloudinary delete error:', error);
     throw new Error(`Failed to delete file: ${error.message}`);
   }
 }

@@ -58,7 +58,6 @@ export default function ConversationsListScreen({ navigation }) {
       
       fetchConversations();
     } catch (error) {
-      console.error("Error creating conversation:", error);
       showError(error, "Error", "Failed to create conversation");
     } finally {
       setCreating(false);

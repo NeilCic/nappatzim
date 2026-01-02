@@ -53,7 +53,6 @@ export function decodeJWT(token) {
     
     return decoded;
   } catch (error) {
-    console.error("Error decoding JWT:", error);
     return null;
   }
 }
@@ -66,7 +65,6 @@ export async function getCurrentUserId() {
     const decoded = decodeJWT(token);
     return decoded?.userId || null;
   } catch (error) {
-    console.error("Error getting current user ID:", error);
     return null;
   }
 }

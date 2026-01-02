@@ -14,7 +14,7 @@ export const playSound = async (sound, soundRef) => {
     await createdSound.playAsync();
     Vibration.vibrate([0, 500, 200, 500]);
   } catch (error) {
-    console.error("Error setting up sound sequence:", error);
+    // Sound playback failed, silently continue
   }
 };
 

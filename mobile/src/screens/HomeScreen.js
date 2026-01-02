@@ -46,7 +46,7 @@ export default function HomeScreen({ navigation, onLogout }) {
       setCategories(categoriesWithCounts);
     } catch (error) {
       if (axios.isCancel(error)) return;
-      console.error("Error fetching categories:", error);
+      // Silently fail - categories might be empty
     }
   };
 
