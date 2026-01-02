@@ -105,7 +105,7 @@ class AuthService extends PrismaCrudService {
     }
 
     async updateUserProfile(userId, data) {
-        const { username, weight, height } = data;
+        const { username, height } = data;
         const updateData = {};
         
         if (username !== undefined) {
@@ -115,8 +115,6 @@ class AuthService extends PrismaCrudService {
             }
             updateData.username = username;
         }
-        
-        updateData.weight = weight;
         
         if (height !== undefined) {
             updateData.height = height;

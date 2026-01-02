@@ -15,7 +15,6 @@ import StyledTextInput from "../components/StyledTextInput";
 
 export default function PreferencesScreen() {
   const [username, setUsername] = useState("");
-  const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -40,7 +39,6 @@ export default function PreferencesScreen() {
 
     if (data) {
       setUsername(data.username || "");
-      setWeight(data.weight ? String(data.weight) : "");
       setHeight(data.height ? String(data.height) : "");
     }
   };
@@ -50,7 +48,6 @@ export default function PreferencesScreen() {
     try {
       const updateData = {
         username: username.trim() || undefined,
-        weight: weight.trim() === "" ? 0 : parseFloat(weight.trim()),
         height: height.trim() === "" ? null : parseFloat(height.trim()),
       };
 
@@ -58,7 +55,6 @@ export default function PreferencesScreen() {
 
       if (res.data) {
         setUsername(res.data.username || "");
-        setWeight(res.data.weight ? String(res.data.weight) : "");
         setHeight(res.data.height ? String(res.data.height) : "");
       }
       Alert.alert("Success", "Profile updated successfully");
@@ -97,19 +93,12 @@ export default function PreferencesScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.label}>Body Measurements</Text>
+        <Text style={styles.label}>Height</Text>
         <Text style={styles.description}>
-          Your weight is used to calculate volume for bodyweight exercises. If not set, we'll use 1kg as default.
+          Your height (optional)
         </Text>
         <StyledTextInput
           style={styles.input}
-          placeholder="Weight (kg)"
-          value={weight}
-          onChangeText={setWeight}
-          keyboardType="numeric"
-        />
-        <StyledTextInput
-          style={[styles.input, styles.inputMargin]}
           placeholder="Height (cm)"
           value={height}
           onChangeText={setHeight}

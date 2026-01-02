@@ -201,7 +201,7 @@ const getCurrentUser = async (req, res) => {
             "Fetching current user"
         );
 
-        const user = await authService.getOne({ id: req.user.userId }, undefined, { id: true, email: true, username: true, weight: true, height: true });
+        const user = await authService.getOne({ id: req.user.userId }, undefined, { id: true, email: true, username: true, height: true });
         if (!user) {
             logger.warn({ requestId, userId: req.user.userId }, "User not found");
             return res.status(404).json({ error: "User not found" });
@@ -228,9 +228,6 @@ const updateProfileSchema = z.object({
         .min(VALIDATION.USERNAME.MIN_LENGTH, `Username must be at least ${VALIDATION.USERNAME.MIN_LENGTH} characters`)
         .max(VALIDATION.USERNAME.MAX_LENGTH, `Username can't be more than ${VALIDATION.USERNAME.MAX_LENGTH} characters`)
         .optional(),
-    weight: z.coerce.number()
-        .min(0, "Weight must be a non-negative number")
-        .default(0),
     height: z.coerce.number()
         .positive("Height must be a positive number")
         .nullable()
@@ -249,7 +246,7 @@ const updateProfile = async (req, res) => {
         const user = await authService.updateUserProfile(req.user.userId, validatedData);
 
         logger.info({ requestId, userId: req.user.userId }, "User profile updated successfully");
-        res.json({ id: user.id, username: user.username, weight: user.weight, height: user.height });
+        res.json({ id: user.id, username: user.username, height: user.height });
     } catch (error) {
         if (error.name === "ZodError") {
             logger.warn(
