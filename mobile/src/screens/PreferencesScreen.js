@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import * as Updates from "expo-updates";
 import { useApi } from "../ApiProvider";
 import { getCurrentUserId } from "../utils/jwtUtils";
 import handleApiCall from "../utils/apiUtils";
@@ -18,6 +19,7 @@ export default function PreferencesScreen() {
   const [height, setHeight] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
   const { api } = useApi();
 
   useEffect(() => {
@@ -62,6 +64,41 @@ export default function PreferencesScreen() {
       showError(error, "Error", "Failed to update profile");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const checkForUpdates = async () => {
+    if (!Updates.isEnabled) {
+      Alert.alert("Updates", "Updates are not enabled in development mode");
+      return;
+    }
+
+    setCheckingUpdate(true);
+    try {
+      const update = await Updates.checkForUpdateAsync();
+      
+      if (update.isAvailable) {
+        Alert.alert(
+          "Update Available",
+          "A new update is available. The app will reload to apply it.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Update Now",
+              onPress: async () => {
+                await Updates.fetchUpdateAsync();
+                await Updates.reloadAsync();
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert("Updates", "You're already on the latest version!");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to check for updates: " + error.message);
+    } finally {
+      setCheckingUpdate(false);
     }
   };
 
@@ -114,6 +151,18 @@ export default function PreferencesScreen() {
           <ActivityIndicator size="small" color="white" />
         ) : (
           <Text style={styles.saveButtonText}>Save All Changes</Text>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.updateButton, checkingUpdate && styles.updateButtonDisabled]}
+        onPress={checkForUpdates}
+        disabled={checkingUpdate}
+      >
+        {checkingUpdate ? (
+          <ActivityIndicator size="small" color="#007AFF" />
+        ) : (
+          <Text style={styles.updateButtonText}>Check for App Updates</Text>
         )}
       </TouchableOpacity>
     </View>
@@ -173,6 +222,23 @@ const styles = StyleSheet.create({
   },
   inputMargin: {
     marginTop: 12,
+  },
+  updateButton: {
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#007AFF",
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 12,
+  },
+  updateButtonDisabled: {
+    opacity: 0.6,
+  },
+  updateButtonText: {
+    color: "#007AFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 
