@@ -367,11 +367,7 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
               if (!exercise.progress || exercise.progress.length === 0)
                 return null;
 
-              // Ensure progress is sorted by date (backend should already do this, but double-check)
-              const sortedProgress = [...exercise.progress].sort((a, b) => {
-                return new Date(a.date) - new Date(b.date);
-              });
-              
+              const sortedProgress = [...exercise.progress];
               const chartData = {
                 labels: sortedProgress.map((p, index) =>
                   index %

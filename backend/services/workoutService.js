@@ -311,34 +311,13 @@ class WorkoutService extends PrismaCrudService {
     if (includeProgress) {
       const progressRecords = await getProgressByCategory(userId, categoryId);
       
-      // Extract date range from dateFilter
-      const startDate = dateFilter.createdAt?.gte;
-      const endDate = dateFilter.createdAt?.lte;
-      
       const exerciseProgress = {};
       progressRecords.forEach((record) => {
         const key = `${record.name}-${record.type}`;
-        
-        // Filter progress entries by date range if provided
-        let filteredProgress = record.progress || [];
-        if (startDate || endDate) {
-          filteredProgress = filteredProgress.filter((entry) => {
-            const entryDate = new Date(entry.date);
-            if (startDate && entryDate < startDate) return false;
-            if (endDate && entryDate > endDate) return false;
-            return true;
-          });
-        }
-        
-        // Sort progress by date (oldest first)
-        filteredProgress.sort((a, b) => {
-          return new Date(a.date) - new Date(b.date);
-        });
-        
         exerciseProgress[key] = {
           name: record.name,
           type: record.type,
-          progress: filteredProgress
+          progress: record.progress || []
         };
       });
       
