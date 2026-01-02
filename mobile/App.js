@@ -26,7 +26,6 @@ import { createApi } from "./src/ApiClient";
 const Stack = createNativeStackNavigator();
 
 const getApiBaseUrl = () => {
-  // Explicitly check for false, default to true (production)
   const useProduction = Constants.expoConfig?.extra?.useProduction !== false;
   const baseUrl = useProduction
     ? "https://nappatzim.onrender.com"
