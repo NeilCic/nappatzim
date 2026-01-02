@@ -5,6 +5,14 @@ import prisma from '../lib/prisma.js';
 import { normalizeExerciseName, calculateExerciseStats } from '../lib/exerciseUtils.js';
 
 async function recalculateProgressForCategory(userId, categoryId) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { weight: true }
+  });
+  if (!user) {
+    throw new Error("User not found");
+  }
+  
   const workouts = await prisma.workout.findMany({
     where: { userId, categoryId },
     include: {
@@ -22,7 +30,7 @@ async function recalculateProgressForCategory(userId, categoryId) {
     
     for (const exercise of workout.exercises) {
       const normalizedName = normalizeExerciseName(exercise.name);
-      const stats = calculateExerciseStats(exercise.setsDetail);
+      const stats = calculateExerciseStats(exercise.setsDetail, user.weight);
       
       const workoutEntry = {
         date: dateString,

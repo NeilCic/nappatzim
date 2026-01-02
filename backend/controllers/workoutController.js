@@ -6,7 +6,7 @@ import { formatZodError } from "../lib/zodErrorFormatter.js";
 
 const exerciseSetSchema = z.object({
   order: z.coerce.number().int().min(1),
-  value: z.coerce.number().optional(),
+  value: z.coerce.number().min(0, "Weight must be a non-negative number").optional(),
   reps: z.coerce.number().int().min(1, "Reps must be at least 1"),
   restMinutes: z.coerce.number().optional(),
 });

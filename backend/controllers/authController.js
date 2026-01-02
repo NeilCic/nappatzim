@@ -192,56 +192,6 @@ const refresh = async(req, res) => {
     }
 };
 
-const updateUsernameSchema = z.object({
-    username: z.string()
-        .min(VALIDATION.USERNAME.MIN_LENGTH, `Username must be at least ${VALIDATION.USERNAME.MIN_LENGTH} characters`)
-        .max(VALIDATION.USERNAME.MAX_LENGTH, `Username can't be more than ${VALIDATION.USERNAME.MAX_LENGTH} characters`),
-});
-
-const updateUsername = async (req, res) => {
-    const requestId = Date.now().toString();
-    try {
-        logger.info(
-            { requestId, userId: req.user.userId, username: req.body.username },
-            "Updating username"
-        );
-
-        const validatedData = updateUsernameSchema.parse(req.body);
-        const { username } = validatedData;
-
-        const user = await authService.updateUsername(req.user.userId, username);
-
-        logger.info({ requestId, userId: req.user.userId, username }, "Username updated successfully");
-        res.json({ id: user.id, username: user.username });
-    } catch (error) {
-        if (error.name === "ZodError") {
-            logger.warn(
-                {
-                    requestId,
-                    userId: req.user.userId,
-                    validationError: error,
-                },
-                "Username update validation failed"
-            );
-            const formattedError = formatZodError(error);
-            res.status(400).json({ error: formattedError });
-        } else if (error.message === "Username already taken") {
-            logger.warn({ requestId, userId: req.user.userId, username: req.body.username }, "Username already taken");
-            res.status(409).json({ error: error.message });
-        } else {
-            logger.error(
-                {
-                    requestId,
-                    userId: req.user.userId,
-                    error: error.message,
-                    stack: error.stack,
-                },
-                "Username update failed"
-            );
-            res.status(500).json({ error: "Internal server error" });
-        }
-    }
-};
 
 const getCurrentUser = async (req, res) => {
     const requestId = Date.now().toString();
@@ -251,7 +201,7 @@ const getCurrentUser = async (req, res) => {
             "Fetching current user"
         );
 
-        const user = await authService.getOne({ id: req.user.userId }, undefined, { id: true, email: true, username: true });
+        const user = await authService.getOne({ id: req.user.userId }, undefined, { id: true, email: true, username: true, weight: true, height: true });
         if (!user) {
             logger.warn({ requestId, userId: req.user.userId }, "User not found");
             return res.status(404).json({ error: "User not found" });
@@ -273,4 +223,61 @@ const getCurrentUser = async (req, res) => {
     }
 };
 
-export { addUser, login, refresh, updateUsername, getCurrentUser };
+const updateProfileSchema = z.object({
+    username: z.string()
+        .min(VALIDATION.USERNAME.MIN_LENGTH, `Username must be at least ${VALIDATION.USERNAME.MIN_LENGTH} characters`)
+        .max(VALIDATION.USERNAME.MAX_LENGTH, `Username can't be more than ${VALIDATION.USERNAME.MAX_LENGTH} characters`)
+        .optional(),
+    weight: z.coerce.number()
+        .min(0, "Weight must be a non-negative number")
+        .default(0),
+    height: z.coerce.number()
+        .positive("Height must be a positive number")
+        .nullable()
+        .optional(),
+});
+
+const updateProfile = async (req, res) => {
+    const requestId = Date.now().toString();
+    try {
+        logger.info(
+            { requestId, userId: req.user.userId, body: req.body },
+            "Updating user profile"
+        );
+
+        const validatedData = updateProfileSchema.parse(req.body);
+        const user = await authService.updateUserProfile(req.user.userId, validatedData);
+
+        logger.info({ requestId, userId: req.user.userId }, "User profile updated successfully");
+        res.json({ id: user.id, username: user.username, weight: user.weight, height: user.height });
+    } catch (error) {
+        if (error.name === "ZodError") {
+            logger.warn(
+                {
+                    requestId,
+                    userId: req.user.userId,
+                    validationError: error,
+                },
+                "Profile update validation failed"
+            );
+            const formattedError = formatZodError(error);
+            res.status(400).json({ error: formattedError });
+        } else if (error.message === "Username already taken") {
+            logger.warn({ requestId, userId: req.user.userId, username: req.body.username }, "Username already taken");
+            res.status(409).json({ error: error.message });
+        } else {
+            logger.error(
+                {
+                    requestId,
+                    userId: req.user.userId,
+                    error: error.message,
+                    stack: error.stack,
+                },
+                "Profile update failed"
+            );
+            res.status(500).json({ error: "Internal server error" });
+        }
+    }
+};
+
+export { addUser, login, refresh, getCurrentUser, updateProfile };

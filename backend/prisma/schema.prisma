@@ -17,6 +17,8 @@ model User {
   username         String?  @unique
   passwordHash     String                    // todo use signin with google and facebook later so as not to store passwords
   role             String   @default("user") // could be "admin" or "user"
+  weight           Float   @default(0)
+  height           Float?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -80,7 +82,7 @@ model ExerciseSet {
   id           String  @id @default(cuid())
   exerciseId   String
   order        Int
-  value        Float?
+  value        Float   @default(0)
   reps         Int?
   restMinutes  Float?
 

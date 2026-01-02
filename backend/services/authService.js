@@ -104,14 +104,25 @@ class AuthService extends PrismaCrudService {
         return { id: user.id };
     }
 
-    async updateUsername(userId, username) {
-        // Check if username is already taken by another user
-        const existing = await this.getOne({ username });
-        if (existing && existing.id !== userId) {
-            throw new Error("Username already taken");
+    async updateUserProfile(userId, data) {
+        const { username, weight, height } = data;
+        const updateData = {};
+        
+        if (username !== undefined) {
+            const existing = await this.getOne({ username });
+            if (existing && existing.id !== userId) {
+                throw new Error("Username already taken");
+            }
+            updateData.username = username;
         }
         
-        return await this.update({ id: userId }, { username });
+        updateData.weight = weight;
+        
+        if (height !== undefined) {
+            updateData.height = height;
+        }
+        
+        return await this.update({ id: userId }, updateData);
     }
 }
 
