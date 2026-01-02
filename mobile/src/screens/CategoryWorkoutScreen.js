@@ -35,6 +35,7 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [sharing, setSharing] = useState(false);
+  const [showVolume, setShowVolume] = useState(true); // true = volume, false = reps
   const { api } = useApi();
 
   useEffect(() => {
@@ -335,7 +336,27 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
 
       {workouts.length > 0 && showChart && (
         <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>Exercise Progress</Text>
+          <View style={styles.chartHeader}>
+            <Text style={styles.chartTitle}>Exercise Progress</Text>
+            <View style={styles.toggleContainer}>
+              <TouchableOpacity
+                style={[styles.toggleOption, showVolume && styles.toggleOptionActive]}
+                onPress={() => setShowVolume(true)}
+              >
+                <Text style={[styles.toggleText, showVolume && styles.toggleTextActive]}>
+                  Volume
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.toggleOption, !showVolume && styles.toggleOptionActive]}
+                onPress={() => setShowVolume(false)}
+              >
+                <Text style={[styles.toggleText, !showVolume && styles.toggleTextActive]}>
+                  Reps
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
           {Object.keys(progressData).length === 0 ? (
             <Text style={styles.noChartDataText}>
               No progress data available for the selected date range.
@@ -357,7 +378,9 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
                 ),
                 datasets: [
                   {
-                    data: sortedProgress.map((p) => p.volume),
+                    data: sortedProgress.map((p) => 
+                      showVolume ? p.volume : (p.sets * p.reps)
+                    ),
                     color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
                     strokeWidth: 2,
                   },
@@ -391,7 +414,10 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
                     style={styles.chart}
                   />
                   <Text style={styles.chartSubtitle}>
-                    Volume = Sets × Reps × Weight
+                    {showVolume 
+                      ? "Volume = Sets × Reps × Weight"
+                      : "Total Reps = Sets × Reps"
+                    }
                   </Text>
                 </View>
               );
@@ -718,11 +744,39 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
   },
+  chartHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   chartTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 16,
+    flex: 1,
+  },
+  toggleContainer: {
+    flexDirection: "row",
+    backgroundColor: "#f0f0f0",
+    borderRadius: 8,
+    padding: 2,
+  },
+  toggleOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  toggleOptionActive: {
+    backgroundColor: "#007AFF",
+  },
+  toggleText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
+  },
+  toggleTextActive: {
+    color: "white",
+    fontWeight: "600",
   },
   chartExerciseName: {
     fontSize: 16,
