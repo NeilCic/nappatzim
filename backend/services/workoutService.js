@@ -4,9 +4,11 @@ import prisma from "../lib/prisma.js";
 import { decodeCursor, createCursorFromEntity } from "../lib/cursor.js";
 import { DEFAULT_PAGINATION_LIMIT } from "../lib/constants.js";
 import { normalizeExerciseName, calculateExerciseStats } from "../lib/exerciseUtils.js";
+import { invalidateCache, cacheKeys } from "../lib/cache.js";
 
 async function updateProgressOnWorkoutCreate(userId, categoryId, workoutDate, exercises) {
   const dateString = workoutDate.toISOString();
+  const dateOnly = dateString.split('T')[0];
   
   for (const exercise of exercises) {
     const normalizedName = normalizeExerciseName(exercise.name);
@@ -33,7 +35,23 @@ async function updateProgressOnWorkoutCreate(userId, categoryId, workoutDate, ex
     
     if (existing) {
       const progress = existing.progress || [];
-      progress.push(workoutEntry);
+      
+      const lastEntry = progress.length > 0 ? progress[progress.length - 1] : null;
+      const lastEntryDateOnly = lastEntry?.date ? lastEntry.date.split('T')[0] : null;
+      
+      if (lastEntry && lastEntryDateOnly === dateOnly) {
+        progress[progress.length - 1] = {
+          date: dateString,
+          volume: lastEntry.volume + stats.totalVolume,
+          sets: lastEntry.sets + exercise.setsDetail.length,
+          reps: lastEntry.reps + stats.totalReps,
+          maxWeight: Math.max(lastEntry.maxWeight, stats.maxWeight),
+          unit: exercise.unit || lastEntry.unit || null
+        };
+      } else {
+        // Add new entry for this date
+        progress.push(workoutEntry);
+      }
       
       await prisma.exerciseProgress.update({
         where: {
@@ -250,6 +268,8 @@ class WorkoutService extends PrismaCrudService {
       workout.exercises
     );
     
+    await invalidateCache(cacheKeys.userCategories(data.userId));
+    
     return workout;
   }
 
@@ -285,6 +305,8 @@ class WorkoutService extends PrismaCrudService {
       workout.exercises
     );
     
+    await invalidateCache(cacheKeys.userCategories(userId));
+    
     return workout;
   }
 
@@ -299,6 +321,8 @@ class WorkoutService extends PrismaCrudService {
       workout.createdAt,
       workout.exercises
     );
+    
+    await invalidateCache(cacheKeys.userCategories(userId));
     
     return { success: true };
   }

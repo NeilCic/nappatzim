@@ -367,7 +367,17 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
               if (!exercise.progress || exercise.progress.length === 0)
                 return null;
 
-              const sortedProgress = [...exercise.progress];
+              const sortedProgress = exercise.progress;
+              
+              // Calculate dynamic width for horizontal scrolling
+              // Minimum 60px per data point for readability, but at least screen width
+              const screenWidth = Dimensions.get("window").width;
+              const minWidthPerPoint = 60;
+              const calculatedWidth = Math.max(
+                screenWidth - 40,
+                sortedProgress.length * minWidthPerPoint
+              );
+              
               const chartData = {
                 labels: sortedProgress.map((p, index) =>
                   index %
@@ -392,27 +402,36 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
                   <Text style={styles.chartExerciseName}>
                     {exercise.name} ({exercise.type})
                   </Text>
-                  <LineChart
-                    data={chartData}
-                    width={Dimensions.get("window").width - 40}
-                    height={220}
-                    chartConfig={{
-                      backgroundColor: "#fff",
-                      backgroundGradientFrom: "#fff",
-                      backgroundGradientTo: "#fff",
-                      decimalPlaces: 0,
-                      color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
-                      labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                      style: { borderRadius: 16 },
-                      propsForDots: {
-                        r: "4",
-                        strokeWidth: "2",
-                        stroke: "#007AFF",
-                      },
-                    }}
-                    bezier
-                    style={styles.chart}
-                  />
+                  <ScrollView
+                    horizontal={true}
+                    showsHorizontalScrollIndicator={true}
+                    scrollEnabled={true}
+                    bounces={false}
+                    contentContainerStyle={styles.chartScrollContainer}
+                    nestedScrollEnabled={true}
+                  >
+                    <LineChart
+                      data={chartData}
+                      width={calculatedWidth}
+                      height={220}
+                      chartConfig={{
+                        backgroundColor: "#fff",
+                        backgroundGradientFrom: "#fff",
+                        backgroundGradientTo: "#fff",
+                        decimalPlaces: 0,
+                        color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
+                        labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                        style: { borderRadius: 16 },
+                        propsForDots: {
+                          r: "4",
+                          strokeWidth: "2",
+                          stroke: "#007AFF",
+                        },
+                      }}
+                      bezier
+                      style={styles.chart}
+                    />
+                  </ScrollView>
                   <Text style={styles.chartSubtitle}>
                     {showVolume 
                       ? "Volume = Sets × Reps × Weight"
@@ -805,6 +824,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  chartScrollContainer: {
+    paddingRight: 8,
   },
   chart: {
     marginVertical: 8,
