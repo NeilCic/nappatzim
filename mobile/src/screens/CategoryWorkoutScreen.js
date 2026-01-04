@@ -378,14 +378,15 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
                 sortedProgress.length * minWidthPerPoint
               );
               
+              const formatDateWithoutYear = (dateString) => {
+                const date = new Date(dateString);
+                const day = date.getDate();
+                const month = date.getMonth() + 1;
+                return `${day}/${month}`;
+              };
+
               const chartData = {
-                labels: sortedProgress.map((p, index) =>
-                  index %
-                    Math.max(1, Math.floor(sortedProgress.length / 4)) ===
-                  0
-                    ? new Date(p.date).toLocaleDateString()
-                    : ""
-                ),
+                labels: sortedProgress.map((p) => formatDateWithoutYear(p.date)),
                 datasets: [
                   {
                     data: sortedProgress.map((p) => 
