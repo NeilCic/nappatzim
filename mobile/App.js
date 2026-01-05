@@ -68,53 +68,74 @@ export default function App() {
         if (token) {
           setAuthToken(token);
           
-          // Verify token is valid by making a test request
-          try {
-            await api.get("/auth/me");
-            setIsAuthed(true);
-          } catch (error) {
-            const status = error.response?.status;
-            
-            if (status === 401) {
-              if (refreshToken) {
-                try {
-                  // Use axios directly to avoid interceptor issues
-                  const response = await axios.post(`${apiBaseUrl}/auth/refresh`, { refreshToken });
-                  const newAccessToken = response.data?.accessToken;
-                  
-                  if (!newAccessToken) {
-                    throw new Error("No access token in response");
+          // Retry /auth/me up to 6 times with 10-second delays to handle Render wake-up
+          const maxRetries = 6;
+          const retryDelay = 10000; // 10 seconds
+          let lastError = null;
+          
+          for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+              await api.get("/auth/me");
+              // Success - token is valid
+              setIsAuthed(true);
+              return;
+            } catch (error) {
+              lastError = error;
+              const status = error.response?.status;
+              
+              // If 401, token is invalid - don't retry, try refresh token instead
+              if (status === 401) {
+                if (refreshToken) {
+                  try {
+                    // Use axios directly to avoid interceptor issues
+                    const response = await axios.post(`${apiBaseUrl}/auth/refresh`, { refreshToken });
+                    const newAccessToken = response.data?.accessToken;
+                    
+                    if (!newAccessToken) {
+                      throw new Error("No access token in response");
+                    }
+                    
+                    await AsyncStorage.setItem("token", newAccessToken);
+                    setAuthToken(newAccessToken);
+                    setIsAuthed(true);
+                    return;
+                  } catch (refreshError) {
+                    await clearAuth();
+                    return;
                   }
-                  
-                  await AsyncStorage.setItem("token", newAccessToken);
-                  setAuthToken(newAccessToken);
-                  setIsAuthed(true);
-                } catch (refreshError) {
+                } else {
                   await clearAuth();
+                  return;
                 }
-              } else {
-                await clearAuth();
               }
-            } else if (status === 404) {
-              await clearAuth();
-            } else {
-              // Network error or other error - don't authenticate
-              setIsAuthed(false);
+              
+              // If 404, endpoint doesn't exist - don't retry
+              if (status === 404) {
+                await clearAuth();
+                return;
+              }
+              
+              // Network error or other error - retry if we have attempts left
+              if (attempt < maxRetries) {
+                // Wait before retrying
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+                continue;
+              }
             }
           }
+          
+          // All retries exhausted - show login
+          setIsAuthed(false);
         } else {
           setIsAuthed(false);
         }
       } catch (error) {
-        if (!error.message?.includes("Network") && error.code !== "NETWORK_ERROR") {
-          await clearAuth();
-        } else {
-          setIsAuthed(false);
-        }
+        // Unexpected error - show login
+        setIsAuthed(false);
       }
     };
     bootstrapAuth();
-  }, [setAuthToken]);
+  }, [setAuthToken, api, apiBaseUrl]);
 
   const PreferencesButton = ({ navigation }) => (
     <TouchableOpacity
