@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { View, Text, Button, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useApi } from '../ApiProvider';
 import axios from 'axios';
 import { showError } from '../utils/errorHandler';
 import StyledTextInput from '../components/StyledTextInput';
 import ColorPicker from '../components/ColorPicker';
+import Button from '../components/Button';
 
 export default function CreateCategoryScreen({ navigation, route }) {
   const onCategoryCreated = route.params.onCategoryCreated;
@@ -52,10 +53,20 @@ export default function CreateCategoryScreen({ navigation, route }) {
       />
       
       <View style={styles.buttonContainer}>
-        <View style={styles.buttonWrapper}>
-          <Button title="Create Category" onPress={handleCreate} />
-        </View>
-        <Button title="Cancel" onPress={() => navigation.goBack()} />
+        <Button 
+          title="Create Category" 
+          onPress={handleCreate}
+          variant="primary"
+          size="large"
+          style={styles.button}
+        />
+        <Button 
+          title="Cancel" 
+          onPress={() => navigation.goBack()}
+          variant="secondary"
+          size="large"
+          style={styles.button}
+        />
       </View>
     </ScrollView>
   );
@@ -86,7 +97,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 20,
   },
-  buttonWrapper: { 
-    marginBottom: 12,
+  button: {
+    width: '100%',
   },
 });

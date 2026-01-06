@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   Alert,
   ActivityIndicator,
@@ -12,6 +11,7 @@ import { getCurrentUserId } from "../utils/jwtUtils";
 import handleApiCall from "../utils/apiUtils";
 import { showError } from "../utils/errorHandler";
 import StyledTextInput from "../components/StyledTextInput";
+import Button from "../components/Button";
 
 export default function PreferencesScreen() {
   const [username, setUsername] = useState("");
@@ -105,17 +105,15 @@ export default function PreferencesScreen() {
         />
       </View>
 
-      <TouchableOpacity
-        style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+      <Button
+        title="Save All Changes"
         onPress={saveProfile}
         disabled={saving}
-      >
-        {saving ? (
-          <ActivityIndicator size="small" color="white" />
-        ) : (
-          <Text style={styles.saveButtonText}>Save All Changes</Text>
-        )}
-      </TouchableOpacity>
+        loading={saving}
+        variant="primary"
+        size="large"
+        style={styles.saveButton}
+      />
     </View>
   );
 }
@@ -158,18 +156,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   saveButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  saveButtonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  saveButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
+    marginTop: 8,
   },
   inputMargin: {
     marginTop: 12,

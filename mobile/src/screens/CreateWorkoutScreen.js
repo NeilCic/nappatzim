@@ -13,6 +13,7 @@ import { useApi } from "../ApiProvider";
 import ExerciseAdvancedModal from "../components/ExerciseAdvancedModal";
 import { showError } from "../utils/errorHandler";
 import StyledTextInput from "../components/StyledTextInput";
+import Button from "../components/Button";
 
 export default function CreateWorkoutScreen({ navigation, route }) {
   const { categories: categoriesFromParams, initialCategoryId } = route.params || {};
@@ -455,9 +456,13 @@ export default function CreateWorkoutScreen({ navigation, route }) {
         <View style={styles.section}>
           <View style={styles.exerciseHeader}>
             <Text style={styles.label}>Exercises</Text>
-            <TouchableOpacity style={styles.addButton} onPress={addExercise}>
-              <Text style={styles.addButtonText}>+ Add Exercise</Text>
-            </TouchableOpacity>
+            <Button
+              title="+ Add Exercise"
+              onPress={addExercise}
+              variant="outline"
+              size="small"
+              style={styles.addButton}
+            />
           </View>
 
           {exercises.map((exercise, index) => {
@@ -843,12 +848,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   addButton: {
-    backgroundColor: "#007AFF",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    // Button component handles styling
   },
-  addButtonText: { color: "white", fontWeight: "600" },
 
   exerciseCard: {
     backgroundColor: "white",

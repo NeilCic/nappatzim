@@ -10,6 +10,7 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { useApi } from '../ApiProvider';
 import axios from 'axios';
+import Button from '../components/Button';
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -128,14 +129,14 @@ export default function HomeScreen({ navigation, onLogout }) {
   return (
     <View style={styles.container}>
       <View style={styles.topHalf}>
-
-        <TouchableOpacity
-          style={[styles.newWorkoutButton, categories.length === 0 && styles.disabledButton]}
+        <Button
+          title="+ New Workout"
           onPress={startNewWorkout}
           disabled={categories.length === 0}
-        >
-          <Text style={styles.buttonText}>+ New Workout</Text>
-        </TouchableOpacity>
+          variant="primary"
+          size="large"
+          style={styles.newWorkoutButton}
+        />
       </View>
 
       <View style={styles.bottomHalf}>
@@ -155,9 +156,13 @@ export default function HomeScreen({ navigation, onLogout }) {
         />
       </View>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-        <Text style={styles.logoutText}>Logout</Text>
-      </TouchableOpacity>
+      <Button
+        title="Logout"
+        onPress={onLogout}
+        variant="text"
+        size="small"
+        style={styles.logoutButton}
+      />
     </View>
   );
 }
@@ -184,17 +189,8 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   newWorkoutButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 20,
-    paddingHorizontal: 30,
     borderRadius: 15,
     marginBottom: 20,
-    alignItems: "center",
-  },
-  buttonText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "bold",
   },
   previousWorkoutButton: {
     backgroundColor: "white",
@@ -274,11 +270,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 50,
     right: 20,
-    padding: 10,
-  },
-  logoutText: {
-    color: "#007AFF",
-    fontSize: 16,
   },
   newCategoryCard: {
     backgroundColor: "#f0f0f0",
@@ -305,11 +296,5 @@ const styles = StyleSheet.create({
   categoriesList: {
     paddingHorizontal: 20,
     paddingBottom: 30, // Extra padding to avoid Android navigation bar overlap
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  disabledText: {
-    color: '#999',
   },
 });

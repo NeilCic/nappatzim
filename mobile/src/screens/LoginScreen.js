@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { View, Button, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useApi } from "../ApiProvider";
 import axios from 'axios';
 import { getErrorMessage } from "../utils/errorHandler";
 import { VALIDATION } from "../shared/constants.js";
 import StyledTextInput from "../components/StyledTextInput";
+import Button from "../components/Button";
 
 // Validation functions matching backend schema
 const validateEmail = (email) => {
@@ -213,9 +214,24 @@ export default function LoginScreen({ onLoggedIn }) {
         <Text style={styles.generalErrorText}>{generalError}</Text>
       )}
 
-      <Button title="Login" onPress={login} disabled={loading} />
-      <Button title="Register" onPress={register} disabled={loading} />
-      {loading && <Text style={styles.loadingText}>Loading...</Text>}
+      <Button 
+        title="Login" 
+        onPress={login} 
+        disabled={loading}
+        loading={loading}
+        variant="primary"
+        size="large"
+        style={styles.button}
+      />
+      <Button 
+        title="Register" 
+        onPress={register} 
+        disabled={loading}
+        loading={loading}
+        variant="primary"
+        size="large"
+        style={styles.button}
+      />
     </View>
   );
 }
@@ -251,9 +267,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 4,
   },
-  loadingText: {
-    textAlign: "center",
-    color: "#666",
-    fontSize: 14,
+  button: {
+    marginTop: 8,
   },
 });

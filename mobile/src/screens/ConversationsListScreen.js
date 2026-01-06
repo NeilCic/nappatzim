@@ -16,6 +16,7 @@ import { getCurrentUserId } from "../utils/jwtUtils";
 import handleApiCall from "../utils/apiUtils";
 import { showError } from "../utils/errorHandler";
 import StyledTextInput from "../components/StyledTextInput";
+import Button from "../components/Button";
 
 export default function ConversationsListScreen({ navigation }) {
   const [conversations, setConversations] = useState([]);
@@ -260,26 +261,25 @@ export default function ConversationsListScreen({ navigation }) {
               autoCorrect={false}
             />
             <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
+              <Button
+                title="Cancel"
                 onPress={() => {
                   setShowNewConversationModal(false);
                   setPeerUserId("");
                 }}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.createButton, creating && styles.createButtonDisabled]}
+                variant="secondary"
+                size="medium"
+                style={[styles.modalButton, styles.cancelButton]}
+              />
+              <Button
+                title="Start Chat"
                 onPress={createConversation}
                 disabled={creating}
-              >
-                {creating ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <Text style={styles.createButtonText}>Start Chat</Text>
-                )}
-              </TouchableOpacity>
+                loading={creating}
+                variant="primary"
+                size="medium"
+                style={[styles.modalButton, styles.createButton]}
+              />
             </View>
           </View>
         </View>
@@ -414,28 +414,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   modalButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  cancelButton: {
-    backgroundColor: "#f0f0f0",
-  },
-  cancelButtonText: {
-    color: "#333",
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  createButton: {
-    backgroundColor: "#007AFF",
-  },
-  createButtonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  createButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
+    flex: 1,
   },
 });
 

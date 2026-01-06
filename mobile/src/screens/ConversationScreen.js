@@ -15,7 +15,7 @@ import { getCurrentUserId } from "../utils/jwtUtils";
 import handleApiCall from "../utils/apiUtils";
 import axios from "axios";
 import StyledTextInput from "../components/StyledTextInput";
-import { showError } from "../utils/errorHandler";
+import Button from "../components/Button";
 
 export default function ConversationScreen({ route }) {
   const { conversationId } = route.params;
@@ -231,20 +231,15 @@ export default function ConversationScreen({ route }) {
           multiline
           maxLength={1000}
         />
-        <TouchableOpacity
-          style={[
-            styles.sendButton,
-            (!messageText.trim() || sending) && styles.sendButtonDisabled,
-          ]}
+        <Button
+          title="Send"
           onPress={sendMessage}
           disabled={!messageText.trim() || sending}
-        >
-          {sending ? (
-            <ActivityIndicator size="small" color="white" />
-          ) : (
-            <Text style={styles.sendButtonText}>Send</Text>
-          )}
-        </TouchableOpacity>
+          loading={sending}
+          variant="primary"
+          size="small"
+          style={styles.sendButton}
+        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -333,21 +328,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   sendButton: {
-    backgroundColor: "#007AFF",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
     minWidth: 60,
-  },
-  sendButtonDisabled: {
-    backgroundColor: "#ccc",
-  },
-  sendButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
+    borderRadius: 20,
   },
   importButton: {
     backgroundColor: "#007AFF",
