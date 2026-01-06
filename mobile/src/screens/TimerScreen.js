@@ -96,6 +96,10 @@ export default function TimerScreen() {
   };
 
   const getProgressColor = () => {
+    if (timerType === "stopwatch" && timeLeft > 0) {
+      return "#2196F3";
+    }
+    // Countdown mode: color based on time remaining
     if (timeLeft === 0) return "#4CAF50";
     if (timeLeft <= 10) return "#F44336";
     if (timeLeft <= 30) return "#FF9800";

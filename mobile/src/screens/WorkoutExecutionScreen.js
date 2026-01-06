@@ -424,12 +424,17 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
               </View>
             </>
           ) : (
-            <View style={styles.doneIconContainer}>
+            <Button
+              onPress={() => handleCreateWorkout(workoutData)}
+              variant="primary"
+              size="medium"
+              style={styles.timerButton}
+            >
               <Image
                 source={require("../../assets/green-done.jpg")}
                 style={styles.doneIcon}
               />
-            </View>
+            </Button>
           )}
         </View>
 
@@ -720,13 +725,6 @@ const styles = StyleSheet.create({
     height: "100%",
     backgroundColor: "#007AFF",
     borderRadius: 4,
-  },
-  doneIconContainer: {
-    backgroundColor: "#FFFFFF",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
   },
   doneIcon: {
     width: "100%",
