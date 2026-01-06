@@ -2,19 +2,20 @@ import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   Image,
-  Alert,
   ScrollView,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
   Keyboard,
+  Platform,
 } from "react-native";
 import { useApi } from "../ApiProvider";
 import { playSound, stopSound } from "../utils/soundUtils";
 import { showError } from "../utils/errorHandler";
+import KeyboardAvoidingContainer from "../components/KeyboardAvoidingContainer";
+import { showAlert, showSuccessAlert } from "../utils/alert";
+import Button from "../components/Button";
+import Pressable from "../components/Pressable";
+import StyledTextInput from "../components/StyledTextInput";
 
 export default function WorkoutExecutionScreen({ navigation, route }) {
   const [workoutData, setWorkoutData] = useState(route.params.workoutData);
@@ -80,7 +81,7 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
 
   const handleTimerComplete = () => {
     playSound(completionSound, soundRef);
-    Alert.alert("Timer Complete!", "Time's up!", [
+    showAlert("Timer Complete!", "Time's up!", [
       { text: "OK", onPress: () => stopSound(soundRef) },
     ]);
 
@@ -156,7 +157,7 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
         }),
       };
       await api.post("/workouts", cleanData);
-      Alert.alert("Success!", "The workout has been logged.");
+      showSuccessAlert("The workout has been logged.");
     } catch (error) {
       showError(error, "Error", "Failed to create workout");
     }
@@ -212,12 +213,13 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>No Exercises Found</Text>
-        <TouchableOpacity
-          style={styles.button}
+        <Button
+          title="Go Back"
           onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.buttonText}>Go Back</Text>
-        </TouchableOpacity>
+          variant="primary"
+          size="large"
+          style={styles.button}
+        />
       </View>
     );
   }
@@ -299,7 +301,7 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
       <View style={styles.statItem}>
         <Text style={styles.statLabel}>{label}</Text>
         <View style={styles.statValueContainer}>
-          <TextInput
+          <StyledTextInput
             ref={inputRef}
             key={inputKey}
             style={styles.statValue}
@@ -317,9 +319,8 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
   }
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAvoidingContainer
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
     >
       <ScrollView
@@ -335,7 +336,7 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
         </Text>
       </View>
 
-      <TouchableOpacity
+      <Pressable
         onPress={!isRunning && timeLeft === 0 ? handleStopSound : toggleTimer}
       >
         {/*clock functionality*/}
@@ -377,15 +378,16 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
             </View>
           </View>
         </View>
-      </TouchableOpacity>
+      </Pressable>
 
       {isRunning && timeLeft > 0 && (
-        <TouchableOpacity
-          style={[styles.timerButton, styles.resetButton]}
+        <Button
+          title="Finish Rest"
           onPress={finishRestNow}
-        >
-          <Text style={styles.timerButtonText}>Finish Rest</Text>
-        </TouchableOpacity>
+          variant="primary"
+          size="medium"
+          style={[styles.timerButton, styles.resetButton]}
+        />
       )}
 
       <View style={styles.currentExerciseSection}>
@@ -420,15 +422,17 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
               </View>
             </>
           ) : (
-            <TouchableOpacity
-              style={styles.timerButton}
+            <Button
               onPress={() => handleCreateWorkout(workoutData)}
+              variant="primary"
+              size="medium"
+              style={styles.timerButton}
             >
               <Image
                 source={require("../../assets/green-done.jpg")}
                 style={styles.doneIcon}
               />
-            </TouchableOpacity>
+            </Button>
           )}
         </View>
 
@@ -442,7 +446,7 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
         </View>
       </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAvoidingContainer>
   );
 }
 

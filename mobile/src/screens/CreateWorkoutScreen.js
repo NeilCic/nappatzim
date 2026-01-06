@@ -2,18 +2,17 @@ import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
-  Alert,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
 import { useApi } from "../ApiProvider";
 import ExerciseAdvancedModal from "../components/ExerciseAdvancedModal";
 import { showError } from "../utils/errorHandler";
 import StyledTextInput from "../components/StyledTextInput";
 import Button from "../components/Button";
+import KeyboardAvoidingContainer from "../components/KeyboardAvoidingContainer";
+import { showAlert, showErrorAlert, showConfirmAlert } from "../utils/alert";
+import Pressable from "../components/Pressable";
 
 export default function CreateWorkoutScreen({ navigation, route }) {
   const { categories: categoriesFromParams, initialCategoryId } = route.params || {};
@@ -93,7 +92,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
         setExercises(loadedExercises);
         setHasLoadedPrevious(true);
       } else {
-        Alert.alert(
+        showAlert(
           "No Previous Workout",
           "No previous workout found for this category."
         );
@@ -168,10 +167,9 @@ export default function CreateWorkoutScreen({ navigation, route }) {
         setNotes(sharedWorkout.notes);
       }
 
-      Alert.alert(
+      showAlert(
         "Workout Imported",
-        "Shared workout has been imported. Review and adjust as needed, then select a category and save.",
-        [{ text: "OK" }]
+        "Shared workout has been imported. Review and adjust as needed, then select a category and save."
       );
     }
   }, [route.params, categories]);
@@ -253,7 +251,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
     handleDataChange();
     const exercise = exercises[index];
     if (!exercise.sets || !exercise.reps) {
-      Alert.alert("Error", "Please enter both sets and reps");
+      showErrorAlert("Please enter both sets and reps");
       return;
     }
 
@@ -297,14 +295,14 @@ export default function CreateWorkoutScreen({ navigation, route }) {
     if (isSubmittingRef.current) return;
 
     if (!selectedCategoryId) {
-      Alert.alert("Error", "Please select a category");
+      showErrorAlert("Please select a category");
       return;
     }
 
     if (!exercises || exercises.length === 0) {
-      Alert.alert(
-        "Validation Error",
-        "Workout must have at least one exercise. Please add at least one exercise before saving."
+      showErrorAlert(
+        "Workout must have at least one exercise. Please add at least one exercise before saving.",
+        "Validation Error"
       );
       return;
     }
@@ -323,7 +321,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
       navigation.goBack();
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Failed to create workout";
-      Alert.alert("Error", errorMessage);
+      showErrorAlert(errorMessage);
       isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
@@ -351,16 +349,14 @@ export default function CreateWorkoutScreen({ navigation, route }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    <KeyboardAvoidingContainer
       keyboardVerticalOffset={100}
     >
       <ScrollView style={styles.container}>
         <Text style={styles.title}>Create Workout</Text>
         <View style={styles.section}>
           <Text style={styles.label}>Category *</Text>
-          <TouchableOpacity
+          <Pressable
             style={styles.categoryButton}
             onPress={() => setShowCategoryList(!showCategoryList)}
           >
@@ -370,12 +366,12 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                 : "Select a category..."}
             </Text>
             <Text style={styles.arrow}>{showCategoryList ? "▲" : "▼"}</Text>
-          </TouchableOpacity>
+          </Pressable>
 
           {showCategoryList && (
             <View style={styles.categoryList}>
               {categories.map((category) => (
-                <TouchableOpacity
+                <Pressable
                   key={category.id}
                   style={styles.categoryItem}
                   onPress={() => {
@@ -394,7 +390,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                   }}
                 >
                   <Text style={styles.categoryItemText}>{category.name}</Text>
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </View>
           )}
@@ -405,15 +401,15 @@ export default function CreateWorkoutScreen({ navigation, route }) {
           !hasLoadedPrevious &&
           hasPreviousWorkout && (
             <View style={styles.section}>
-              <TouchableOpacity
-                style={styles.loadPreviousButton}
+              <Button
+                title={isLoadingPrevious ? "Loading..." : "Load Previous Workout"}
                 onPress={() => fetchPreviousWorkout(selectedCategoryId)}
                 disabled={isLoadingPrevious}
-              >
-                <Text style={styles.loadPreviousButtonText}>
-                  {isLoadingPrevious ? "Loading..." : "Load Previous Workout"}
-                </Text>
-              </TouchableOpacity>
+                loading={isLoadingPrevious}
+                variant="secondary"
+                size="medium"
+                style={styles.loadPreviousButton}
+              />
               {isLoadingPrevious && (
                 <Text style={styles.loadingText}>
                   Loading previous workout...
@@ -424,17 +420,18 @@ export default function CreateWorkoutScreen({ navigation, route }) {
 
         {hasLoadedPrevious && (
           <View style={styles.section}>
-            <TouchableOpacity
-              style={styles.clearButton}
+            <Button
+              title="Start Fresh"
               onPress={() => {
                 setNotes("");
                 setExercises([]);
                 setHasLoadedPrevious(false);
                 setAppliedBasicSetup({});
               }}
-            >
-              <Text style={styles.clearButtonText}>Start Fresh</Text>
-            </TouchableOpacity>
+              variant="outline"
+              size="medium"
+              style={styles.clearButton}
+            />
           </View>
         )}
 
@@ -481,17 +478,18 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                     selectTextOnFocus={true}
                   />
                   <View style={styles.exerciseActions}>
-                    <TouchableOpacity
-                      style={styles.removeButton}
+                    <Button
+                      title="Remove"
                       onPress={() => removeExercise(index)}
-                    >
-                      <Text style={styles.removeButtonText}>Remove</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => toggleExercise(index)}>
+                      variant="outline"
+                      size="small"
+                      style={styles.removeButton}
+                    />
+                    <Pressable onPress={() => toggleExercise(index)}>
                       <Text style={styles.expandButton}>
                         {isExpanded ? "▼" : "▶"}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   </View>
                 </View>
 
@@ -502,7 +500,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                         <Text style={styles.fieldLabel}>Type</Text>
                         <View style={styles.typeButtons}>
                           {["weight", "time", "distance"].map((type) => (
-                            <TouchableOpacity
+                            <Pressable
                               key={type}
                               style={[
                                 styles.typeButton,
@@ -522,7 +520,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                               >
                                 {type.charAt(0).toUpperCase() + type.slice(1)}{" "}
                               </Text>
-                            </TouchableOpacity>
+                            </Pressable>
                           ))}
                         </View>
                       </View>
@@ -608,14 +606,13 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                         </View>
                       </View>
 
-                      <TouchableOpacity
-                        style={styles.applyBasicButton}
+                      <Button
+                        title="Apply Basic Setup"
                         onPress={() => applyBasicSetup(index)}
-                      >
-                        <Text style={styles.applyBasicButtonText}>
-                          Apply Basic Setup
-                        </Text>
-                      </TouchableOpacity>
+                        variant="secondary"
+                        size="small"
+                        style={styles.applyBasicButton}
+                      />
                     </View>
                     <View style={styles.exerciseRow}>
                       <View style={styles.exerciseField}>
@@ -635,7 +632,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                         <Text style={styles.fieldLabel}>Unit</Text>
                         <View style={styles.typeButtons}>
                           {unitOptionsMap[exercise.type]?.map((unit) => (
-                            <TouchableOpacity
+                            <Pressable
                               key={unit}
                               style={[
                                 styles.typeButton,
@@ -655,7 +652,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                               >
                                 {unit}
                               </Text>
-                            </TouchableOpacity>
+                            </Pressable>
                           ))}
                         </View>
                       </View>
@@ -670,12 +667,13 @@ export default function CreateWorkoutScreen({ navigation, route }) {
                       placeholder="Exercise notes..."
                       multiline
                     />
-                    <TouchableOpacity
-                      style={[styles.startWorkout, { marginTop: 12 }]}
+                    <Button
+                      title="Advanced setup"
                       onPress={() => openAdvancedForIndex(index)}
-                    >
-                      <Text style={[styles.buttonText]}>Advanced setup</Text>
-                    </TouchableOpacity>
+                      variant="outline"
+                      size="medium"
+                      style={[styles.startWorkout, { marginTop: 12, backgroundColor: 'transparent' }]}
+                    />
                   </>
                 )}
               </View>
@@ -683,17 +681,11 @@ export default function CreateWorkoutScreen({ navigation, route }) {
           })}
         </View>
         <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[
-              styles.startWorkout,
-              exercises.length === 0 && styles.disabledButton,
-            ]}
+          <Button
+            title="Start Workout"
             onPress={() => {
               if (!selectedCategoryId || selectedCategoryId === "") {
-                Alert.alert(
-                  "Error",
-                  "Please select a category before starting the workout"
-                );
+                showErrorAlert("Please select a category before starting the workout");
                 return;
               }
               if (exercises.length > 0) {
@@ -707,39 +699,34 @@ export default function CreateWorkoutScreen({ navigation, route }) {
               }
             }}
             disabled={exercises.length === 0}
-          >
-            <Text
-              style={[
-                styles.buttonText,
-                exercises.length === 0 && styles.disabledText,
-              ]}
-            >
-              Start Workout
-            </Text>
-          </TouchableOpacity>
+            variant="primary"
+            size="large"
+            style={[
+              styles.startWorkout,
+              exercises.length === 0 && styles.disabledButton,
+            ]}
+          />
         </View>
         <View style={[styles.buttonContainer, { paddingBottom: 35 }]}>
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.buttonText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          <Button
+            title={isSubmitting ? "Creating..." : "Create Workout"}
+            onPress={handleCreateWorkout}
+            disabled={isSubmitting}
+            loading={isSubmitting}
+            variant="primary"
+            size="large"
             style={[
               styles.createButton,
               isSubmitting && styles.disabledButton,
             ]}
-            onPress={handleCreateWorkout}
-            disabled={isSubmitting}
-          >
-            <Text style={[
-              styles.buttonText,
-              isSubmitting && styles.disabledText,
-            ]}>
-              {isSubmitting ? "Creating..." : "Create Workout"}
-            </Text>
-          </TouchableOpacity>
+          />
+          <Button
+            title="Cancel"
+            onPress={() => navigation.goBack()}
+            variant="outline"
+            size="large"
+            style={styles.cancelButton}
+          />
         </View>
       </ScrollView>
       <ExerciseAdvancedModal
@@ -790,7 +777,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
           setShowAdvancedModal(false);
         }}
       />
-    </KeyboardAvoidingView>
+    </KeyboardAvoidingContainer>
   );
 }
 
@@ -931,14 +918,14 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     flex: 1,
-    marginRight: 8,
+    marginLeft: 8,
   },
   createButton: {
     backgroundColor: "#28a745",
     padding: 12,
     borderRadius: 8,
     flex: 1,
-    marginLeft: 8,
+    marginRight: 8,
   },
   buttonText: {
     color: "white",

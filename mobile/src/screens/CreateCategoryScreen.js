@@ -3,9 +3,9 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useApi } from '../ApiProvider';
 import axios from 'axios';
 import { showError } from '../utils/errorHandler';
-import StyledTextInput from '../components/StyledTextInput';
 import ColorPicker from '../components/ColorPicker';
 import Button from '../components/Button';
+import FormField from '../components/FormField';
 
 export default function CreateCategoryScreen({ navigation, route }) {
   const onCategoryCreated = route.params.onCategoryCreated;
@@ -40,11 +40,12 @@ export default function CreateCategoryScreen({ navigation, route }) {
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Text style={styles.title}>Create Category</Text>
       
-      <StyledTextInput
-        style={styles.input}
-        placeholder="Category name"
-        value={name}
-        onChangeText={setName}
+      <FormField
+        inputProps={{
+          placeholder: "Category name",
+          value: name,
+          onChangeText: setName,
+        }}
       />
       
       <ColorPicker
@@ -85,13 +86,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
-  },
-  input: { 
-    borderWidth: 1, 
-    padding: 10, 
-    marginBottom: 10, 
-    borderRadius: 8,
-    backgroundColor: 'white',
   },
   buttonContainer: { 
     gap: 12,

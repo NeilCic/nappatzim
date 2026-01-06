@@ -2,16 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
-  Alert,
   Dimensions,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
 import { playSound, stopSound } from "../utils/soundUtils";
 import StyledTextInput from "../components/StyledTextInput";
+import KeyboardAvoidingContainer from "../components/KeyboardAvoidingContainer";
+import { showAlert, showErrorAlert } from "../utils/alert";
+import Button from "../components/Button";
 
 const { width } = Dimensions.get("window");
 
@@ -34,7 +33,7 @@ export default function TimerScreen() {
           if (prev <= 1) {
             setIsRunning(false);
             playSound(completionSound, soundRef);
-            Alert.alert("Timer Complete!", "Time's up!", [
+            showAlert("Timer Complete!", "Time's up!", [
               { text: "OK", onPress: () => stopSound(soundRef) },
             ]);
             return 0;
@@ -72,7 +71,7 @@ export default function TimerScreen() {
     const totalSeconds = minutes * 60 + seconds;
 
     if (timerType === "countdown" && totalSeconds <= 0) {
-      Alert.alert("Invalid Time", "Please enter a valid time");
+      showErrorAlert("Please enter a valid time", "Invalid Time");
       return;
     }
 
@@ -104,9 +103,8 @@ export default function TimerScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAvoidingContainer
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
         style={styles.container}
@@ -115,42 +113,38 @@ export default function TimerScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Timer</Text>
           <View style={styles.timerTypeSelector}>
-            <TouchableOpacity
+            <Button
+              title="Countdown"
+              onPress={() => setTimerType("countdown")}
+              variant="text"
+              size="medium"
               style={[
                 styles.typeButton,
                 timerType === "countdown" && styles.activeType,
               ]}
-              onPress={() => setTimerType("countdown")}
-            >
-              <Text
-                style={[
-                  styles.typeText,
-                  timerType === "countdown" && styles.activeTypeText,
-                ]}
-              >
-                Countdown
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.typeButton,
-                timerType === "stopwatch" && styles.activeType,
+              textStyle={[
+                styles.typeText,
+                timerType === "countdown" && styles.activeTypeText,
               ]}
+            />
+            <Button
+              title="Stopwatch"
               onPress={() => {
                 setTimerType("stopwatch");
                 setCustomMinutes(0);
                 setCustomSeconds(0);
               }}
-            >
-              <Text
-                style={[
-                  styles.typeText,
-                  timerType === "stopwatch" && styles.activeTypeText,
-                ]}
-              >
-                Stopwatch
-              </Text>
-            </TouchableOpacity>
+              variant="text"
+              size="medium"
+              style={[
+                styles.typeButton,
+                timerType === "stopwatch" && styles.activeType,
+              ]}
+              textStyle={[
+                styles.typeText,
+                timerType === "stopwatch" && styles.activeTypeText,
+              ]}
+            />
           </View>
         </View>
 
@@ -198,45 +192,37 @@ export default function TimerScreen() {
               />
             </View>
           </View>
-          <TouchableOpacity
-            style={[
-              styles.customStartButton,
-              isRunning && styles.disabledButton,
-            ]}
+          <Button
+            title="Start Custom Timer"
             onPress={startCustomTimer}
             disabled={isRunning}
-          >
-            <Text
-              style={[styles.customStartText, isRunning && styles.disabledText]}
-            >
-              Start Custom Timer
-            </Text>
-          </TouchableOpacity>
+            variant="primary"
+            size="large"
+            style={styles.customStartButton}
+          />
         </View>
 
         <View style={styles.controlButtons}>
-          <TouchableOpacity
-            style={[
-              styles.controlButton,
-              styles.startButton,
-              !isRunning && !timeLeft && styles.disabledButton,
-            ]}
+          <Button
+            title={isRunning ? "Pause" : "Continue"}
             onPress={toggleTimer}
             disabled={!isRunning && !timeLeft}
-          >
-            <Text style={styles.controlButtonText}>
-              {isRunning ? "Pause" : "Continue"}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.controlButton, styles.resetButton]}
+            variant="primary"
+            size="large"
+            style={[styles.controlButton, styles.startButton]}
+            textStyle={styles.controlButtonText}
+          />
+          <Button
+            title="Reset"
             onPress={resetTimer}
-          >
-            <Text style={styles.controlButtonText}>Reset</Text>
-          </TouchableOpacity>
+            variant="primary"
+            size="large"
+            style={[styles.controlButton, styles.resetButton]}
+            textStyle={styles.controlButtonText}
+          />
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAvoidingContainer>
   );
 }
 
@@ -361,15 +347,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   customStartButton: {
-    backgroundColor: "#007AFF",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  customStartText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+    // Button component handles styling
   },
   controlButtons: {
     flexDirection: "row",
@@ -379,10 +357,7 @@ const styles = StyleSheet.create({
   },
   controlButton: {
     flex: 1,
-    padding: 15,
-    borderRadius: 8,
     marginHorizontal: 5,
-    alignItems: "center",
   },
   startButton: {
     backgroundColor: "#4CAF50",
@@ -391,16 +366,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F44336",
   },
   controlButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  disabledButton: {
-    backgroundColor: "#ccc",
-    opacity: 0.5,
-  },
-  disabledText: {
-    color: "#666",
+    // Button component handles text styling, but we override color here
   },
   disabledInput: {
     backgroundColor: "#f0f0f0",

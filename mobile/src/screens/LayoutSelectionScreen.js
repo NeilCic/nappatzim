@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Image, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, Dimensions } from 'react-native';
 import { useApi } from '../ApiProvider';
 import { showError } from '../utils/errorHandler';
+import LoadingScreen from '../components/LoadingScreen';
+import EmptyState from '../components/EmptyState';
+import Pressable from '../components/Pressable';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -32,24 +35,20 @@ export default function LayoutSelectionScreen({ navigation }) {
   };
 
   if (loading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
+    return <LoadingScreen />;
   }
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Select a Layout</Text>
       {layouts.length === 0 ? (
-        <Text style={styles.emptyText}>No layouts available</Text>
+        <EmptyState message="No layouts available" />
       ) : (
         <FlatList
           data={layouts}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <TouchableOpacity
+            <Pressable
               style={styles.layoutItem}
               onPress={() => handleLayoutPress(item)}
             >
@@ -59,7 +58,7 @@ export default function LayoutSelectionScreen({ navigation }) {
                 resizeMode="cover"
               />
               <Text style={styles.layoutName}>{item.name}</Text>
-            </TouchableOpacity>
+            </Pressable>
           )}
         />
       )}
@@ -77,11 +76,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 16,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#666',
-    marginTop: 32,
   },
   layoutItem: {
     backgroundColor: '#f8f8f8',

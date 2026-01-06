@@ -5,11 +5,7 @@ import {
   StyleSheet, 
   Image, 
   Dimensions, 
-  TouchableOpacity, 
-  ActivityIndicator,
   ScrollView,
-  Modal,
-  Alert,
   FlatList
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -18,6 +14,12 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import { useApi } from '../ApiProvider';
 import { showError } from '../utils/errorHandler';
 import StyledTextInput from '../components/StyledTextInput';
+import LoadingScreen from '../components/LoadingScreen';
+import { showErrorAlert, showSuccessAlert, showAlert } from '../utils/alert';
+import AppModal from '../components/Modal';
+import Button from '../components/Button';
+import Pressable from '../components/Pressable';
+import Spinner from '../components/Spinner';
 
 export default function LayoutDetailScreen({ navigation, route }) {
   const { layoutId } = route.params;
@@ -273,7 +275,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
 
   const handleCreateSpot = async () => {
     if (!newSpotData.name.trim()) {
-      Alert.alert("Error", "Spot name is required");
+      showErrorAlert("Spot name is required");
       return;
     }
 
@@ -313,7 +315,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
   const requestVideoPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert(
+      showAlert(
         "Permission Required",
         "We need access to your media library to upload videos."
       );
@@ -365,7 +367,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
       setNewVideoTitle('');
       setNewVideoDescription('');
       await fetchSpotVideos(selectedSpot.id);
-      Alert.alert("Success", "Video uploaded successfully!");
+      showSuccessAlert("Video uploaded successfully!");
     } catch (error) {
       showError(error, "Error", "Failed to upload video");
     } finally {
@@ -374,18 +376,13 @@ export default function LayoutDetailScreen({ navigation, route }) {
   };
 
   if (loading || !layout) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
+    return <LoadingScreen />;
   }
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.imageContainer}>
-        <TouchableOpacity 
-          activeOpacity={1}
+        <Pressable 
           onPress={handleImagePress}
           style={styles.imageTouchable}
         >
@@ -412,7 +409,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
             const top = offsetY + imageTop - (markerSize / 2);
             
             return (
-              <TouchableOpacity
+              <Pressable
                 key={spot.id}
                 style={[
                   styles.spotMarker,
@@ -425,10 +422,10 @@ export default function LayoutDetailScreen({ navigation, route }) {
                 onPress={() => handleSpotPress(spot)}
               >
                 <Text style={styles.spotMarkerText}>📍</Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <View style={styles.infoContainer}>
@@ -437,71 +434,64 @@ export default function LayoutDetailScreen({ navigation, route }) {
         <Text style={styles.instruction}>Tap on the map to add a new spot</Text>
       </View>
 
-      <Modal
+      <AppModal
         visible={showAddSpotModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowAddSpotModal(false)}
+        onClose={() => setShowAddSpotModal(false)}
+        title="Add New Spot"
+        style={[styles.modalContent, { paddingBottom: 12 }]}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add New Spot</Text>
-            
-            <StyledTextInput
-              style={styles.input}
-              placeholder="Spot name *"
-              value={newSpotData.name}
-              onChangeText={(text) => setNewSpotData({ ...newSpotData, name: text })}
-            />
-            
-            <StyledTextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Description (optional)"
-              value={newSpotData.description}
-              onChangeText={(text) => setNewSpotData({ ...newSpotData, description: text })}
-              multiline
-              numberOfLines={3}
-            />
-            
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={[styles.button, styles.cancelButton]}
-                onPress={() => setShowAddSpotModal(false)}
-              >
-                <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[styles.button, styles.createButton]}
-                onPress={handleCreateSpot}
-              >
-                <Text style={[styles.buttonText, styles.createButtonText]}>Create</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+        <StyledTextInput
+          style={styles.input}
+          placeholder="Spot name *"
+          value={newSpotData.name}
+          onChangeText={(text) => setNewSpotData({ ...newSpotData, name: text })}
+        />
+        
+        <StyledTextInput
+          style={[styles.input, styles.textArea]}
+          placeholder="Description (optional)"
+          value={newSpotData.description}
+          onChangeText={(text) => setNewSpotData({ ...newSpotData, description: text })}
+          multiline
+          numberOfLines={3}
+        />
+        
+        <View style={styles.buttonRow}>
+          <Button
+            title="Cancel"
+            onPress={() => setShowAddSpotModal(false)}
+            variant="secondary"
+            size="medium"
+            style={[styles.button, styles.cancelButton]}
+          />
+          
+          <Button
+            title="Create"
+            onPress={handleCreateSpot}
+            variant="primary"
+            size="medium"
+            style={[styles.button, styles.createButton]}
+          />
         </View>
-      </Modal>
+      </AppModal>
 
-      <Modal
+      <AppModal
         visible={showSpotDetailModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => {
+        onClose={() => {
           setShowSpotDetailModal(false);
           setSelectedSpot(null);
           setSpotVideos([]);
         }}
+        style={[styles.modalContent, { paddingBottom: 12 }]}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <ScrollView 
-              style={styles.spotDetailScroll}
-              contentContainerStyle={styles.spotDetailScrollContent}
-              showsVerticalScrollIndicator={true}
-            >
-              {selectedSpot && (
-                <>
-                  <Text style={styles.modalTitle}>{selectedSpot.name}</Text>
+        <ScrollView 
+          style={styles.spotDetailScroll}
+          contentContainerStyle={styles.spotDetailScrollContent}
+          showsVerticalScrollIndicator={true}
+        >
+          {selectedSpot && (
+            <>
+              <Text style={styles.modalTitle}>{selectedSpot.name}</Text>
                   {selectedSpot.description && (
                     <Text style={styles.spotDescription}>{selectedSpot.description}</Text>
                   )}
@@ -516,13 +506,12 @@ export default function LayoutDetailScreen({ navigation, route }) {
                         data={spotVideos}
                         keyExtractor={(item) => item.id}
                         renderItem={({ item }) => (
-                          <TouchableOpacity
+                          <Pressable
                             style={styles.videoItem}
                             onPress={() => {
                               setSelectedVideo(item);
                               setShowVideoPlayer(true);
                             }}
-                            activeOpacity={0.7}
                           >
                             <View style={styles.thumbnailContainer}>
                               {item.thumbnailUrl ? (
@@ -549,7 +538,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
                                 </Text>
                               )}
                             </View>
-                          </TouchableOpacity>
+                          </Pressable>
                         )}
                         scrollEnabled={false}
                       />
@@ -573,30 +562,26 @@ export default function LayoutDetailScreen({ navigation, route }) {
                         multiline
                         numberOfLines={2}
                       />
-                      <TouchableOpacity
+                      <Button
+                        title="📹 Pick Video"
+                        onPress={handlePickVideo}
+                        disabled={uploadingVideo}
+                        loading={uploadingVideo}
+                        variant="primary"
+                        size="medium"
                         style={[
                           styles.button,
                           styles.uploadButton,
                           uploadingVideo && styles.buttonDisabled,
                         ]}
-                        onPress={handlePickVideo}
-                        disabled={uploadingVideo}
-                      >
-                        {uploadingVideo ? (
-                          <ActivityIndicator color="#fff" />
-                        ) : (
-                          <Text style={styles.uploadButtonText}>
-                            📹 Pick Video
-                          </Text>
-                        )}
-                      </TouchableOpacity>
+                      />
                     </View>
                   </View>
                 </>
               )}
 
-              <TouchableOpacity
-                style={[styles.button, styles.cancelButton]}
+              <Button
+                title="Close"
                 onPress={() => {
                   setShowSpotDetailModal(false);
                   setSelectedSpot(null);
@@ -604,30 +589,29 @@ export default function LayoutDetailScreen({ navigation, route }) {
                   setNewVideoTitle('');
                   setNewVideoDescription('');
                 }}
-              >
-                <Text style={[styles.buttonText, styles.cancelButtonText]}>Close</Text>
-              </TouchableOpacity>
+                variant="secondary"
+                size="medium"
+                style={[styles.button, styles.cancelButton]}
+              />
             </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      </AppModal>
 
-      <Modal
+      <AppModal
         visible={showVideoPlayer}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => {
+        onClose={() => {
           setShowVideoPlayer(false);
           setSelectedVideo(null);
           setIsVideoLoaded(false);
           setVideoError(null);
         }}
+        animationType="fade"
+        dismissOnOverlayPress={false}
+        overlayStyle={styles.videoPlayerOverlay}
+        style={styles.videoPlayerContainer}
       >
-        <View style={styles.videoPlayerOverlay}>
-          <View style={styles.videoPlayerContainer}>
             {selectedVideo && (
               <>
-                <TouchableOpacity
+                <Pressable
                   style={styles.videoPlayerCloseButton}
                   onPress={() => {
                     setShowVideoPlayer(false);
@@ -637,13 +621,13 @@ export default function LayoutDetailScreen({ navigation, route }) {
                   }}
                 >
                   <Text style={styles.videoPlayerCloseText}>✕</Text>
-                </TouchableOpacity>
+                </Pressable>
                 {videoError ? (
                   <View style={styles.videoErrorContainer}>
                     <Text style={styles.videoErrorText}>⚠️ Error loading video</Text>
                     <Text style={styles.videoErrorDetails}>{videoError}</Text>
-                    <TouchableOpacity
-                      style={styles.videoRetryButton}
+                    <Button
+                      title="Retry"
                       onPress={() => {
                         setVideoError(null);
                         setIsVideoLoaded(false);
@@ -656,9 +640,10 @@ export default function LayoutDetailScreen({ navigation, route }) {
                           }
                         }
                       }}
-                    >
-                      <Text style={styles.videoRetryButtonText}>Retry</Text>
-                    </TouchableOpacity>
+                      variant="primary"
+                      size="medium"
+                      style={styles.videoRetryButton}
+                    />
                   </View>
                 ) : (
                   <>
@@ -679,7 +664,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
                       />
                     {!isVideoLoaded && !videoError && (
                       <View style={styles.videoLoadingContainer}>
-                        <ActivityIndicator size="large" color="#fff" />
+                        <Spinner size="large" color="#fff" />
                         <Text style={styles.videoLoadingText}>Loading video...</Text>
                         <Text style={styles.videoUrlText} numberOfLines={1}>
                           {selectedVideo.videoUrl}
@@ -700,9 +685,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
                 </View>
               </>
             )}
-          </View>
-        </View>
-      </Modal>
+      </AppModal>
     </ScrollView>
   );
 }

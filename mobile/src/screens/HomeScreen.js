@@ -2,7 +2,6 @@ import { useState, useCallback } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   FlatList,
   Dimensions,
@@ -11,6 +10,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useApi } from '../ApiProvider';
 import axios from 'axios';
 import Button from '../components/Button';
+import LoadingScreen from '../components/LoadingScreen';
+import Pressable from '../components/Pressable';
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -69,7 +70,7 @@ export default function HomeScreen({ navigation, onLogout }) {
   const renderCategory = ({ item: category, index }) => {
     if (index === categories.length) {
       return (
-        <TouchableOpacity
+        <Pressable
           style={styles.newCategoryCard}
           onPress={() =>
             navigation.navigate("Create Category", {
@@ -79,7 +80,7 @@ export default function HomeScreen({ navigation, onLogout }) {
         >
           <Text style={styles.newCategoryIcon}>+</Text>
           <Text style={styles.newCategoryText}>New Category</Text>
-        </TouchableOpacity>
+        </Pressable>
       );
     }
     const cardColor = category.color || "#007AFF";
@@ -92,7 +93,7 @@ export default function HomeScreen({ navigation, onLogout }) {
           { backgroundColor: cardColor },
         ]}
       >
-        <TouchableOpacity
+        <Pressable
           style={styles.categoryCardContent}
           onPress={() => {
             navigation.navigate("Category Workouts", { category });
@@ -102,28 +103,26 @@ export default function HomeScreen({ navigation, onLogout }) {
           <Text style={[styles.categoryCount, { color: textColor, opacity: 0.8 }]}>
             {category.workoutCount} workouts
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.editButton}
+        </Pressable>
+        <Button
+          title="Edit"
           onPress={() => {
             navigation.navigate("Edit Category", {
               category,
               onCategoryUpdated: fetchCategories,
             });
           }}
-        >
-          <Text style={[styles.editButtonText, { color: textColor }]}>Edit</Text>
-        </TouchableOpacity>
+          variant="text"
+          size="small"
+          style={styles.editButton}
+          textStyle={[styles.editButtonText, { color: textColor }]}
+        />
       </View>
     );
   };
 
   if (loading) {
-    return (
-      <View style={styles.container}>
-        <Text>Loading...</Text>
-      </View>
-    );
+    return <LoadingScreen message="Loading..." />;
   }
 
   return (

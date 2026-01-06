@@ -1,17 +1,17 @@
 import { useState, useEffect } from "react";
 import {
   View,
-  Text,
   StyleSheet,
-  Alert,
-  ActivityIndicator,
 } from "react-native";
 import { useApi } from "../ApiProvider";
 import { getCurrentUserId } from "../utils/jwtUtils";
 import handleApiCall from "../utils/apiUtils";
 import { showError } from "../utils/errorHandler";
-import StyledTextInput from "../components/StyledTextInput";
 import Button from "../components/Button";
+import LoadingScreen from "../components/LoadingScreen";
+import FormField from "../components/FormField";
+import Section from "../components/Section";
+import { showSuccessAlert } from "../utils/alert";
 
 export default function PreferencesScreen() {
   const [username, setUsername] = useState("");
@@ -57,7 +57,7 @@ export default function PreferencesScreen() {
         setUsername(res.data.username || "");
         setHeight(res.data.height ? String(res.data.height) : "");
       }
-      Alert.alert("Success", "Profile updated successfully");
+      showSuccessAlert("Profile updated successfully");
     } catch (error) {
       showError(error, "Error", "Failed to update profile");
     } finally {
@@ -66,44 +66,38 @@ export default function PreferencesScreen() {
   };
 
   if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
+    return <LoadingScreen />;
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.section}>
-        <Text style={styles.label}>Username</Text>
-        <Text style={styles.description}>
-          Choose a username that others can use to find and message you
-        </Text>
-        <StyledTextInput
-          style={styles.input}
-          placeholder="Enter username"
-          value={username}
-          onChangeText={setUsername}
-          autoCapitalize="none"
-          autoCorrect={false}
-          maxLength={20}
+      <Section>
+        <FormField
+          label="Username"
+          description="Choose a username that others can use to find and message you"
+          inputProps={{
+            placeholder: "Enter username",
+            value: username,
+            onChangeText: setUsername,
+            autoCapitalize: "none",
+            autoCorrect: false,
+            maxLength: 20,
+          }}
         />
-      </View>
+      </Section>
 
-      <View style={styles.section}>
-        <Text style={styles.label}>Height</Text>
-        <Text style={styles.description}>
-          Your height (optional)
-        </Text>
-        <StyledTextInput
-          style={styles.input}
-          placeholder="Height (cm)"
-          value={height}
-          onChangeText={setHeight}
-          keyboardType="numeric"
+      <Section>
+        <FormField
+          label="Height"
+          description="Your height (optional)"
+          inputProps={{
+            placeholder: "Height (cm)",
+            value: height,
+            onChangeText: setHeight,
+            keyboardType: "numeric",
+          }}
         />
-      </View>
+      </Section>
 
       <Button
         title="Save All Changes"
@@ -123,37 +117,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
     padding: 16,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f5f5f5",
-  },
-  section: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 8,
-  },
-  description: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 16,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 16,
   },
   saveButton: {
     marginTop: 8,

@@ -5,8 +5,8 @@ import { useApi } from "../ApiProvider";
 import axios from 'axios';
 import { getErrorMessage } from "../utils/errorHandler";
 import { VALIDATION } from "../shared/constants.js";
-import StyledTextInput from "../components/StyledTextInput";
 import Button from "../components/Button";
+import FormField from "../components/FormField";
 
 // Validation functions matching backend schema
 const validateEmail = (email) => {
@@ -178,37 +178,27 @@ export default function LoginScreen({ onLoggedIn }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.inputGroup}>
-        <StyledTextInput
-          placeholder="Email"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={handleEmailChange}
-          style={[
-            styles.input,
-            emailError && styles.inputError
-          ]}
-        />
-        {emailError && (
-          <Text style={styles.errorText}>{emailError}</Text>
-        )}
-      </View>
+      <FormField
+        label={null}
+        error={emailError}
+        inputProps={{
+          placeholder: "Email",
+          autoCapitalize: "none",
+          value: email,
+          onChangeText: handleEmailChange,
+        }}
+      />
 
-      <View style={styles.inputGroup}>
-        <StyledTextInput
-          placeholder="Password"
-          secureTextEntry
-          value={password}
-          onChangeText={handlePasswordChange}
-          style={[
-            styles.input,
-            passwordError && styles.inputError
-          ]}
-        />
-        {passwordError && (
-          <Text style={styles.errorText}>{passwordError}</Text>
-        )}
-      </View>
+      <FormField
+        label={null}
+        error={passwordError}
+        inputProps={{
+          placeholder: "Password",
+          secureTextEntry: true,
+          value: password,
+          onChangeText: handlePasswordChange,
+        }}
+      />
 
       {generalError && !emailError && !passwordError && (
         <Text style={styles.generalErrorText}>{generalError}</Text>
@@ -240,26 +230,6 @@ const styles = StyleSheet.create({
   container: {
     padding: 16,
     gap: 12,
-  },
-  inputGroup: {
-    gap: 4,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    padding: 10,
-    borderRadius: 8,
-    fontSize: 16,
-  },
-  inputError: {
-    borderColor: "#ff3b30",
-    borderWidth: 2,
-  },
-  errorText: {
-    color: "#ff3b30",
-    fontSize: 12,
-    marginTop: -4,
-    marginLeft: 4,
   },
   generalErrorText: {
     color: "#ff3b30",

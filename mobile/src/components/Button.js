@@ -4,7 +4,8 @@ import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-nat
 /**
  * Reusable Button component with variants and states
  * 
- * @param {string} title - Button text
+ * @param {string} title - Button text (ignored if children provided)
+ * @param {ReactNode} children - Custom content (overrides title)
  * @param {function} onPress - Press handler
  * @param {string} variant - 'primary' | 'secondary' | 'outline' | 'text'
  * @param {boolean} disabled - Disabled state
@@ -15,6 +16,7 @@ import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-nat
  */
 export default function Button({
   title,
+  children,
   onPress,
   variant = 'primary',
   disabled = false,
@@ -53,6 +55,8 @@ export default function Button({
           size="small" 
           color={variant === 'primary' ? '#FFFFFF' : '#007AFF'} 
         />
+      ) : children ? (
+        children
       ) : (
         <Text style={textStyles}>{title}</Text>
       )}

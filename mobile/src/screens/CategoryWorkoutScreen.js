@@ -2,13 +2,9 @@ import { useState, useEffect } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   FlatList,
-  Alert,
   ScrollView,
-  Modal,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -18,7 +14,13 @@ import { useApi } from "../ApiProvider";
 import { showError } from "../utils/errorHandler";
 import {formatDate} from "../utils/stringUtils";
 import axios from "axios";
+import { showSuccessAlert } from "../utils/alert";
 import handleApiCall from "../utils/apiUtils";
+import Button from "../components/Button";
+import Pressable from "../components/Pressable";
+import AppModal from "../components/Modal";
+import Spinner from "../components/Spinner";
+import LoadingScreen from "../components/LoadingScreen";
 
 export default function CategoryWorkoutsScreen({ navigation, route }) {
   const { category } = route.params;
@@ -183,7 +185,7 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
         workoutData: workoutData,
       });
 
-      Alert.alert("Success", "Workout shared successfully!");
+      showSuccessAlert("Workout shared successfully!");
       setShowShareModal(false);
       setSelectedWorkout(null);
     } catch (error) {
@@ -198,7 +200,7 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
 
     return (
       <View style={styles.workoutCard}>
-        <TouchableOpacity
+        <Pressable
           style={styles.workoutHeader}
           onPress={() => toggleWorkout(workout.id)}
         >
@@ -211,18 +213,19 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
             </Text>
           </View>
           <View style={styles.workoutHeaderActions}>
-            <TouchableOpacity
-              style={styles.shareButton}
+            <Button
+              title="Share"
               onPress={(e) => {
                 e.stopPropagation();
                 handleShareWorkout(workout);
               }}
-            >
-              <Text style={styles.shareButtonText}>Share</Text>
-            </TouchableOpacity>
+              variant="outline"
+              size="small"
+              style={styles.shareButton}
+            />
             <Text style={styles.expandIcon}>{isExpanded ? "▼" : "▶"}</Text>
           </View>
-        </TouchableOpacity>
+        </Pressable>
 
         {isExpanded && (
           <View style={styles.exercisesContainer}>
@@ -256,7 +259,7 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
     <View style={styles.dateRangeContainer}>
       <Text style={styles.dateRangeTitle}>Filter by Date Range:</Text>
       <View style={styles.dateInputs}>
-        <TouchableOpacity
+        <Pressable
           style={styles.dateButton}
           onPress={() => setShowDatePicker("start")}
         >
@@ -265,9 +268,9 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
               ? dateRange.startDate.toLocaleDateString()
               : formatDate(workouts.at(-1)?.createdAt)}{" "}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
+        <Pressable
           style={styles.dateButton}
           onPress={() => setShowDatePicker("end")}
         >
@@ -276,26 +279,28 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
               ? dateRange.endDate.toLocaleDateString()
               : formatDate(workouts[0]?.createdAt)}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <View style={styles.dateActions}>
-        <TouchableOpacity
-          style={styles.applyFilterButton}
+        <Button
+          title="Apply Filter"
           onPress={() => fetchWorkouts(true)}
-        >
-          <Text style={styles.applyFilterButtonText}>Apply Filter</Text>
-        </TouchableOpacity>
+          variant="primary"
+          size="medium"
+          style={styles.applyFilterButton}
+        />
 
-        <TouchableOpacity
-          style={styles.clearFilterButton}
+        <Button
+          title="Reset"
           onPress={() => {
             setDateRange({ startDate: null, endDate: null });
             setShowDatePicker(false);
           }}
-        >
-          <Text style={styles.clearFilterButtonText}>Reset</Text>
-        </TouchableOpacity>
+          variant="outline"
+          size="medium"
+          style={styles.clearFilterButton}
+        />
       </View>
     </View>
   );
@@ -303,7 +308,7 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text>Loading workouts...</Text>
+        <LoadingScreen message="Loading workouts..." />
       </SafeAreaView>
     );
   }
@@ -318,8 +323,8 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
       <DateRangeSelector />
 
       {workouts.length > 0 && (
-        <TouchableOpacity
-          style={styles.toggleButton}
+        <Button
+          title={showChart ? "Hide Charts" : "Show Progress"}
           onPress={() => {
             const newShowChart = !showChart;
             setShowChart(newShowChart);
@@ -327,11 +332,10 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
               fetchWorkouts(true);
             }
           }}
-        >
-          <Text style={styles.toggleButtonText}>
-            {showChart ? "Hide Charts" : "Show Progress"}
-          </Text>
-        </TouchableOpacity>
+          variant="secondary"
+          size="medium"
+          style={styles.toggleButton}
+        />
       )}
 
       {workouts.length > 0 && showChart && (
@@ -339,22 +343,22 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
           <View style={styles.chartHeader}>
             <Text style={styles.chartTitle}>Exercise Progress</Text>
             <View style={styles.toggleContainer}>
-              <TouchableOpacity
+              <Pressable
                 style={[styles.toggleOption, showVolume && styles.toggleOptionActive]}
                 onPress={() => setShowVolume(true)}
               >
                 <Text style={[styles.toggleText, showVolume && styles.toggleTextActive]}>
                   Volume
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+              </Pressable>
+              <Pressable
                 style={[styles.toggleOption, !showVolume && styles.toggleOptionActive]}
                 onPress={() => setShowVolume(false)}
               >
                 <Text style={[styles.toggleText, !showVolume && styles.toggleTextActive]}>
                   Reps
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
           {Object.keys(progressData).length === 0 ? (
@@ -451,19 +455,18 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
           <Text style={styles.emptyText}>
             Let's create your first workout! 💪
           </Text>
-          <TouchableOpacity
-            style={styles.createFirstButton}
+          <Button
+            title="Create First Workout"
             onPress={() => {
               navigation.navigate("Create Workout", {
                 categories: [category],
                 initialCategoryId: category.id,
               });
             }}
-          >
-            <Text style={styles.createFirstButtonText}>
-              Create First Workout
-            </Text>
-          </TouchableOpacity>
+            variant="primary"
+            size="large"
+            style={styles.createFirstButton}
+          />
         </View>
       ) : (
         <FlatList
@@ -498,73 +501,67 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
         />
       )}
 
-      <Modal
+      <AppModal
         visible={showShareModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowShareModal(false)}
+        onClose={() => setShowShareModal(false)}
+        title="Share Workout"
+        subtitle="Select a conversation"
+        style={styles.modalContent}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Share Workout</Text>
-            <Text style={styles.modalSubtitle}>Select a conversation</Text>
-            
-            {conversations.length === 0 ? (
-              <View style={styles.emptyConversations}>
-                <Text style={styles.emptyText}>No conversations yet</Text>
-                <TouchableOpacity
-                  style={styles.newConversationButton}
-                  onPress={() => {
-                    setShowShareModal(false);
-                    navigation.navigate("Conversations");
-                  }}
-                >
-                  <Text style={styles.newConversationButtonText}>
-                    Start a Conversation
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <FlatList
-                data={conversations}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item: conversation }) => {
-                  const participants = conversation.participants || [];
-                  const usernames = participants
-                    .map(p => p.user?.username)
-                    .filter(Boolean)
-                    .join(", ");
-                  
-                  return (
-                    <TouchableOpacity
-                      style={styles.conversationItem}
-                      onPress={() => shareToConversation(conversation.id)}
-                      disabled={sharing}
-                    >
-                      <Text style={styles.conversationName}>
-                        {usernames || "Conversation"}
-                      </Text>
-                      {sharing && (
-                        <ActivityIndicator size="small" color="#007AFF" />
-                      )}
-                    </TouchableOpacity>
-                  );
-                }}
-              />
-            )}
-
-            <TouchableOpacity
-              style={styles.modalCloseButton}
+        {conversations.length === 0 ? (
+          <View style={styles.emptyConversations}>
+            <Text style={styles.emptyText}>No conversations yet</Text>
+            <Button
+              title="Start a Conversation"
               onPress={() => {
                 setShowShareModal(false);
-                setSelectedWorkout(null);
+                navigation.navigate("Conversations");
               }}
-            >
-              <Text style={styles.modalCloseButtonText}>Cancel</Text>
-            </TouchableOpacity>
+              variant="primary"
+              size="medium"
+              style={styles.newConversationButton}
+            />
           </View>
-        </View>
-      </Modal>
+        ) : (
+          <FlatList
+            data={conversations}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item: conversation }) => {
+              const participants = conversation.participants || [];
+              const usernames = participants
+                .map(p => p.user?.username)
+                .filter(Boolean)
+                .join(", ");
+              
+              return (
+                <Pressable
+                  style={styles.conversationItem}
+                  onPress={() => shareToConversation(conversation.id)}
+                  disabled={sharing}
+                >
+                  <Text style={styles.conversationName}>
+                    {usernames || "Conversation"}
+                  </Text>
+                  {sharing && (
+                    <Spinner size="small" color="#007AFF" />
+                  )}
+                </Pressable>
+              );
+            }}
+          />
+        )}
+
+        <Button
+          title="Cancel"
+          onPress={() => {
+            setShowShareModal(false);
+            setSelectedWorkout(null);
+          }}
+          variant="secondary"
+          size="medium"
+          style={styles.modalCloseButton}
+        />
+      </AppModal>
       </ScrollView>
     </SafeAreaView>
   );

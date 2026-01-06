@@ -2,12 +2,9 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   FlatList,
-  KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useApi } from "../ApiProvider";
@@ -16,6 +13,8 @@ import handleApiCall from "../utils/apiUtils";
 import axios from "axios";
 import StyledTextInput from "../components/StyledTextInput";
 import Button from "../components/Button";
+import LoadingScreen from "../components/LoadingScreen";
+import KeyboardAvoidingContainer from "../components/KeyboardAvoidingContainer";
 
 export default function ConversationScreen({ route }) {
   const { conversationId } = route.params;
@@ -177,12 +176,13 @@ export default function ConversationScreen({ route }) {
             {message.content}
           </Text>
           {hasWorkoutData && !isCurrentUser && (
-            <TouchableOpacity
-              style={styles.importButton}
+            <Button
+              title="📥 Import Workout"
               onPress={() => importWorkout(message.workoutData)}
-            >
-              <Text style={styles.importButtonText}>📥 Import Workout</Text>
-            </TouchableOpacity>
+              variant="primary"
+              size="small"
+              style={styles.importButton}
+            />
           )}
           <Text
             style={[
@@ -198,17 +198,12 @@ export default function ConversationScreen({ route }) {
   };
 
   if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
+    return <LoadingScreen />;
   }
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAvoidingContainer
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
       <FlatList
@@ -241,19 +236,13 @@ export default function ConversationScreen({ route }) {
           style={styles.sendButton}
         />
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardAvoidingContainer>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     backgroundColor: "#f5f5f5",
   },
   messagesList: {

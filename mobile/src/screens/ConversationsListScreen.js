@@ -2,12 +2,8 @@ import { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   FlatList,
-  ActivityIndicator,
-  Alert,
-  Modal,
   Platform,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -15,8 +11,13 @@ import { useApi } from "../ApiProvider";
 import { getCurrentUserId } from "../utils/jwtUtils";
 import handleApiCall from "../utils/apiUtils";
 import { showError } from "../utils/errorHandler";
-import StyledTextInput from "../components/StyledTextInput";
 import Button from "../components/Button";
+import LoadingScreen from "../components/LoadingScreen";
+import EmptyState from "../components/EmptyState";
+import AppModal from "../components/Modal";
+import { showErrorAlert } from "../utils/alert";
+import Pressable from "../components/Pressable";
+import StyledTextInput from "../components/StyledTextInput";
 
 export default function ConversationsListScreen({ navigation }) {
   const [conversations, setConversations] = useState([]);
@@ -40,7 +41,7 @@ export default function ConversationsListScreen({ navigation }) {
 
   const createConversation = async () => {
     if (!peerUsername.trim()) {
-      Alert.alert("Error", "Please enter a username");
+      showErrorAlert("Please enter a username");
       return;
     }
 
@@ -120,7 +121,7 @@ export default function ConversationsListScreen({ navigation }) {
     const displayName = peerUser?.username || "Unknown";
 
     return (
-      <TouchableOpacity
+      <Pressable
         style={styles.conversationItem}
         onPress={() => {
           navigation.navigate("Conversation", {
@@ -148,79 +149,68 @@ export default function ConversationsListScreen({ navigation }) {
             </Text>
           )}
         </View>
-      </TouchableOpacity>
+      </Pressable>
     );
   };
 
   if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
+    return <LoadingScreen />;
   }
 
   if (conversations.length === 0) {
     return (
       <View style={styles.container}>
-        <View style={styles.centerContainer}>
-          <Text style={styles.emptyText}>No conversations yet</Text>
-          <Text style={styles.emptySubtext}>
-            Start a conversation with another user
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={styles.newMessageButton}
+        <EmptyState
+          message="No conversations yet"
+          subtext="Start a conversation with another user"
+        />
+        <Button
+          title="+ New Message"
           onPress={() => setShowNewConversationModal(true)}
-        >
-          <Text style={styles.newMessageButtonText}>+ New Message</Text>
-        </TouchableOpacity>
+          variant="primary"
+          size="large"
+          style={styles.newMessageButton}
+        />
 
-        <Modal
+        <AppModal
           visible={showNewConversationModal}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setShowNewConversationModal(false)}
+          onClose={() => {
+            setShowNewConversationModal(false);
+            setPeerUsername("");
+          }}
+          title="New Message"
+          subtitle="Enter the username of the person you want to message"
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>New Message</Text>
-              <Text style={styles.modalSubtitle}>
-                Enter the username of the person you want to message
-              </Text>
-              <StyledTextInput
-                style={styles.userIdInput}
-                placeholder="Username"
-                value={peerUsername}
-                onChangeText={setPeerUsername}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.cancelButton]}
-                  onPress={() => {
-                    setShowNewConversationModal(false);
-                    setPeerUsername("");
-                  }}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.createButton, creating && styles.createButtonDisabled]}
-                  onPress={createConversation}
-                  disabled={creating}
-                >
-                  {creating ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <Text style={styles.createButtonText}>Start Chat</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
+          <StyledTextInput
+            style={styles.userIdInput}
+            placeholder="Username"
+            value={peerUsername}
+            onChangeText={setPeerUsername}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <View style={styles.modalButtons}>
+            <Button
+              title="Cancel"
+              onPress={() => {
+                setShowNewConversationModal(false);
+                setPeerUsername("");
+              }}
+              variant="secondary"
+              size="medium"
+              style={[styles.modalButton, styles.cancelButton]}
+            />
+            <Button
+              title="Start Chat"
+              onPress={createConversation}
+              disabled={creating}
+              loading={creating}
+              variant="primary"
+              size="medium"
+              style={[styles.modalButton, styles.createButton]}
+            />
           </View>
-        </Modal>
+        </AppModal>
       </View>
     );
   }
@@ -233,57 +223,53 @@ export default function ConversationsListScreen({ navigation }) {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
       />
-      <TouchableOpacity
-        style={styles.newMessageButton}
+      <Button
+        title="+ New Message"
         onPress={() => setShowNewConversationModal(true)}
-      >
-        <Text style={styles.newMessageButtonText}>+ New Message</Text>
-      </TouchableOpacity>
+        variant="primary"
+        size="large"
+        style={styles.newMessageButton}
+      />
 
-      <Modal
+      <AppModal
         visible={showNewConversationModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowNewConversationModal(false)}
+        onClose={() => {
+          setShowNewConversationModal(false);
+          setPeerUsername("");
+        }}
+        title="New Message"
+        subtitle="Enter the username of the person you want to message"
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>New Message</Text>
-            <Text style={styles.modalSubtitle}>
-              Enter the username of the person you want to message
-            </Text>
-            <TextInput
-              style={styles.userIdInput}
-              placeholder="Username"
-              value={peerUsername}
-              onChangeText={setPeerUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <View style={styles.modalButtons}>
-              <Button
-                title="Cancel"
-                onPress={() => {
-                  setShowNewConversationModal(false);
-                  setPeerUserId("");
-                }}
-                variant="secondary"
-                size="medium"
-                style={[styles.modalButton, styles.cancelButton]}
-              />
-              <Button
-                title="Start Chat"
-                onPress={createConversation}
-                disabled={creating}
-                loading={creating}
-                variant="primary"
-                size="medium"
-                style={[styles.modalButton, styles.createButton]}
-              />
-            </View>
-          </View>
+        <StyledTextInput
+          style={styles.userIdInput}
+          placeholder="Username"
+          value={peerUsername}
+          onChangeText={setPeerUsername}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <View style={styles.modalButtons}>
+          <Button
+            title="Cancel"
+            onPress={() => {
+              setShowNewConversationModal(false);
+              setPeerUserId("");
+            }}
+            variant="secondary"
+            size="medium"
+            style={[styles.modalButton, styles.cancelButton]}
+          />
+          <Button
+            title="Start Chat"
+            onPress={createConversation}
+            disabled={creating}
+            loading={creating}
+            variant="primary"
+            size="medium"
+            style={[styles.modalButton, styles.createButton]}
+          />
         </View>
-      </Modal>
+      </AppModal>
     </View>
   );
 }
@@ -346,16 +332,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
   },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#666",
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: "#999",
-  },
   newMessageButton: {
     position: "absolute",
     bottom: Platform.OS === "android" ? 50 : 30,
@@ -375,30 +351,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 20,
-    width: "85%",
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginBottom: 8,
-    color: "#333",
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 20,
   },
   userIdInput: {
     borderWidth: 1,
