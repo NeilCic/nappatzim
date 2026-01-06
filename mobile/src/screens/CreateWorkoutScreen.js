@@ -953,16 +953,14 @@ const styles = StyleSheet.create({
   basicSetupSection: {
     marginTop: 12,
     marginBottom: 12,
-    paddingTop: 12,
+    padding: 12,
     borderTopWidth: 1,
     borderTopColor: "#e0e0e0",
   },
   basicSetupSectionUnapplied: {
     backgroundColor: "#ffe0e0",
-    padding: 12,
     borderRadius: 8,
-    marginTop: 12,
-    marginBottom: 12,
+    // Same padding as base - no dimension changes
   },
   sectionTitle: {
     fontSize: 14,
