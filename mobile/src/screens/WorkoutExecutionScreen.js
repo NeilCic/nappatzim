@@ -29,6 +29,7 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
   const { api } = useApi();
   const soundRef = useRef();
   const scrollViewRef = useRef(null);
+  const hasCreatedWorkout = useRef(false);
 
   const exercises = workoutData.exercises || [];
   const currentExercise = exercises[currentExerciseIndex];
@@ -37,7 +38,8 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
   const completionSound = require("../../assets/contador-385321.mp3");
 
   useEffect(() => {
-    if (completedExercises.length === exercises.length) {
+    if (completedExercises.length === exercises.length && exercises.length > 0 && !hasCreatedWorkout.current) {
+      hasCreatedWorkout.current = true;
       handleCreateWorkout(workoutData);
     }
   }, [completedExercises]);
@@ -422,17 +424,12 @@ export default function WorkoutExecutionScreen({ navigation, route }) {
               </View>
             </>
           ) : (
-            <Button
-              onPress={() => handleCreateWorkout(workoutData)}
-              variant="primary"
-              size="medium"
-              style={styles.timerButton}
-            >
+            <View style={styles.doneIconContainer}>
               <Image
                 source={require("../../assets/green-done.jpg")}
                 style={styles.doneIcon}
               />
-            </Button>
+            </View>
           )}
         </View>
 
@@ -723,6 +720,13 @@ const styles = StyleSheet.create({
     height: "100%",
     backgroundColor: "#007AFF",
     borderRadius: 4,
+  },
+  doneIconContainer: {
+    backgroundColor: "#FFFFFF",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
   },
   doneIcon: {
     width: "100%",
