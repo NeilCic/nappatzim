@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { TouchableOpacity, StyleSheet, Image, Text, View } from "react-native";
+import { TouchableOpacity, StyleSheet, Image, Text, View, ActivityIndicator } from "react-native";
 import axios from "axios";
 import Constants from "expo-constants";
 
@@ -42,6 +42,7 @@ const getApiBaseUrl = () => {
 
 export default function App() {
   const [isAuthed, setIsAuthed] = useState(null);
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
 
   const { api, setAuthToken } = useMemo(
@@ -62,6 +63,7 @@ export default function App() {
   useEffect(() => {
     const bootstrapAuth = async () => {
       try {
+        setIsBootstrapping(true);
         const token = await AsyncStorage.getItem("token");
         const refreshToken = await AsyncStorage.getItem("refreshToken");
         
@@ -132,10 +134,23 @@ export default function App() {
       } catch (error) {
         // Unexpected error - show login
         setIsAuthed(false);
+      } finally {
+        setIsBootstrapping(false);
       }
     };
     bootstrapAuth();
   }, [setAuthToken, api, apiBaseUrl]);
+
+  if (isBootstrapping) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>
+          Waking up server and checking your session...
+        </Text>
+      </View>
+    );
+  }
 
   const PreferencesButton = ({ navigation }) => (
     <TouchableOpacity
@@ -315,5 +330,16 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     resizeMode: "contain",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#000", // match your app background if different
+  },
+  loadingText: {
+    marginTop: 16,
+    color: "#fff",
+    fontSize: 16,
   },
 });
