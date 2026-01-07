@@ -64,7 +64,7 @@ export default function HomeScreen({ navigation, onLogout }) {
   );
 
   const startNewWorkout = () => {
-    navigation.navigate("Create Workout", { categories });
+    navigation.navigate("Create Workout");
   };
 
   const renderCategory = ({ item: category, index }) => {

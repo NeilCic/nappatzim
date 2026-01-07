@@ -17,7 +17,7 @@ import Button from "../components/Button";
 import LoadingScreen from "../components/LoadingScreen";
 import KeyboardAvoidingContainer from "../components/KeyboardAvoidingContainer";
 
-export default function ConversationScreen({ route }) {
+export default function ConversationScreen({ route, navigation }) {
   const { conversationId } = route.params;
   const [messages, setMessages] = useState([]);
   const [messageText, setMessageText] = useState("");

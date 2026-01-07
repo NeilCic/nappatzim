@@ -465,7 +465,6 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
             title="Create First Workout"
             onPress={() => {
               navigation.navigate("Create Workout", {
-                categories: [category],
                 initialCategoryId: category.id,
               });
             }}
