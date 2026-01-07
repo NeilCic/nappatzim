@@ -253,7 +253,7 @@ export default function ConversationsListScreen({ navigation }) {
             title="Cancel"
             onPress={() => {
               setShowNewConversationModal(false);
-              setPeerUserId("");
+              setPeerUsername("");
             }}
             variant="secondary"
             size="medium"
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   },
   newMessageButton: {
     position: "absolute",
-    bottom: Platform.OS === "android" ? 50 : 30,
+    bottom: Platform.OS === "android" ? 80 : 40,
     right: 20,
     backgroundColor: "#007AFF",
     paddingHorizontal: 20,

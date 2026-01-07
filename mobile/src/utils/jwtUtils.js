@@ -69,3 +69,19 @@ export async function getCurrentUserId() {
   }
 }
 
+/**
+ * Fetches the current user's username from the API
+ * @param {Object} api - The API instance from useApi hook
+ * @returns {Promise<string|null>} The username or null if not found
+ */
+export async function getCurrentUsername(api) {
+  if (!api) return null;
+  
+  try {
+    const response = await api.get("/auth/me");
+    return response?.data?.username || null;
+  } catch (error) {
+    return null;
+  }
+}
+

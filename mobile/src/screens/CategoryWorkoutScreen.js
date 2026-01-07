@@ -16,6 +16,7 @@ import {formatDate} from "../utils/stringUtils";
 import axios from "axios";
 import { showSuccessAlert } from "../utils/alert";
 import handleApiCall from "../utils/apiUtils";
+import { getCurrentUsername } from "../utils/jwtUtils";
 import Button from "../components/Button";
 import Pressable from "../components/Pressable";
 import AppModal from "../components/Modal";
@@ -39,10 +40,15 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
   const [conversations, setConversations] = useState([]);
   const [sharing, setSharing] = useState(false);
   const [showVolume, setShowVolume] = useState(true); // true = volume, false = reps
+  const [currentUsername, setCurrentUsername] = useState(null);
   const { api } = useApi();
 
   useEffect(() => {
     fetchWorkouts();
+    (async () => {
+      const username = await getCurrentUsername(api);
+      setCurrentUsername(username);
+    })();
   }, []);
 
   const fetchWorkouts = async (includeProgress = false) => {
@@ -219,7 +225,7 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
                 e.stopPropagation();
                 handleShareWorkout(workout);
               }}
-              variant="outline"
+              variant="primary"
               size="small"
               style={styles.shareButton}
             />
@@ -529,8 +535,10 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
             renderItem={({ item: conversation }) => {
               const participants = conversation.participants || [];
               const usernames = participants
-                .map(p => p.user?.username)
-                .filter(Boolean)
+                .map((p) => p.user?.username)
+                .filter((username) =>
+                  currentUsername ? username && username !== currentUsername : !!username
+                )
                 .join(", ");
               
               return (

@@ -6,6 +6,7 @@ import {
   FlatList,
   Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useApi } from "../ApiProvider";
 import { getCurrentUserId } from "../utils/jwtUtils";
@@ -198,49 +199,60 @@ export default function ConversationScreen({ route }) {
   };
 
   if (loading) {
-    return <LoadingScreen />;
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <LoadingScreen />
+      </SafeAreaView>
+    );
   }
 
   return (
-    <KeyboardAvoidingContainer
-      style={styles.container}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
-    >
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.messagesList}
-        inverted={false}
-        onContentSizeChange={() => {
-          flatListRef.current?.scrollToEnd({ animated: false });
-        }}
-      />
-      <View style={styles.inputContainer}>
-        <StyledTextInput
-          style={styles.input}
-          value={messageText}
-          onChangeText={setMessageText}
-          placeholder="Type a message..."
-          multiline
-          maxLength={1000}
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingContainer
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 140 : 110}
+      >
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.messagesList}
+          inverted={false}
+          onContentSizeChange={() => {
+            flatListRef.current?.scrollToEnd({ animated: false });
+          }}
         />
-        <Button
-          title="Send"
-          onPress={sendMessage}
-          disabled={!messageText.trim() || sending}
-          loading={sending}
-          variant="primary"
-          size="small"
-          style={styles.sendButton}
-        />
-      </View>
-    </KeyboardAvoidingContainer>
+        <View style={styles.inputContainer}>
+          <StyledTextInput
+            style={styles.input}
+            value={messageText}
+            onChangeText={setMessageText}
+            placeholder="Type a message..."
+            multiline
+            maxLength={1000}
+          />
+          <Button
+            title="Send"
+            onPress={sendMessage}
+            disabled={!messageText.trim() || sending}
+            loading={sending}
+            variant="primary"
+            size="small"
+            style={styles.sendButton}
+          />
+        </View>
+      </KeyboardAvoidingContainer>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+  },
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
