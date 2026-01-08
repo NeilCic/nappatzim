@@ -746,6 +746,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
+    flex: 1,
+    marginHorizontal: 4,
   },
   applyFilterButtonText: {
     color: "white",
@@ -756,6 +758,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
+    flex: 1,
+    marginHorizontal: 4,
   },
   clearFilterButtonText: {
     color: "white",
@@ -855,6 +859,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
+    minWidth: 70,
   },
   shareButtonText: {
     color: "white",
