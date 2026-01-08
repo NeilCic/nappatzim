@@ -12,6 +12,12 @@ import axios from 'axios';
 import Button from '../components/Button';
 import LoadingScreen from '../components/LoadingScreen';
 import Pressable from '../components/Pressable';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { 
+  useAnimatedStyle, 
+  useSharedValue, 
+  withSpring 
+} from 'react-native-reanimated';
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -67,37 +73,30 @@ export default function HomeScreen({ navigation, onLogout }) {
     navigation.navigate("Create Workout");
   };
 
-  const renderCategory = ({ item: category, index }) => {
-    if (index === categories.length) {
-      return (
-        <Pressable
-          style={styles.newCategoryCard}
-          onPress={() =>
-            navigation.navigate("Create Category", {
-              onCategoryCreated: fetchCategories,
-            })
-          }
-        >
-          <Text style={styles.newCategoryIcon}>+</Text>
-          <Text style={styles.newCategoryText}>New Category</Text>
-        </Pressable>
-      );
-    }
+  const AnimatedCard = ({ category, onPress }) => {
+    const scale = useSharedValue(1);
     const cardColor = category.color || "#007AFF";
     const textColor = isLightColor(cardColor) ? "#000000" : "#FFFFFF";
     
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: scale.value }],
+    }));
+
+    const handlePressIn = () => {
+      scale.value = withSpring(0.95, { damping: 15, stiffness: 300 });
+    };
+
+    const handlePressOut = () => {
+      scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+    };
+
     return (
-      <View
-        style={[
-          styles.categoryCard,
-          { backgroundColor: cardColor },
-        ]}
-      >
+      <Animated.View style={[styles.categoryCard, { backgroundColor: cardColor }, animatedStyle]}>
         <Pressable
           style={styles.categoryCardContent}
-          onPress={() => {
-            navigation.navigate("Category Workouts", { category });
-          }}
+          onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
         >
           <Text style={[styles.categoryName, { color: textColor }]}>{category.name}</Text>
           <Text style={[styles.categoryCount, { color: textColor, opacity: 0.8 }]}>
@@ -117,7 +116,34 @@ export default function HomeScreen({ navigation, onLogout }) {
           style={styles.editButton}
           textStyle={[styles.editButtonText, { color: textColor }]}
         />
-      </View>
+      </Animated.View>
+    );
+  };
+
+  const renderCategory = ({ item: category, index }) => {
+    if (index === categories.length) {
+      return (
+        <Pressable
+          style={styles.newCategoryCard}
+          onPress={() =>
+            navigation.navigate("Create Category", {
+              onCategoryCreated: fetchCategories,
+            })
+          }
+        >
+          <Text style={styles.newCategoryIcon}>+</Text>
+          <Text style={styles.newCategoryText}>New Category</Text>
+        </Pressable>
+      );
+    }
+    
+    return (
+      <AnimatedCard
+        category={category}
+        onPress={() => {
+          navigation.navigate("Category Workouts", { category });
+        }}
+      />
     );
   };
 
@@ -126,16 +152,23 @@ export default function HomeScreen({ navigation, onLogout }) {
   }
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={['#F8F9FA', '#E8ECF0', '#F8F9FA']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.container}
+    >
       <View style={styles.topHalf}>
-        <Button
-          title="+ New Workout"
-          onPress={startNewWorkout}
-          disabled={categories.length === 0}
-          variant="primary"
-          size="large"
-          style={styles.newWorkoutButton}
-        />
+        <View style={styles.buttonWrapper}>
+          <Button
+            title="+ New Workout"
+            onPress={startNewWorkout}
+            disabled={categories.length === 0}
+            variant="gradient"
+            size="large"
+            style={styles.newWorkoutButton}
+          />
+        </View>
       </View>
 
       <View style={styles.bottomHalf}>
@@ -162,7 +195,7 @@ export default function HomeScreen({ navigation, onLogout }) {
         size="small"
         style={styles.logoutButton}
       />
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -172,8 +205,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   topHalf: {
-    flex: 1,
+    flex: 0.8, // Reduced from flex: 1 to give more space to bottomHalf
     padding: 20,
+    paddingTop: 140,
     justifyContent: "center",
   },
   bottomHalf: {
@@ -187,9 +221,14 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     color: "#333",
   },
+  buttonWrapper: {
+    width: '100%',
+    alignItems: 'center',
+  },
   newWorkoutButton: {
     borderRadius: 15,
     marginBottom: 20,
+    width: '100%',
   },
   previousWorkoutButton: {
     backgroundColor: "white",
@@ -294,6 +333,6 @@ const styles = StyleSheet.create({
   },
   categoriesList: {
     paddingHorizontal: 20,
-    paddingBottom: 30, // Extra padding to avoid Android navigation bar overlap
+    paddingBottom: 30,
   },
 });

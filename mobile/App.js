@@ -204,7 +204,19 @@ export default function App() {
   return (
     <ApiProvider value={{ api, setAuthToken }}>
       <NavigationContainer>
-        <Stack.Navigator>
+        <Stack.Navigator
+          screenOptions={{
+            animation: 'slide_from_right',
+            animationDuration: 300,
+            headerStyle: {
+              backgroundColor: '#F8F9FA',
+            },
+            headerTintColor: '#1D1D1F',
+            headerTitleStyle: {
+              fontWeight: '700',
+            },
+          }}
+        >
           {isAuthed ? (
             <>
               <Stack.Screen

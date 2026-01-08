@@ -1,13 +1,22 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { 
+  useAnimatedStyle, 
+  useSharedValue, 
+  withSpring, 
+  withTiming 
+} from 'react-native-reanimated';
+import { TouchableOpacity } from 'react-native';
+
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 /**
- * Reusable Button component with variants and states
  * 
  * @param {string} title - Button text (ignored if children provided)
  * @param {ReactNode} children - Custom content (overrides title)
  * @param {function} onPress - Press handler
- * @param {string} variant - 'primary' | 'secondary' | 'outline' | 'text'
+ * @param {string} variant - 'primary' | 'secondary' | 'outline' | 'text' | 'gradient'
  * @param {boolean} disabled - Disabled state
  * @param {boolean} loading - Shows loading spinner
  * @param {object} style - Additional styles for container
@@ -26,10 +35,30 @@ export default function Button({
   size = 'medium',
 }) {
   const isDisabled = disabled || loading;
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+
+  const handlePressIn = () => {
+    if (!isDisabled) {
+      scale.value = withSpring(0.95, { damping: 15, stiffness: 300 });
+      opacity.value = withTiming(0.8, { duration: 100 });
+    }
+  };
+
+  const handlePressOut = () => {
+    if (!isDisabled) {
+      scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+      opacity.value = withTiming(1, { duration: 100 });
+    }
+  };
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
 
   const buttonStyles = [
     styles.button,
-    styles[`button_${variant}`],
     styles[`button_${size}`],
     isDisabled && styles.buttonDisabled,
     style,
@@ -43,66 +72,158 @@ export default function Button({
     textStyle,
   ];
 
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <ActivityIndicator 
+          size="small" 
+          color={variant === 'primary' || variant === 'gradient' ? '#FFFFFF' : '#007AFF'} 
+        />
+      );
+    }
+    if (children) {
+      return children;
+    }
+    return <Text style={textStyles}>{title}</Text>;
+  };
+
+  // Gradient button
+  if (variant === 'gradient' && !isDisabled) {
+    return (
+      <AnimatedTouchable
+        style={[buttonStyles, animatedStyle]}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={isDisabled}
+        activeOpacity={1}
+      >
+        <LinearGradient
+          colors={['#007AFF', '#5AC8FA', '#007AFF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradient}
+        >
+          <LinearGradient
+            colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.gradientOverlay}
+          >
+            {renderContent()}
+          </LinearGradient>
+        </LinearGradient>
+      </AnimatedTouchable>
+    );
+  }
+
+  // Primary button with 3D effect
+  if (variant === 'primary' && !isDisabled) {
+    return (
+      <AnimatedTouchable
+        style={[buttonStyles, animatedStyle]}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={isDisabled}
+        activeOpacity={1}
+      >
+        <LinearGradient
+          colors={['#007AFF', '#0051D5']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.gradient}
+        >
+          <LinearGradient
+            colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 0.5 }}
+            style={styles.gradientOverlay}
+          >
+            {renderContent()}
+          </LinearGradient>
+        </LinearGradient>
+      </AnimatedTouchable>
+    );
+  }
+
+  // Regular button variants
   return (
-    <TouchableOpacity
-      style={buttonStyles}
+    <AnimatedTouchable
+      style={[
+        buttonStyles,
+        styles[`button_${variant}`],
+        animatedStyle,
+      ]}
       onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       disabled={isDisabled}
       activeOpacity={0.7}
     >
-      {loading ? (
-        <ActivityIndicator 
-          size="small" 
-          color={variant === 'primary' ? '#FFFFFF' : '#007AFF'} 
-        />
-      ) : children ? (
-        children
-      ) : (
-        <Text style={textStyles}>{title}</Text>
-      )}
-    </TouchableOpacity>
+      {renderContent()}
+    </AnimatedTouchable>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
+    overflow: 'hidden',
+    alignSelf: 'stretch', // Allow button to expand to container width
   },
   
   // Variants
   button_primary: {
     backgroundColor: '#007AFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#007AFF',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
   button_secondary: {
     backgroundColor: '#F0F0F0',
   },
   button_outline: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#007AFF',
   },
   button_text: {
     backgroundColor: 'transparent',
   },
+  button_gradient: {
+    // Handled by LinearGradient
+  },
   
   // Sizes
   button_small: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    minHeight: 36,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    minHeight: 40,
+    borderRadius: 10,
   },
   button_medium: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    minHeight: 44,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    minHeight: 48,
+    borderRadius: 12,
   },
   button_large: {
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    minHeight: 52,
+    paddingVertical: 18,
+    paddingHorizontal: 36,
+    minHeight: 56,
+    borderRadius: 14,
   },
   
   // States
@@ -110,10 +231,40 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   
+  // Gradient styles
+  gradient: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    minHeight: '100%', // Ensure it fills the button height
+    ...Platform.select({
+      ios: {
+        shadowColor: '#007AFF',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  gradientOverlay: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    minHeight: '100%', // Ensure it fills the button height
+  },
+  
   // Text styles
   text: {
-    fontWeight: '600',
+    fontWeight: '700',
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
   text_primary: {
     color: '#FFFFFF',
@@ -127,6 +278,9 @@ const styles = StyleSheet.create({
   text_text: {
     color: '#007AFF',
   },
+  text_gradient: {
+    color: '#FFFFFF',
+  },
   text_small: {
     fontSize: 14,
   },
@@ -134,10 +288,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   text_large: {
-    fontSize: 18,
+    fontSize: 20,
   },
   textDisabled: {
     opacity: 0.7,
   },
 });
-
