@@ -132,7 +132,7 @@ export default function Button({
           colors={['#007AFF', '#0051D5']}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
-          style={styles.gradient}
+          style={[styles.gradient, styles.gradientAbsolute]}
         >
           <LinearGradient
             colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0)']}
@@ -233,12 +233,11 @@ const styles = StyleSheet.create({
   
   // Gradient styles
   gradient: {
-    flex: 1,
     width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
-    minHeight: '100%', // Ensure it fills the button height
     ...Platform.select({
       ios: {
         shadowColor: '#007AFF',
@@ -252,12 +251,20 @@ const styles = StyleSheet.create({
     }),
   },
   gradientOverlay: {
-    flex: 1,
     width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
-    minHeight: '100%', // Ensure it fills the button height
+  },
+  gradientAbsolute: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: undefined, // Override width: '100%' when using absolute positioning
+    height: undefined, // Override height: '100%' when using absolute positioning
   },
   
   // Text styles

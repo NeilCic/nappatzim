@@ -490,37 +490,6 @@ export default function CreateWorkoutScreen({ navigation, route }) {
 
                 {isExpanded && (
                   <>
-                    {/* <View style={styles.exerciseRow}> todo - figure out how i want to add and track these (workout types)
-                      <View style={styles.exerciseField}>
-                        <Text style={styles.fieldLabel}>Type</Text>
-                        <View style={styles.typeButtons}>
-                          {["weight", "time", "distance"].map((type) => (
-                            <Pressable
-                              key={type}
-                              style={[
-                                styles.typeButton,
-                                exercise.type === type &&
-                                  styles.typeButtonSelected,
-                              ]}
-                              onPress={() =>
-                                updateExercise(index, "type", type)
-                              }
-                            >
-                              <Text
-                                style={[
-                                  styles.typeButtonText,
-                                  exercise.type === type &&
-                                    styles.typeButtonTextSelected,
-                                ]}
-                              >
-                                {type.charAt(0).toUpperCase() + type.slice(1)}{" "}
-                              </Text>
-                            </Pressable>
-                          ))}
-                        </View>
-                      </View>
-                    </View> */}
-
                     <View style={[
                       styles.basicSetupSection,
                       hasUnappliedBasicSetup(index) ? styles.basicSetupSectionUnapplied : null
@@ -709,7 +678,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
             disabled={isSubmitting}
             loading={isSubmitting}
             variant="primary"
-            size="large"
+            size="small"
             style={[
               styles.createButton,
               isSubmitting && styles.disabledButton,
@@ -719,7 +688,7 @@ export default function CreateWorkoutScreen({ navigation, route }) {
             title="Cancel"
             onPress={() => navigation.goBack()}
             variant="outline"
-            size="large"
+            size="small"
             style={styles.cancelButton}
           />
         </View>
@@ -917,8 +886,6 @@ const styles = StyleSheet.create({
   },
   createButton: {
     backgroundColor: "#28a745",
-    padding: 12,
-    borderRadius: 8,
     flex: 1,
     marginRight: 8,
   },
