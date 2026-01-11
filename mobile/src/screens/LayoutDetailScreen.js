@@ -887,6 +887,94 @@ export default function LayoutDetailScreen({ navigation, route }) {
                           ))}
                       </View>
                     )}
+
+                    {/* Grade by Height Visualization */}
+                    {voteStatistics.gradeByHeight && Object.keys(voteStatistics.gradeByHeight).length > 0 && (
+                      <View style={styles.gradeByHeightContainer}>
+                        <Text style={styles.subsectionTitle}>Votes by Height</Text>
+                        <Text style={styles.legendDescription}>
+                          Shows how different height groups voted for each grade
+                        </Text>
+                        {Object.entries(voteStatistics.gradeByHeight)
+                          .sort((a, b) => {
+                            // Sort by total votes (sum of all height categories)
+                            const totalA = Object.values(a[1]).reduce((sum, val) => sum + val, 0);
+                            const totalB = Object.values(b[1]).reduce((sum, val) => sum + val, 0);
+                            return totalB - totalA;
+                          })
+                          .map(([grade, heightData]) => {
+                            const total = heightData.short + heightData.average + heightData.tall + heightData.noHeight;
+                            if (total === 0) return null;
+                            
+                            return (
+                              <View key={grade} style={styles.gradeByHeightRow}>
+                                <Text style={styles.gradeByHeightGrade}>{grade}</Text>
+                                <View style={styles.gradeByHeightBarContainer}>
+                                  {/* Stacked bar showing height breakdown */}
+                                  {heightData.short > 0 && (
+                                    <View 
+                                      style={[
+                                        styles.gradeByHeightSegment,
+                                        styles.gradeByHeightShort,
+                                        { width: `${(heightData.short / total) * 100}%` }
+                                      ]} 
+                                    />
+                                  )}
+                                  {heightData.average > 0 && (
+                                    <View 
+                                      style={[
+                                        styles.gradeByHeightSegment,
+                                        styles.gradeByHeightAverage,
+                                        { width: `${(heightData.average / total) * 100}%` }
+                                      ]} 
+                                    />
+                                  )}
+                                  {heightData.tall > 0 && (
+                                    <View 
+                                      style={[
+                                        styles.gradeByHeightSegment,
+                                        styles.gradeByHeightTall,
+                                        { width: `${(heightData.tall / total) * 100}%` }
+                                      ]} 
+                                    />
+                                  )}
+                                  {heightData.noHeight > 0 && (
+                                    <View 
+                                      style={[
+                                        styles.gradeByHeightSegment,
+                                        styles.gradeByHeightNoHeight,
+                                        { width: `${(heightData.noHeight / total) * 100}%` }
+                                      ]} 
+                                    />
+                                  )}
+                                </View>
+                                <Text style={styles.gradeByHeightCount}>{total}</Text>
+                              </View>
+                            );
+                          })}
+                        {/* Legend */}
+                        <View style={styles.heightLegend}>
+                          <View style={styles.legendItem}>
+                            <View style={[styles.legendColor, styles.gradeByHeightShort]} />
+                            <Text style={styles.legendText}>Short (&lt;165cm)</Text>
+                          </View>
+                          <View style={styles.legendItem}>
+                            <View style={[styles.legendColor, styles.gradeByHeightAverage]} />
+                            <Text style={styles.legendText}>Average (165-180cm)</Text>
+                          </View>
+                          <View style={styles.legendItem}>
+                            <View style={[styles.legendColor, styles.gradeByHeightTall]} />
+                            <Text style={styles.legendText}>Tall (&gt;180cm)</Text>
+                          </View>
+                          {voteStatistics.heightBreakdown?.withoutHeight > 0 && (
+                            <View style={styles.legendItem}>
+                              <View style={[styles.legendColor, styles.gradeByHeightNoHeight]} />
+                              <Text style={styles.legendText}>No height</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    )}
                   </View>
                 )}
 
@@ -1491,6 +1579,77 @@ const styles = StyleSheet.create({
   },
   deleteVoteButton: {
     flex: 1,
+  },
+  gradeByHeightContainer: {
+    marginTop: 16,
+  },
+  gradeByHeightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  gradeByHeightGrade: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
+    width: 50,
+  },
+  gradeByHeightBarContainer: {
+    flex: 1,
+    height: 24,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 12,
+    marginHorizontal: 8,
+    overflow: 'hidden',
+    flexDirection: 'row',
+  },
+  gradeByHeightSegment: {
+    height: '100%',
+  },
+  gradeByHeightShort: {
+    backgroundColor: '#FF6B6B', // Red for short
+  },
+  gradeByHeightAverage: {
+    backgroundColor: '#4ECDC4', // Teal for average
+  },
+  gradeByHeightTall: {
+    backgroundColor: '#45B7D1', // Blue for tall
+  },
+  gradeByHeightNoHeight: {
+    backgroundColor: '#95A5A6', // Gray for no height
+  },
+  gradeByHeightCount: {
+    fontSize: 14,
+    color: '#666',
+    width: 30,
+    textAlign: 'right',
+  },
+  heightLegend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 12,
+    gap: 12,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  legendColor: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  legendText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  legendDescription: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    marginBottom: 12,
   },
   uploadButtonText: {
     color: '#fff',

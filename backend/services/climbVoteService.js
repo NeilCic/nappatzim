@@ -98,6 +98,7 @@ class ClimbVoteService extends PrismaCrudService {
         averageGrade: null,
         gradeDistribution: {},
         heightBreakdown: {},
+        gradeByHeight: {},
       };
     }
 
@@ -118,18 +119,35 @@ class ClimbVoteService extends PrismaCrudService {
       },
     };
 
+    const gradeByHeight = {};
+
     votes.forEach((vote) => {
+      if (!gradeByHeight[vote.grade]) {
+        gradeByHeight[vote.grade] = {
+          short: 0,
+          average: 0,
+          tall: 0,
+          noHeight: 0,
+        };
+      }
+
       if (vote.height) {
         heightBreakdown.withHeight++;
+        let heightCategory = 'noHeight';
         if (vote.height < 165) {
           heightBreakdown.byRange.short++;
+          heightCategory = 'short';
         } else if (vote.height <= 180) {
           heightBreakdown.byRange.average++;
+          heightCategory = 'average';
         } else {
           heightBreakdown.byRange.tall++;
+          heightCategory = 'tall';
         }
+        gradeByHeight[vote.grade][heightCategory]++;
       } else {
         heightBreakdown.withoutHeight++;
+        gradeByHeight[vote.grade].noHeight++;
       }
     });
 
@@ -142,6 +160,7 @@ class ClimbVoteService extends PrismaCrudService {
       averageGrade,
       gradeDistribution,
       heightBreakdown,
+      gradeByHeight,
     };
   }
 }
