@@ -218,9 +218,9 @@ model ClimbVideo {
 model Climb {
   id          String   @id @default(cuid())
   spotId      String
-  grade       String // REQUIRED: Grade (e.g., "V4", "V4-6", "6a+", "7b") - format depends on layout's gradeSystem
-  gradeSystem String // REQUIRED: "V-Scale", "V-Scale Range", "French" - must match layout's gradeSystem
-  color       String // REQUIRED: Color of the route (hex code, e.g., "#FF5733")
+  grade       String // Grade (e.g., "V4", "V4-6", "6a+", "7b") - format depends on layout's gradeSystem
+  gradeSystem String // "V-Scale", "V-Scale Range", "French" - must match layout's gradeSystem
+  color       String // Color of the route (hex code, e.g., "#FF5733")
   length      Float? // Optional: Route length in meters (for lead climbing routes)
   setterId    String? // Optional: User who set/suggested the grade (TODO for future use)
   createdAt   DateTime @default(now())
@@ -241,8 +241,8 @@ model ClimbGradeVote {
   id          String   @id @default(cuid())
   climbId     String
   userId      String
-  grade       String // REQUIRED: What grade the user thinks it is - ALWAYS specific (no ranges, e.g., "V4", "6a+")
-  gradeSystem String // REQUIRED: "V-Scale", "V-Scale Range", "French" - must match climb's gradeSystem
+  grade       String // What grade the user thinks it is - ALWAYS specific (no ranges, e.g., "V4", "6a+")
+  gradeSystem String // "V-Scale", "V-Scale Range", "French" - must match climb's gradeSystem
   height      Float? // Optional: User's height in cm (auto-filled from user preferences if available)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -260,7 +260,7 @@ model ClimbComment {
   climbId         String
   userId          String
   parentCommentId String? // Optional: For replies - ONE LEVEL ONLY (no replies to replies)
-  content         String // REQUIRED: Comment text
+  content         String // Comment text
   likes           Int       @default(0) // Count of likes
   dislikes        Int       @default(0) // Count of dislikes
   createdAt       DateTime  @default(now())
@@ -282,7 +282,7 @@ model ClimbCommentReaction {
   id        String   @id @default(cuid())
   commentId String
   userId    String
-  reaction  String // REQUIRED: "like" or "dislike" (can be changed or removed)
+  reaction  String // "like" or "dislike" (can be changed or removed)
   createdAt DateTime @default(now())
 
   comment ClimbComment @relation(fields: [commentId], references: [id], onDelete: Cascade)

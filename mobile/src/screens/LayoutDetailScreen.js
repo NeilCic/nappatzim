@@ -9,17 +9,17 @@ import {
   FlatList
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useApi } from '../ApiProvider';
 import { showError } from '../utils/errorHandler';
 import StyledTextInput from '../components/StyledTextInput';
 import LoadingScreen from '../components/LoadingScreen';
-import { showErrorAlert, showSuccessAlert, showAlert } from '../utils/alert';
+import { showErrorAlert, showSuccessAlert } from '../utils/alert';
 import AppModal from '../components/Modal';
 import Button from '../components/Button';
 import Pressable from '../components/Pressable';
 import Spinner from '../components/Spinner';
+import ColorPicker from '../components/ColorPicker';
 
 export default function LayoutDetailScreen({ navigation, route }) {
   const { layoutId } = route.params;
@@ -34,10 +34,16 @@ export default function LayoutDetailScreen({ navigation, route }) {
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const [selectedSpot, setSelectedSpot] = useState(null);
   const [showSpotDetailModal, setShowSpotDetailModal] = useState(false);
-  const [spotVideos, setSpotVideos] = useState([]);
-  const [uploadingVideo, setUploadingVideo] = useState(false);
-  const [newVideoTitle, setNewVideoTitle] = useState('');
-  const [newVideoDescription, setNewVideoDescription] = useState('');
+  const [creatingClimb, setCreatingClimb] = useState(false);
+  const [newClimbGrade, setNewClimbGrade] = useState('');
+  const [newClimbColor, setNewClimbColor] = useState('#FF6B6B');
+  const [selectedClimb, setSelectedClimb] = useState(null);
+  const [showClimbDetailModal, setShowClimbDetailModal] = useState(false);
+  const [climbDetails, setClimbDetails] = useState(null);
+  const [voteStatistics, setVoteStatistics] = useState(null);
+  const [climbComments, setClimbComments] = useState([]);
+  const [climbVideos, setClimbVideos] = useState([]);
+  const [loadingClimbDetails, setLoadingClimbDetails] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
@@ -96,7 +102,6 @@ export default function LayoutDetailScreen({ navigation, route }) {
       } else if (status === 'error') {
         const errorDetails = videoPlayer.error;
         
-        // Only log error details once to avoid spam
         if (!errorLoggedRef.current) {
           errorLoggedRef.current = true;  // todo need to make this mechanism more robust
         }
@@ -109,6 +114,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
       }
     };
     
+    // TODO: Refactor to use expo-video event handlers instead of polling (onLoadStart, onLoad, onError)
     // Check status periodically (every 500ms)
     const interval = setInterval(checkStatus, 500);
     
@@ -210,9 +216,8 @@ export default function LayoutDetailScreen({ navigation, route }) {
       return () => {
         setSelectedSpot(null);
         setShowSpotDetailModal(false);
-        setSpotVideos([]);
-        setNewVideoTitle('');
-        setNewVideoDescription('');
+        setNewClimbGrade('');
+        setNewClimbColor('#FF6B6B');
         setShowVideoPlayer(false);
         setSelectedVideo(null);
       };
@@ -297,83 +302,78 @@ export default function LayoutDetailScreen({ navigation, route }) {
     }
   };
 
-  const handleSpotPress = async (spot) => {
+  const handleSpotPress = (spot) => {
     setSelectedSpot(spot);
     setShowSpotDetailModal(true);
-    await fetchSpotVideos(spot.id);
   };
 
-  const fetchSpotVideos = async (spotId) => {
+  const handleClimbPress = async (climb) => {
+    setSelectedClimb(climb);
+    setShowClimbDetailModal(true);
+    await fetchClimbDetails(climb.id);
+  };
+
+  const fetchClimbDetails = async (climbId) => {
+    setLoadingClimbDetails(true);
     try {
-      const response = await api.get(`/layouts/spots/${spotId}/videos`);
-      setSpotVideos(response.data.videos || []);
+      const [climbRes, statisticsRes, commentsRes, videosRes] = await Promise.all([
+        api.get(`/climbs/${climbId}`),
+        api.get(`/climbs/${climbId}/votes/statistics`),
+        api.get(`/climbs/${climbId}/comments`),
+        api.get(`/climbs/${climbId}/videos`),
+      ]);
+
+      setClimbDetails(climbRes.data.climb);
+      setVoteStatistics(statisticsRes.data.statistics);
+      setClimbComments(commentsRes.data.comments || []);
+      setClimbVideos(videosRes.data.videos || []);
     } catch (error) {
-      showError(error, "Error", "Failed to load videos");
+      showError(error, "Error", "Failed to load climb details");
+    } finally {
+      setLoadingClimbDetails(false);
     }
   };
 
-  const requestVideoPermissions = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      showAlert(
-        "Permission Required",
-        "We need access to your media library to upload videos."
-      );
-      return false;
+  const handleCreateClimb = async () => {
+    if (!selectedSpot || !layout) return;
+
+    if (!newClimbGrade.trim()) {
+      showErrorAlert("Grade is required");
+      return;
     }
-    return true;
-  };
 
-  const handlePickVideo = async () => {
-    const hasPermission = await requestVideoPermissions();
-    if (!hasPermission) return;
+    if (!newClimbColor) {
+      showErrorAlert("Color is required");
+      return;
+    }
 
+    setCreatingClimb(true);
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'videos',
-        allowsEditing: false,
-        allowsMultipleSelection: false,
+      await api.post(`/spots/${selectedSpot.id}/climbs`, {
+        grade: newClimbGrade.trim(),
+        gradeSystem: layout.gradeSystem,
+        color: newClimbColor,
       });
 
-      if (!result.canceled && result.assets && result.assets.length === 1) {
-        await uploadVideo(result.assets[0]);
+      setNewClimbGrade('');
+      setNewClimbColor('#FF6B6B');
+      showSuccessAlert("Climb created successfully!");
+      
+      await fetchSpots();
+      
+      if (selectedSpot) {
+        const response = await api.get(`/spots/${selectedSpot.id}`);
+        if (response.data.spot) {
+          setSelectedSpot(response.data.spot);
+        }
       }
     } catch (error) {
-      showError(error, "Error", "Failed to pick video");
-    }
-  };
-
-  const uploadVideo = async (videoAsset) => {
-    if (!selectedSpot) return;
-
-    setUploadingVideo(true);
-    try {
-      const formData = new FormData();
-      formData.append('video', {
-        uri: videoAsset.uri,
-        type: videoAsset.mimeType || 'video/mp4',
-        name: videoAsset.fileName || `video_${Date.now()}.mp4`,
-      });
-      formData.append('title', newVideoTitle || '');
-      formData.append('description', newVideoDescription || '');
-
-      await api.post(`/layouts/spots/${selectedSpot.id}/videos`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      // Reset form and refresh videos
-      setNewVideoTitle('');
-      setNewVideoDescription('');
-      await fetchSpotVideos(selectedSpot.id);
-      showSuccessAlert("Video uploaded successfully!");
-    } catch (error) {
-      showError(error, "Error", "Failed to upload video");
+      showError(error, "Error", "Failed to create climb");
     } finally {
-      setUploadingVideo(false);
+      setCreatingClimb(false);
     }
   };
+
 
   if (loading || !layout) {
     return <LoadingScreen />;
@@ -435,10 +435,10 @@ export default function LayoutDetailScreen({ navigation, route }) {
                         <View style={[styles.climbColorHalf, { backgroundColor: climbColors[1] }]} />
                       </View>
                     ) : climbColors.length === 3 ? (
-                      <View style={styles.climbColorsGrid}>
-                        <View style={[styles.climbColorQuarter, { backgroundColor: climbColors[0] }]} />
-                        <View style={[styles.climbColorQuarter, { backgroundColor: climbColors[1] }]} />
-                        <View style={[styles.climbColorHalf, styles.climbColorBottom, { backgroundColor: climbColors[2] }]} />
+                      <View style={styles.climbColorsRow}>
+                        <View style={[styles.climbColorThird, { backgroundColor: climbColors[0] }]} />
+                        <View style={[styles.climbColorThird, { backgroundColor: climbColors[1] }]} />
+                        <View style={[styles.climbColorThird, { backgroundColor: climbColors[2] }]} />
                       </View>
                     ) : (
                       <View style={styles.climbColorsGrid}>
@@ -518,7 +518,8 @@ export default function LayoutDetailScreen({ navigation, route }) {
         onClose={() => {
           setShowSpotDetailModal(false);
           setSelectedSpot(null);
-          setSpotVideos([]);
+          setNewClimbGrade('');
+          setNewClimbColor('#FF6B6B');
         }}
         style={[styles.modalContent, { paddingBottom: 12 }]}
       >
@@ -530,108 +531,83 @@ export default function LayoutDetailScreen({ navigation, route }) {
           {selectedSpot && (
             <>
               <Text style={styles.modalTitle}>{selectedSpot.name}</Text>
-                  {selectedSpot.description && (
-                    <Text style={styles.spotDescription}>{selectedSpot.description}</Text>
-                  )}
-
-                  <View style={styles.videosSection}>
-                    <Text style={styles.sectionTitle}>
-                      Videos ({spotVideos.length})
-                    </Text>
-
-                    {spotVideos.length > 0 ? (
-                      <FlatList
-                        data={spotVideos}
-                        keyExtractor={(item) => item.id}
-                        renderItem={({ item }) => (
-                          <Pressable
-                            style={styles.videoItem}
-                            onPress={() => {
-                              setSelectedVideo(item);
-                              setShowVideoPlayer(true);
-                            }}
-                          >
-                            <View style={styles.thumbnailContainer}>
-                              {item.thumbnailUrl ? (
-                                <Image
-                                  source={{ uri: item.thumbnailUrl }}
-                                  style={styles.videoThumbnail}
-                                />
-                              ) : (
-                                <View style={[styles.videoThumbnail, styles.thumbnailPlaceholder]}>
-                                  <Text style={styles.thumbnailPlaceholderText}>📹</Text>
-                                </View>
-                              )}
-                              <View style={styles.playIconOverlay}>
-                                <Text style={styles.playIcon}>▶</Text>
-                              </View>
-                            </View>
-                            <View style={styles.videoInfo}>
-                              <Text style={styles.videoTitle}>
-                                {item.title || 'Untitled Video'}
-                              </Text>
-                              {item.duration && (
-                                <Text style={styles.videoDuration}>
-                                  {Math.floor(item.duration)}s
-                                </Text>
-                              )}
-                            </View>
-                          </Pressable>
-                        )}
-                        scrollEnabled={false}
-                      />
-                    ) : (
-                      <Text style={styles.noVideosText}>No videos yet</Text>
-                    )}
-
-                    <View style={styles.addVideoSection}>
-                      <Text style={styles.sectionTitle}>Add New Video</Text>
-                      <StyledTextInput
-                        style={styles.input}
-                        placeholder="Video title (optional)"
-                        value={newVideoTitle}
-                        onChangeText={setNewVideoTitle}
-                      />
-                      <StyledTextInput
-                        style={[styles.input, styles.textArea]}
-                        placeholder="Description (optional)"
-                        value={newVideoDescription}
-                        onChangeText={setNewVideoDescription}
-                        multiline
-                        numberOfLines={2}
-                      />
-                      <Button
-                        title="📹 Pick Video"
-                        onPress={handlePickVideo}
-                        disabled={uploadingVideo}
-                        loading={uploadingVideo}
-                        variant="primary"
-                        size="medium"
-                        style={[
-                          styles.button,
-                          styles.uploadButton,
-                          uploadingVideo && styles.buttonDisabled,
-                        ]}
-                      />
-                    </View>
-                  </View>
-                </>
+              {selectedSpot.description && (
+                <Text style={styles.spotDescription}>{selectedSpot.description}</Text>
               )}
 
-              <Button
-                title="Close"
-                onPress={() => {
-                  setShowSpotDetailModal(false);
-                  setSelectedSpot(null);
-                  setSpotVideos([]);
-                  setNewVideoTitle('');
-                  setNewVideoDescription('');
-                }}
-                variant="secondary"
-                size="medium"
-                style={[styles.button, styles.cancelButton]}
-              />
-            </ScrollView>
+              <View style={styles.climbsSection}>
+                <Text style={styles.sectionTitle}>
+                  Climbs ({(selectedSpot.climbs || []).length})
+                </Text>
+
+                {(selectedSpot.climbs || []).length > 0 ? (
+                  <FlatList
+                    data={selectedSpot.climbs || []}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => (
+                      <Pressable
+                        style={styles.climbItem}
+                        onPress={() => handleClimbPress(item)}
+                      >
+                        <View style={[styles.climbColorIndicator, { backgroundColor: item.color }]} />
+                        <View style={styles.climbInfo}>
+                          <Text style={styles.climbGrade}>{item.grade}</Text>
+                          {item.length && (
+                            <Text style={styles.climbLength}>{item.length}m</Text>
+                          )}
+                        </View>
+                      </Pressable>
+                    )}
+                    scrollEnabled={false}
+                  />
+                ) : (
+                  <Text style={styles.noClimbsText}>No climbs yet</Text>
+                )}
+
+                <View style={styles.addClimbSection}>
+                  <Text style={styles.sectionTitle}>Add New Climb</Text>
+                  <StyledTextInput
+                    style={styles.input}
+                    placeholder={`Grade (e.g., ${layout?.gradeSystem === 'V-Scale' ? 'V4' : layout?.gradeSystem === 'French' ? '6a+' : 'V4-6'})`}
+                    value={newClimbGrade}
+                    onChangeText={setNewClimbGrade}
+                    autoCapitalize="characters"
+                  />
+                  <ColorPicker
+                    selectedColor={newClimbColor}
+                    onColorSelect={setNewClimbColor}
+                  />
+                  <Button
+                    title="Add Climb"
+                    onPress={handleCreateClimb}
+                    disabled={creatingClimb}
+                    loading={creatingClimb}
+                    variant="primary"
+                    size="medium"
+                    style={[
+                      styles.button,
+                      styles.addButton,
+                      creatingClimb && styles.buttonDisabled,
+                    ]}
+                  />
+                </View>
+              </View>
+            </>
+          )}
+
+          <Button
+            title="Close"
+            onPress={() => {
+              setShowSpotDetailModal(false);
+              setSelectedSpot(null);
+              setNewClimbGrade('');
+              setNewClimbColor('#FF6B6B');
+            }}
+            variant="secondary"
+            size="medium"
+            style={[styles.button, styles.cancelButton]}
+          />
+        </ScrollView>
       </AppModal>
 
       <AppModal
@@ -724,6 +700,78 @@ export default function LayoutDetailScreen({ navigation, route }) {
               </>
             )}
       </AppModal>
+
+      {/* Climb Detail Modal */}
+      <AppModal
+        visible={showClimbDetailModal}
+        onClose={() => {
+          setShowClimbDetailModal(false);
+          setSelectedClimb(null);
+          setClimbDetails(null);
+          setVoteStatistics(null);
+          setClimbComments([]);
+          setClimbVideos([]);
+        }}
+        style={[styles.modalContent, { paddingBottom: 12 }]}
+      >
+        {loadingClimbDetails ? (
+          <LoadingScreen />
+        ) : selectedClimb && climbDetails ? (
+          <ScrollView
+            style={styles.climbDetailScroll}
+            contentContainerStyle={styles.climbDetailScrollContent}
+            showsVerticalScrollIndicator={true}
+          >
+            <View style={styles.climbHeader}>
+              <View style={[styles.climbColorIndicatorLarge, { backgroundColor: climbDetails.color }]} />
+              <View style={styles.climbHeaderInfo}>
+                <Text style={styles.climbHeaderGrade}>{climbDetails.grade}</Text>
+                {climbDetails.length && (
+                  <Text style={styles.climbHeaderLength}>{climbDetails.length}m</Text>
+                )}
+              </View>
+            </View>
+
+            {/* Votes Section */}
+            {voteStatistics && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Votes ({voteStatistics.totalVotes})</Text>
+                {voteStatistics.averageGrade && (
+                  <Text style={styles.averageGrade}>Average: {voteStatistics.averageGrade}</Text>
+                )}
+                {/* TODO: Add vote interface */}
+              </View>
+            )}
+
+            {/* Comments Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Comments ({climbComments.length})</Text>
+              {/* TODO: Add comments list and create comment form */}
+            </View>
+
+            {/* Videos Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Videos ({climbVideos.length})</Text>
+              {/* TODO: Add videos list */}
+            </View>
+
+            <Button
+              title="Close"
+              onPress={() => {
+                setShowClimbDetailModal(false);
+                setSelectedClimb(null);
+                setClimbDetails(null);
+                setVoteStatistics(null);
+                setClimbComments([]);
+                setClimbVideos([]);
+              }}
+              variant="secondary"
+              size="medium"
+              style={[styles.button, styles.cancelButton]}
+            />
+          </ScrollView>
+        ) : null}
+      </AppModal>
     </ScrollView>
   );
 }
@@ -785,6 +833,10 @@ const styles = StyleSheet.create({
   },
   climbColorHalf: {
     width: '50%',
+    height: '100%',
+  },
+  climbColorThird: {
+    width: '33.333%',
     height: '100%',
   },
   climbColorsGrid: {
@@ -914,7 +966,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 20,
   },
-  videosSection: {
+  climbsSection: {
     marginTop: 10,
     marginBottom: 12,
   },
@@ -924,13 +976,34 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: '#333',
   },
-  videoItem: {
+  climbItem: {
     flexDirection: 'row',
     marginBottom: 12,
     padding: 12,
     backgroundColor: '#f5f5f5',
     borderRadius: 8,
     alignItems: 'center',
+  },
+  climbColorIndicator: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#ddd',
+  },
+  climbInfo: {
+    flex: 1,
+  },
+  climbGrade: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  climbLength: {
+    fontSize: 14,
+    color: '#666',
   },
   thumbnailContainer: {
     position: 'relative',
@@ -978,21 +1051,67 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  noVideosText: {
+  noClimbsText: {
     fontSize: 14,
     color: '#999',
     fontStyle: 'italic',
     marginBottom: 20,
   },
-  addVideoSection: {
+  addClimbSection: {
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
     borderTopColor: '#eee',
   },
-  uploadButton: {
-    backgroundColor: '#007AFF',
+  addButton: {
     marginTop: 12,
+  },
+  climbDetailScroll: {
+    maxHeight: '100%',
+  },
+  climbDetailScrollContent: {
+    paddingBottom: 20,
+  },
+  climbHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  climbColorIndicatorLarge: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    marginRight: 16,
+    borderWidth: 3,
+    borderColor: '#ddd',
+  },
+  climbHeaderInfo: {
+    flex: 1,
+  },
+  climbHeaderGrade: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  climbHeaderLength: {
+    fontSize: 16,
+    color: '#666',
+  },
+  section: {
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  averageGrade: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 8,
+    fontWeight: '500',
   },
   uploadButtonText: {
     color: '#fff',
