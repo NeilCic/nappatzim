@@ -41,6 +41,10 @@ export default function LayoutDetailScreen({ navigation, route }) {
   const [showClimbDetailModal, setShowClimbDetailModal] = useState(false);
   const [climbDetails, setClimbDetails] = useState(null);
   const [voteStatistics, setVoteStatistics] = useState(null);
+  const [myVote, setMyVote] = useState(null);
+  const [selectedVoteGrade, setSelectedVoteGrade] = useState('');
+  const [submittingVote, setSubmittingVote] = useState(false);
+  const [userHeight, setUserHeight] = useState(null);
   const [climbComments, setClimbComments] = useState([]);
   const [climbVideos, setClimbVideos] = useState([]);
   const [loadingClimbDetails, setLoadingClimbDetails] = useState(false);
@@ -316,21 +320,131 @@ export default function LayoutDetailScreen({ navigation, route }) {
   const fetchClimbDetails = async (climbId) => {
     setLoadingClimbDetails(true);
     try {
-      const [climbRes, statisticsRes, commentsRes, videosRes] = await Promise.all([
+      const [climbRes, statisticsRes, myVoteRes, commentsRes, videosRes, userRes] = await Promise.all([
         api.get(`/climbs/${climbId}`),
         api.get(`/climbs/${climbId}/votes/statistics`),
+        api.get(`/climbs/${climbId}/votes/me`).catch(() => ({ data: { vote: null } })),
         api.get(`/climbs/${climbId}/comments`),
         api.get(`/climbs/${climbId}/videos`),
+        api.get('/auth/me').catch(() => ({ data: { height: null } })),
       ]);
 
       setClimbDetails(climbRes.data.climb);
       setVoteStatistics(statisticsRes.data.statistics);
+      setMyVote(myVoteRes.data.vote || null);
+      setSelectedVoteGrade(myVoteRes.data.vote?.grade || '');
+      setUserHeight(userRes.data?.height || null);
       setClimbComments(commentsRes.data.comments || []);
       setClimbVideos(videosRes.data.videos || []);
     } catch (error) {
       showError(error, "Error", "Failed to load climb details");
     } finally {
       setLoadingClimbDetails(false);
+    }
+  };
+
+  const getGradeOptions = (climbGrade, gradeSystem) => {  // todo we can make a util to handle grade options, conversions, etc.. (something already exists)
+    if (!climbGrade) return [];
+
+    if (gradeSystem === 'V-Scale' || gradeSystem === 'V-Scale Range') {
+      const rangeMatch = climbGrade.match(/^V(\d+)-V(\d+)$/);
+      const singleMatch = climbGrade.match(/^V(\d+)$/);
+
+      if (rangeMatch) {
+        // Range: V4-6 → allow V3, V4, V5, V6, V7
+        const lower = parseInt(rangeMatch[1], 10);
+        const upper = parseInt(rangeMatch[2], 10);
+        const minGrade = Math.max(0, lower - 1); // One below lower bound, but not below 0
+        const maxGrade = Math.min(17, upper + 1); // One above upper bound, but not above 17
+        
+        const options = [];
+        for (let i = minGrade; i <= maxGrade; i++) {
+          options.push(`V${i}`);
+        }
+        return options;
+      } else if (singleMatch) {
+        // Specific grade: V4 → allow V3, V4, V5
+        const grade = parseInt(singleMatch[1], 10);
+        const minGrade = Math.max(0, grade - 1); // One below, but not below 0
+        const maxGrade = Math.min(17, grade + 1); // One above, but not above 17
+        
+        const options = [];
+        for (let i = minGrade; i <= maxGrade; i++) {
+          options.push(`V${i}`);
+        }
+        return options;
+      }
+      return [];
+      } else if (gradeSystem === 'French') {
+        const frenchMatch = climbGrade.match(/^([1-9])([a-c])(\+?)$/);
+        if (frenchMatch) {
+          const number = parseInt(frenchMatch[1], 10);
+          const letter = frenchMatch[2];
+          const hasPlus = frenchMatch[3] === '+';
+          
+          // Convert to numeric value: each number has 6 sub-grades (a, a+, b, b+, c, c+)
+          // a=0, a+=1, b=2, b+=3, c=4, c+=5
+          const letterIndex = ['a', 'b', 'c'].indexOf(letter);
+          const letterValue = letterIndex * 2 + (hasPlus ? 1 : 0);
+          const baseValue = (number - 1) * 6;
+          const totalValue = baseValue + letterValue;
+          
+          // Allow ±2 ticks (2 sub-grades in each direction)
+          const minValue = Math.max(0, totalValue - 2);
+          const maxValue = Math.min(53, totalValue + 2); // 9c+ = 8*6 + 5 = 53
+          
+          const options = [];
+          for (let value = minValue; value <= maxValue; value++) {
+            const num = Math.floor(value / 6) + 1; // +1 because 1a starts at 0
+            const letterVal = value % 6;
+            const hasPlusLocal = letterVal % 2 === 1;
+            const letterIndexLocal = Math.floor(letterVal / 2);
+            const letterLocal = ['a', 'b', 'c'][letterIndexLocal];
+            options.push(`${num}${letterLocal}${hasPlusLocal ? '+' : ''}`);
+          }
+          
+          return options;
+        }
+        return [];
+      }
+    return [];
+  };
+
+  const handleSubmitVote = async () => {
+    if (!selectedClimb || !selectedVoteGrade.trim()) {
+      showErrorAlert("Please select a grade");
+      return;
+    }
+
+    setSubmittingVote(true);
+    try {
+      await api.post(`/climbs/${selectedClimb.id}/votes`, {
+        grade: selectedVoteGrade.trim(),
+      });
+
+      await fetchClimbDetails(selectedClimb.id);
+      showSuccessAlert(myVote ? "Vote updated successfully!" : "Vote submitted successfully!");
+    } catch (error) {
+      showError(error, "Error", "Failed to submit vote");
+    } finally {
+      setSubmittingVote(false);
+    }
+  };
+
+  const handleDeleteVote = async () => {
+    if (!selectedClimb || !myVote) return;
+
+    setSubmittingVote(true);
+    try {
+      await api.delete(`/climbs/${selectedClimb.id}/votes`);
+
+      // Refresh climb details
+      await fetchClimbDetails(selectedClimb.id);
+      showSuccessAlert("Vote removed successfully!");
+    } catch (error) {
+      showError(error, "Error", "Failed to delete vote");
+    } finally {
+      setSubmittingVote(false);
     }
   };
 
@@ -709,6 +823,8 @@ export default function LayoutDetailScreen({ navigation, route }) {
           setSelectedClimb(null);
           setClimbDetails(null);
           setVoteStatistics(null);
+          setMyVote(null);
+          setSelectedVoteGrade('');
           setClimbComments([]);
           setClimbVideos([]);
         }}
@@ -733,13 +849,137 @@ export default function LayoutDetailScreen({ navigation, route }) {
             </View>
 
             {/* Votes Section */}
-            {voteStatistics && (
+            {voteStatistics && climbDetails && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Votes ({voteStatistics.totalVotes})</Text>
-                {voteStatistics.averageGrade && (
-                  <Text style={styles.averageGrade}>Average: {voteStatistics.averageGrade}</Text>
+                
+                {/* Statistics */}
+                {voteStatistics.totalVotes > 0 && (
+                  <View style={styles.statisticsContainer}>
+                    {voteStatistics.averageGrade && (
+                      <View style={styles.statisticRow}>
+                        <Text style={styles.statisticLabel}>Average:</Text>
+                        <Text style={styles.statisticValue}>{voteStatistics.averageGrade}</Text>
+                      </View>
+                    )}
+                    
+                    {/* Grade Distribution */}
+                    {Object.keys(voteStatistics.gradeDistribution || {}).length > 0 && (
+                      <View style={styles.gradeDistributionContainer}>
+                        <Text style={styles.subsectionTitle}>Grade Distribution</Text>
+                        {Object.entries(voteStatistics.gradeDistribution)
+                          .sort((a, b) => b[1] - a[1])
+                          .map(([grade, count]) => (
+                            <View key={grade} style={styles.distributionRow}>
+                              <Text style={styles.distributionGrade}>{grade}</Text>
+                              <View style={styles.distributionBarContainer}>
+                                <View 
+                                  style={[
+                                    styles.distributionBar, 
+                                    { 
+                                      width: `${(count / voteStatistics.totalVotes) * 100}%` 
+                                    }
+                                  ]} 
+                                />
+                              </View>
+                              <Text style={styles.distributionCount}>{count}</Text>
+                            </View>
+                          ))}
+                      </View>
+                    )}
+                  </View>
                 )}
-                {/* TODO: Add vote interface */}
+
+                {/* User's Current Vote */}
+                {myVote && (
+                  <View style={styles.myVoteContainer}>
+                    <Text style={styles.myVoteLabel}>Your Vote: <Text style={styles.myVoteGrade}>{myVote.grade}</Text></Text>
+                    {myVote.height && (
+                      <Text style={styles.myVoteHeight}>Height: {myVote.height}cm</Text>
+                    )}
+                  </View>
+                )}
+
+                {/* Vote Interface */}
+                <View style={styles.voteInterfaceContainer}>
+                  <Text style={styles.subsectionTitle}>
+                    {myVote ? 'Update Your Vote' : 'Vote on Difficulty'}
+                  </Text>
+                  
+                  {/* Grade Selection */}
+                  <View style={styles.gradeSelectorContainer}>
+                    <Text style={styles.gradeSelectorLabel}>Select Grade:</Text>
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.gradeOptionsScroll}
+                      contentContainerStyle={styles.gradeOptionsContent}
+                    >
+                      {getGradeOptions(climbDetails.grade, climbDetails.gradeSystem).map((grade) => (
+                        <Pressable
+                          key={grade}
+                          style={[
+                            styles.gradeOptionButton,
+                            selectedVoteGrade === grade && styles.gradeOptionButtonSelected,
+                          ]}
+                          onPress={() => setSelectedVoteGrade(grade)}
+                        >
+                          <Text
+                            style={[
+                              styles.gradeOptionText,
+                              selectedVoteGrade === grade && styles.gradeOptionTextSelected,
+                            ]}
+                          >
+                            {grade}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </View>
+
+                  {/* Height Info */}
+                  {userHeight && (
+                    <Text style={styles.heightInfo}>
+                      Your height ({userHeight}cm) will be included with your vote
+                    </Text>
+                  )}
+
+                  {/* Action Buttons */}
+                  <View style={styles.voteActionsContainer}>
+                    {myVote ? (
+                      <>
+                        <Button
+                          title="Update Vote"
+                          onPress={handleSubmitVote}
+                          disabled={submittingVote || !selectedVoteGrade.trim() || selectedVoteGrade === myVote.grade}
+                          loading={submittingVote}
+                          variant="primary"
+                          size="medium"
+                          style={[styles.button, styles.voteButton]}
+                        />
+                        <Button
+                          title="Remove Vote"
+                          onPress={handleDeleteVote}
+                          disabled={submittingVote}
+                          loading={submittingVote}
+                          variant="secondary"
+                          size="medium"
+                          style={[styles.button, styles.deleteVoteButton]}
+                        />
+                      </>
+                    ) : (
+                      <Button
+                        title="Submit Vote"
+                        onPress={handleSubmitVote}
+                        disabled={submittingVote || !selectedVoteGrade.trim()}
+                        loading={submittingVote}
+                        variant="primary"
+                        size="medium"
+                        style={[styles.button, styles.voteButton]}
+                      />
+                    )}
+                  </View>
+                </View>
               </View>
             )}
 
@@ -762,6 +1002,8 @@ export default function LayoutDetailScreen({ navigation, route }) {
                 setSelectedClimb(null);
                 setClimbDetails(null);
                 setVoteStatistics(null);
+                setMyVote(null);
+                setSelectedVoteGrade('');
                 setClimbComments([]);
                 setClimbVideos([]);
               }}
@@ -1112,6 +1354,143 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 8,
     fontWeight: '500',
+  },
+  statisticsContainer: {
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  statisticRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statisticLabel: {
+    fontSize: 16,
+    color: '#666',
+    marginRight: 8,
+    fontWeight: '500',
+  },
+  statisticValue: {
+    fontSize: 18,
+    color: '#333',
+    fontWeight: '600',
+  },
+  subsectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  gradeDistributionContainer: {
+    marginTop: 12,
+  },
+  distributionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  distributionGrade: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
+    width: 50,
+  },
+  distributionBarContainer: {
+    flex: 1,
+    height: 20,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 10,
+    marginHorizontal: 8,
+    overflow: 'hidden',
+  },
+  distributionBar: {
+    height: '100%',
+    backgroundColor: '#007AFF',
+    borderRadius: 10,
+  },
+  distributionCount: {
+    fontSize: 14,
+    color: '#666',
+    width: 30,
+    textAlign: 'right',
+  },
+  myVoteContainer: {
+    backgroundColor: '#f0f8ff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  myVoteLabel: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 4,
+  },
+  myVoteGrade: {
+    fontWeight: 'bold',
+    color: '#007AFF',
+  },
+  myVoteHeight: {
+    fontSize: 14,
+    color: '#666',
+  },
+  voteInterfaceContainer: {
+    marginTop: 8,
+  },
+  gradeSelectorContainer: {
+    marginBottom: 12,
+  },
+  gradeSelectorLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 8,
+  },
+  gradeOptionsScroll: {
+    maxHeight: 50,
+  },
+  gradeOptionsContent: {
+    paddingRight: 8,
+  },
+  gradeOptionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    marginRight: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  gradeOptionButtonSelected: {
+    backgroundColor: '#007AFF',
+    borderColor: '#0051D5',
+  },
+  gradeOptionText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  gradeOptionTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  heightInfo: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    marginBottom: 12,
+  },
+  voteActionsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  voteButton: {
+    flex: 1,
+  },
+  deleteVoteButton: {
+    flex: 1,
   },
   uploadButtonText: {
     color: '#fff',
