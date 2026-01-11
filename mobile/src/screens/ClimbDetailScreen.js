@@ -6,8 +6,11 @@ import {
   ScrollView,
   Keyboard,
   Platform,
+  Image,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { VideoView, useVideoPlayer } from 'expo-video';
+import * as ImagePicker from 'expo-image-picker';
 import { useApi } from '../ApiProvider';
 import { showError } from '../utils/errorHandler';
 import StyledTextInput from '../components/StyledTextInput';
@@ -17,6 +20,8 @@ import Button from '../components/Button';
 import Pressable from '../components/Pressable';
 import { getCurrentUserId } from '../utils/jwtUtils';
 import KeyboardAvoidingContainer from '../components/KeyboardAvoidingContainer';
+import AppModal from '../components/Modal';
+import Spinner from '../components/Spinner';
 
 export default function ClimbDetailScreen({ navigation, route }) {
   const { climbId } = route.params;
@@ -37,9 +42,22 @@ export default function ClimbDetailScreen({ navigation, route }) {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [submittingReaction, setSubmittingReaction] = useState({});
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
+  const [videoError, setVideoError] = useState(null);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [newVideoTitle, setNewVideoTitle] = useState('');
+  const [newVideoDescription, setNewVideoDescription] = useState('');
   const scrollViewRef = useRef(null);
   const commentInputContainerRef = useRef(null);
+  const videoLoadTimeoutRef = useRef(null);
+  const videoUnloadTimeoutRef = useRef(null);
+  const errorLoggedRef = useRef(false);
+  const hasAutoPlayedRef = useRef(false);
   const { api } = useApi();
+  
+  const videoPlayer = useVideoPlayer(selectedVideo?.videoUrl || '');
 
   useEffect(() => {
     const initUserId = async () => {
@@ -124,6 +142,13 @@ export default function ClimbDetailScreen({ navigation, route }) {
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
     return date.toLocaleDateString();
+  };
+
+  const formatVideoDuration = (seconds) => {
+    if (!seconds) return '';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const getGradeOptions = (climbGrade, gradeSystem) => {  // todo maybe make utils for grades
@@ -309,6 +334,206 @@ export default function ClimbDetailScreen({ navigation, route }) {
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, Platform.OS === 'ios' ? 300 : 100);
+  };
+
+  // Video player effects
+  useEffect(() => {
+    if (!videoPlayer || !showVideoPlayer || !selectedVideo?.videoUrl) return;
+    
+    try {
+      videoPlayer.replace(selectedVideo.videoUrl);
+      setVideoError(null);
+      setIsVideoLoaded(false);
+      errorLoggedRef.current = false;
+      hasAutoPlayedRef.current = false;
+    } catch (error) {
+      setVideoError('Failed to load video source');
+    }
+  }, [selectedVideo?.videoUrl, videoPlayer, showVideoPlayer]);
+
+  useEffect(() => {
+    if (!videoPlayer || !showVideoPlayer || !selectedVideo) {
+      errorLoggedRef.current = false;
+      hasAutoPlayedRef.current = false;
+      return;
+    }
+    
+    const checkStatus = () => {
+      if (!selectedVideo) return;
+      
+      const status = videoPlayer.status;
+      
+      if (status === 'readyToPlay') {
+        setIsVideoLoaded(true);
+        setVideoError(null);
+
+        if (videoLoadTimeoutRef.current) {
+          clearTimeout(videoLoadTimeoutRef.current);
+          videoLoadTimeoutRef.current = null;
+        }
+
+        if (!hasAutoPlayedRef.current) {
+          try {
+            videoPlayer.play();
+            hasAutoPlayedRef.current = true;
+          } catch (error) {
+            // Auto-play failed, user can manually play
+          }
+        }
+      } else if (status === 'error') {
+        const errorDetails = videoPlayer.error;
+        
+        if (!errorLoggedRef.current) {
+          errorLoggedRef.current = true;
+        }
+        
+        if (!videoLoadTimeoutRef.current) {
+          const errorMessage = errorDetails?.message || errorDetails?.localizedDescription || 'Failed to load video';
+          setVideoError(errorMessage);
+          setIsVideoLoaded(false);
+        }
+      }
+    };
+    
+    // Check status periodically (every 500ms)
+    const interval = setInterval(checkStatus, 500);
+    
+    return () => clearInterval(interval);
+  }, [videoPlayer, showVideoPlayer, selectedVideo]);
+
+  useEffect(() => {
+    if (!showVideoPlayer) {
+      if (videoPlayer) {
+        videoPlayer.pause();
+        if (videoUnloadTimeoutRef.current) {
+          clearTimeout(videoUnloadTimeoutRef.current);
+        }
+        videoUnloadTimeoutRef.current = setTimeout(() => {
+          if (videoPlayer && !showVideoPlayer) {
+            videoUnloadTimeoutRef.current = null;
+          }
+        }, 30000);
+      }
+      setIsVideoLoaded(false);
+      setVideoError(null);
+      if (videoLoadTimeoutRef.current) {
+        clearTimeout(videoLoadTimeoutRef.current);
+        videoLoadTimeoutRef.current = null;
+      }
+    } else {
+      if (videoUnloadTimeoutRef.current) {
+        clearTimeout(videoUnloadTimeoutRef.current);
+        videoUnloadTimeoutRef.current = null;
+      }
+    }
+  }, [showVideoPlayer, videoPlayer]);
+
+  useEffect(() => {
+    if (showVideoPlayer && selectedVideo && videoPlayer) {
+      if (videoLoadTimeoutRef.current) {
+        clearTimeout(videoLoadTimeoutRef.current);
+        videoLoadTimeoutRef.current = null;
+      }
+      
+      setVideoError(null);
+      setIsVideoLoaded(false);
+      errorLoggedRef.current = false;
+      
+      videoLoadTimeoutRef.current = setTimeout(() => {
+        if (videoPlayer && videoPlayer.status !== 'readyToPlay') {
+          setVideoError('Video is taking too long to load. Please check your internet connection and try again.');
+        }
+        videoLoadTimeoutRef.current = null;
+      }, 10000);
+
+      return () => {
+        if (videoLoadTimeoutRef.current) {
+          clearTimeout(videoLoadTimeoutRef.current);
+          videoLoadTimeoutRef.current = null;
+        }
+      };
+    }
+  }, [showVideoPlayer, selectedVideo, videoPlayer]);
+
+  // Video handlers
+  const handleVideoPress = (video) => {
+    setSelectedVideo(video);
+    setShowVideoPlayer(true);
+  };
+
+  const handleUploadVideo = async () => {
+    if (!climbId) return;
+
+    try {
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showErrorAlert('Permission needed', 'Please grant permission to access your media library');
+        return;
+      }
+
+      // Launch image picker for videos
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const videoAsset = result.assets[0];
+      
+      // Check file size (backend limit is 100MB)
+      const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
+      if (videoAsset.fileSize && videoAsset.fileSize > MAX_FILE_SIZE) {
+        const fileSizeMB = (videoAsset.fileSize / (1024 * 1024)).toFixed(2);
+        showErrorAlert(
+          'File too large',
+          `Video file size (${fileSizeMB}MB) exceeds the maximum limit of 100MB. Please choose a smaller video.`
+        );
+        return;
+      }
+      
+      const uri = videoAsset.uri;
+      const fileName = uri.split('/').pop();
+      const fileType = `video/${fileName.split('.').pop()}`;
+
+      // Create FormData
+      const formData = new FormData();
+      formData.append('video', {
+        uri,
+        name: fileName,
+        type: fileType,
+      });
+      if (newVideoTitle.trim()) {
+        formData.append('title', newVideoTitle.trim());
+      }
+      if (newVideoDescription.trim()) {
+        formData.append('description', newVideoDescription.trim());
+      }
+
+      setUploadingVideo(true);
+      
+      // Upload video
+      await api.post(`/climbs/${climbId}/videos`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      // Refresh videos list
+      await fetchClimbDetails(climbId);
+      
+      setNewVideoTitle('');
+      setNewVideoDescription('');
+      showSuccessAlert('Video uploaded successfully!');
+    } catch (error) {
+      showError(error, 'Error', 'Failed to upload video');
+    } finally {
+      setUploadingVideo(false);
+    }
   };
 
   if (loadingClimbDetails || !climbDetails) {
@@ -851,9 +1076,174 @@ export default function ClimbDetailScreen({ navigation, route }) {
       {/* Videos Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Videos ({climbVideos.length})</Text>
-        {/* TODO: Add videos list */}
+        
+        {climbVideos.length > 0 ? (
+          <View style={styles.videosList}>
+            {climbVideos.map((video) => (
+              <Pressable
+                key={video.id}
+                style={styles.videoItem}
+                onPress={() => handleVideoPress(video)}
+              >
+                <View style={styles.thumbnailContainer}>
+                  {video.thumbnailUrl ? (
+                    <Image
+                      source={{ uri: video.thumbnailUrl }}
+                      style={styles.videoThumbnail}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.videoThumbnail, styles.thumbnailPlaceholder]}>
+                      <Text style={styles.thumbnailPlaceholderText}>▶</Text>
+                    </View>
+                  )}
+                  <View style={styles.playIconOverlay}>
+                    <Text style={styles.playIcon}>▶</Text>
+                  </View>
+                  {video.duration && (
+                    <View style={styles.durationBadge}>
+                      <Text style={styles.durationText}>{formatVideoDuration(video.duration)}</Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.videoInfo}>
+                  <Text style={styles.videoTitle} numberOfLines={2}>
+                    {video.title || 'Untitled Video'}
+                  </Text>
+                  {video.description && (
+                    <Text style={styles.videoDescription} numberOfLines={2}>
+                      {video.description}
+                    </Text>
+                  )}
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.noVideosText}>No videos yet</Text>
+        )}
+
+        {/* Upload Video Form */}
+        <View style={styles.uploadVideoContainer}>
+          <Text style={styles.uploadVideoTitle}>Upload Video</Text>
+          <StyledTextInput
+            style={styles.input}
+            placeholder="Video title (optional)"
+            value={newVideoTitle}
+            onChangeText={setNewVideoTitle}
+          />
+          <StyledTextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Video description (optional)"
+            value={newVideoDescription}
+            onChangeText={setNewVideoDescription}
+            multiline
+            numberOfLines={3}
+          />
+          <Button
+            title="Choose Video"
+            onPress={handleUploadVideo}
+            variant="primary"
+            size="medium"
+            loading={uploadingVideo}
+            disabled={uploadingVideo}
+            style={styles.uploadButton}
+          />
+        </View>
       </View>
       </ScrollView>
+
+      {/* Video Player Modal */}
+      <AppModal
+        visible={showVideoPlayer}
+        onClose={() => {
+          setShowVideoPlayer(false);
+          setSelectedVideo(null);
+          setIsVideoLoaded(false);
+          setVideoError(null);
+        }}
+        animationType="fade"
+        dismissOnOverlayPress={false}
+        overlayStyle={styles.videoPlayerOverlay}
+        style={styles.videoPlayerContainer}
+      >
+        {selectedVideo && (
+          <>
+            <Pressable
+              style={styles.videoPlayerCloseButton}
+              onPress={() => {
+                setShowVideoPlayer(false);
+                setSelectedVideo(null);
+                setIsVideoLoaded(false);
+                setVideoError(null);
+              }}
+            >
+              <Text style={styles.videoPlayerCloseText}>✕</Text>
+            </Pressable>
+            {videoError ? (
+              <View style={styles.videoErrorContainer}>
+                <Text style={styles.videoErrorText}>⚠️ Error loading video</Text>
+                <Text style={styles.videoErrorDetails}>{videoError}</Text>
+                <Button
+                  title="Retry"
+                  onPress={() => {
+                    setVideoError(null);
+                    setIsVideoLoaded(false);
+                    errorLoggedRef.current = false;
+                    if (videoPlayer && selectedVideo?.videoUrl) {
+                      try {
+                        videoPlayer.replace(selectedVideo.videoUrl);
+                      } catch (error) {
+                        setVideoError('Failed to retry loading video');
+                      }
+                    }
+                  }}
+                  variant="primary"
+                  size="medium"
+                  style={styles.videoRetryButton}
+                />
+              </View>
+            ) : (
+              <>
+                <VideoView
+                  player={videoPlayer}
+                  style={styles.videoPlayer}
+                  nativeControls={true}
+                  contentFit="contain"
+                  fullscreenOptions={{ enterFullscreenButton: false }}
+                  onLoadStart={() => {
+                    setVideoError(null);
+                  }}
+                  onError={(error) => {
+                    const errorMessage = error?.message || error?.localizedDescription || 'Failed to load video';
+                    setVideoError(errorMessage);
+                    setIsVideoLoaded(false);
+                  }}
+                />
+                {!isVideoLoaded && !videoError && (
+                  <View style={styles.videoLoadingContainer}>
+                    <Spinner size="large" color="#fff" />
+                    <Text style={styles.videoLoadingText}>Loading video...</Text>
+                    <Text style={styles.videoUrlText} numberOfLines={1}>
+                      {selectedVideo.videoUrl}
+                    </Text>
+                  </View>
+                )}
+              </>
+            )}
+            <View style={styles.videoPlayerInfo}>
+              <Text style={styles.videoPlayerTitle}>
+                {selectedVideo.title || 'Untitled Video'}
+              </Text>
+              {selectedVideo.description && (
+                <Text style={styles.videoPlayerDescription}>
+                  {selectedVideo.description}
+                </Text>
+              )}
+            </View>
+          </>
+        )}
+      </AppModal>
     </KeyboardAvoidingContainer>
   );
 }
@@ -1297,5 +1687,200 @@ const styles = StyleSheet.create({
   textArea: {
     height: 80,
     textAlignVertical: 'top',
+  },
+  videosList: {
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  videoItem: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  thumbnailContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
+  videoThumbnail: {
+    width: 120,
+    height: 90,
+    borderRadius: 8,
+    backgroundColor: '#ddd',
+  },
+  thumbnailPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#e0e0e0',
+  },
+  thumbnailPlaceholderText: {
+    fontSize: 32,
+    color: '#999',
+  },
+  playIconOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 8,
+  },
+  playIcon: {
+    color: '#fff',
+    fontSize: 32,
+    fontWeight: 'bold',
+  },
+  durationBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  durationText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  videoInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  videoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  videoDescription: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  noVideosText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  uploadVideoContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  uploadVideoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  uploadButton: {
+    marginTop: 8,
+  },
+  videoPlayerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoPlayerContainer: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  videoPlayer: {
+    width: '100%',
+    height: '60%',
+    maxHeight: 400,
+    backgroundColor: '#000',
+    borderRadius: 8,
+  },
+  videoPlayerCloseButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoPlayerCloseText: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  videoPlayerInfo: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 8,
+    width: '100%',
+  },
+  videoPlayerTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  videoPlayerDescription: {
+    color: '#fff',
+    fontSize: 14,
+    opacity: 0.8,
+  },
+  videoLoadingContainer: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -50 }, { translateY: -50 }],
+    alignItems: 'center',
+    zIndex: 5,
+  },
+  videoLoadingText: {
+    color: '#fff',
+    marginTop: 12,
+    fontSize: 16,
+  },
+  videoUrlText: {
+    color: '#fff',
+    marginTop: 8,
+    fontSize: 10,
+    opacity: 0.6,
+    maxWidth: '90%',
+  },
+  videoErrorContainer: {
+    width: '100%',
+    padding: 20,
+    backgroundColor: 'rgba(255, 0, 0, 0.2)',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  videoErrorText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  videoErrorDetails: {
+    color: '#fff',
+    fontSize: 14,
+    opacity: 0.8,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  videoRetryButton: {
+    marginTop: 8,
   },
 });
