@@ -148,8 +148,8 @@ async function deleteAllResources() {
     console.log('\n🗑️  Deleting from database...');
     
     try {
-      // Delete all videos first (they reference spots)
-      const videosDeleted = await prisma.spotVideo.deleteMany({});
+      // Delete all videos first (they reference climbs)
+      const videosDeleted = await prisma.climbVideo.deleteMany({});
       console.log(`   ✓ Deleted ${videosDeleted.count} videos from database`);
 
       // Delete all spots (they reference layouts)

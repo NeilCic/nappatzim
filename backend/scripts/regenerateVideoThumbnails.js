@@ -28,13 +28,14 @@ if (existsSync(backendEnv)) {
 
 // Import after env is loaded
 import prisma from '../lib/prisma.js';
+import climbVideoService from '../services/climbVideoService.js';
 import { getVideoThumbnail } from '../services/cloudinaryService.js';
 
 async function regenerateThumbnails() {
   try {
     console.log('🔄 Fetching all videos from database...\n');
 
-    const videos = await prisma.spotVideo.findMany({
+    const videos = await climbVideoService.getAll({
       select: {
         id: true,
         title: true,
@@ -65,10 +66,7 @@ async function regenerateThumbnails() {
         
         // Only update if the URL is different
         if (newThumbnailUrl !== video.thumbnailUrl) {
-          await prisma.spotVideo.update({
-            where: { id: video.id },
-            data: { thumbnailUrl: newThumbnailUrl },
-          });
+          await climbVideoService.updateVideo(video.id, { thumbnailUrl: newThumbnailUrl });
           
           console.log(`✅ Updated thumbnail for: ${video.title || 'Untitled'} (${video.id})`);
           console.log(`   Old: ${video.thumbnailUrl || 'null'}`);

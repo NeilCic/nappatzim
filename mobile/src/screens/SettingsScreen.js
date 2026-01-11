@@ -13,7 +13,7 @@ import FormField from "../components/FormField";
 import Section from "../components/Section";
 import { showSuccessAlert } from "../utils/alert";
 
-export default function PreferencesScreen() {
+export default function SettingsScreen() {
   const [username, setUsername] = useState("");
   const [height, setHeight] = useState("");
   const [loading, setLoading] = useState(true);
@@ -125,4 +125,3 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
 });
-

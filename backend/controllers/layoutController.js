@@ -1,4 +1,6 @@
 import layoutService from "../services/layoutService.js";
+import spotService from "../services/spotService.js";
+import climbVideoService from "../services/climbVideoService.js";
 import { z } from "zod";
 import logger from "../lib/logger.js";
 import { formatZodError } from "../lib/zodErrorFormatter.js";
@@ -15,6 +17,9 @@ const isValidUrl = (val) => {
 // Schema for creating layout (without image URLs - they come from Cloudinary)
 const createLayoutSchema = z.object({
   name: z.string().min(1, "Name is required"),
+  gradeSystem: z.enum(["V-Scale", "V-Scale Range", "French"], {
+    errorMap: () => ({ message: "Grade system must be 'V-Scale', 'V-Scale Range', or 'French'" }),
+  }),
 });
 
 // Schema for creating video (without video URLs - they come from Cloudinary)
@@ -32,7 +37,14 @@ const spotSchema = z.object({
   layoutId: z.string().min(1, "Layout ID is required"),
 });
 
-const spotVideoSchema = z.object({
+const updateLayoutSchema = z.object({
+  name: z.string().min(1, "Name is required").optional(),
+  gradeSystem: z.enum(["V-Scale", "V-Scale Range", "French"], {
+    errorMap: () => ({ message: "Grade system must be 'V-Scale', 'V-Scale Range', or 'French'" }),
+  }).optional(),
+});
+
+const climbVideoSchema = z.object({
   title: z.string().optional(),
   description: z.string().nullable().optional(),
   videoUrl: z.string().refine(isValidUrl, "Invalid video URL"),
@@ -40,13 +52,13 @@ const spotVideoSchema = z.object({
   thumbnailUrl: z.string().refine((val) => !val || isValidUrl(val), "Invalid thumbnail URL").optional(),
   fileSize: z.number().int().positive("File size must be positive"),
   duration: z.number().positive("Duration must be positive"),
-  spotId: z.string().min(1, "Spot ID is required"),
+  climbId: z.string().min(1, "Climb ID is required"),
 });
 
 // Layout Controllers
 export const getAllLayoutsController = async (req, res) => {
   try {
-    const layouts = await layoutService.layout.getAllLayouts();
+    const layouts = await layoutService.getAllLayouts();
     res.json({ layouts });
   } catch (error) {
     logger.error({ error, userId: req.user?.userId }, "Error fetching layouts");
@@ -57,7 +69,7 @@ export const getAllLayoutsController = async (req, res) => {
 export const getLayoutByIdController = async (req, res) => {
   try {
     const { layoutId } = req.params;
-    const layout = await layoutService.layout.getLayoutById(layoutId);
+    const layout = await layoutService.getLayoutById(layoutId);
     
     if (!layout) {
       return res.status(404).json({ error: "Layout not found" });
@@ -87,8 +99,9 @@ export const createLayoutController = async (req, res) => {
     }
 
     // Service handles Cloudinary upload and database save
-    const layout = await layoutService.layout.createLayout(
+    const layout = await layoutService.createLayout(
       nameValidation.data.name,
+      nameValidation.data.gradeSystem,
       req.file.buffer
     );
 
@@ -103,23 +116,24 @@ export const updateLayoutController = async (req, res) => {
   try {
     const { layoutId } = req.params;
     
-    const nameValidation = createLayoutSchema.partial().safeParse(req.body);
-    if (!nameValidation.success) {
+    const validation = updateLayoutSchema.safeParse(req.body);
+    if (!validation.success) {
       return res.status(400).json({
         error: "Validation failed",
-        fields: formatZodError(nameValidation.error),
+        fields: formatZodError(validation.error),
       });
     }
 
-    const existingLayout = await layoutService.layout.getLayoutById(layoutId);
+    const existingLayout = await layoutService.getLayoutById(layoutId);
     if (!existingLayout) {
       return res.status(404).json({ error: "Layout not found" });
     }
 
     // Service handles optional file upload and database update
-    const layout = await layoutService.layout.updateLayout(
+    const layout = await layoutService.updateLayout(
       layoutId,
-      nameValidation.data.name || null,
+      validation.data.name || null,
+      validation.data.gradeSystem || null,
       req.file?.buffer || null,
       existingLayout.layoutImagePublicId
     );
@@ -135,7 +149,7 @@ export const deleteLayoutController = async (req, res) => {
   try {
     const { layoutId } = req.params;
     
-    const deleted = await layoutService.layout.deleteLayout(layoutId);
+    const deleted = await layoutService.deleteLayout(layoutId);
     
     if (!deleted) {
       return res.status(404).json({ error: "Layout not found" });
@@ -152,7 +166,7 @@ export const deleteLayoutController = async (req, res) => {
 export const getSpotsByLayoutController = async (req, res) => {
   try {
     const { layoutId } = req.params;
-    const spots = await layoutService.spot.getSpotsByLayout(layoutId);
+    const spots = await spotService.getSpotsByLayout(layoutId);
     res.json({ spots });
   } catch (error) {
     logger.error({ error, layoutId: req.params.layoutId }, "Error fetching spots");
@@ -163,7 +177,7 @@ export const getSpotsByLayoutController = async (req, res) => {
 export const getSpotByIdController = async (req, res) => {
   try {
     const { spotId } = req.params;
-    const spot = await layoutService.spot.getSpotById(spotId);
+    const spot = await spotService.getSpotById(spotId);
     
     if (!spot) {
       return res.status(404).json({ error: "Spot not found" });
@@ -187,7 +201,7 @@ export const createSpotController = async (req, res) => {
       });
     }
 
-    const spot = await layoutService.spot.createSpot({
+    const spot = await spotService.createSpot({
       ...validation.data,
       userId,
     });
@@ -211,7 +225,7 @@ export const updateSpotController = async (req, res) => {
     }
 
     const userId = req.user?.userId;
-    const spot = await layoutService.spot.updateSpot(spotId, userId, validation.data);
+    const spot = await spotService.updateSpot(spotId, userId, validation.data);
     
     if (!spot) {
       return res.status(404).json({ error: "Spot not found or you don't have permission" });
@@ -229,7 +243,7 @@ export const deleteSpotController = async (req, res) => {
     const { spotId } = req.params;
     const userId = req.user?.userId;
     
-    const deleted = await layoutService.spot.deleteSpot(spotId, userId);
+    const deleted = await spotService.deleteSpot(spotId, userId);
     
     if (!deleted) {
       return res.status(404).json({ error: "Spot not found or you don't have permission" });
@@ -242,13 +256,13 @@ export const deleteSpotController = async (req, res) => {
   }
 };
 
-export const getVideosBySpotController = async (req, res) => {
+export const getVideosByClimbController = async (req, res) => {
   try {
-    const { spotId } = req.params;
-    const videos = await layoutService.spotVideo.getVideosBySpot(spotId);
+    const { climbId } = req.params;
+    const videos = await climbVideoService.getVideosByClimb(climbId);
     res.json({ videos });
   } catch (error) {
-    logger.error({ error, spotId: req.params.spotId }, "Error fetching videos");
+    logger.error({ error, climbId: req.params.climbId }, "Error fetching videos");
     res.status(500).json({ error: "Failed to fetch videos" });
   }
 };
@@ -256,7 +270,7 @@ export const getVideosBySpotController = async (req, res) => {
 export const getVideoByIdController = async (req, res) => {
   try {
     const { videoId } = req.params;
-    const video = await layoutService.spotVideo.getVideoById(videoId);
+    const video = await climbVideoService.getVideoById(videoId);
     
     if (!video) {
       return res.status(404).json({ error: "Video not found" });
@@ -275,9 +289,9 @@ export const createVideoController = async (req, res) => {
       return res.status(400).json({ error: "Video file is required" });
     }
 
-    const { spotId } = req.params;
-    if (!spotId) {
-      return res.status(400).json({ error: "Spot ID is required" });
+    const { climbId } = req.params;
+    if (!climbId) {
+      return res.status(400).json({ error: "Climb ID is required" });
     }
 
     const validation = createVideoSchema.safeParse(req.body);
@@ -288,8 +302,8 @@ export const createVideoController = async (req, res) => {
       });
     }
 
-    const video = await layoutService.spotVideo.createVideo(
-      spotId,
+    const video = await climbVideoService.createVideo(
+      climbId,
       validation.data.title || null,
       validation.data.description || null,
       req.file.buffer
@@ -297,7 +311,7 @@ export const createVideoController = async (req, res) => {
 
     res.status(201).json({ video });
   } catch (error) {
-    logger.error({ error, spotId: req.params.spotId }, "Error creating video");
+    logger.error({ error, climbId: req.params.climbId }, "Error creating video");
     
     // Return appropriate error message
     if (error.message?.includes('not found')) {
@@ -311,7 +325,7 @@ export const createVideoController = async (req, res) => {
 export const updateVideoController = async (req, res) => {
   try {
     const { videoId } = req.params;
-    const validation = spotVideoSchema.partial().safeParse(req.body);
+    const validation = climbVideoSchema.partial().safeParse(req.body);
     
     if (!validation.success) {
       return res.status(400).json({
@@ -320,7 +334,7 @@ export const updateVideoController = async (req, res) => {
       });
     }
 
-    const video = await layoutService.spotVideo.updateVideo(videoId, validation.data);
+    const video = await climbVideoService.updateVideo(videoId, validation.data);
     
     if (!video) {
       return res.status(404).json({ error: "Video not found" });
@@ -337,7 +351,7 @@ export const deleteVideoController = async (req, res) => {
   try {
     const { videoId } = req.params;
     
-    const deleted = await layoutService.spotVideo.deleteVideo(videoId);
+    const deleted = await climbVideoService.deleteVideo(videoId);
     
     if (!deleted) {
       return res.status(404).json({ error: "Video not found" });
@@ -352,7 +366,7 @@ export const deleteVideoController = async (req, res) => {
 
 export const compareLayoutsWithCloudinaryController = async (req, res) => {  // todo this should be something for an admin. for now it's unused but important to remember it's a thing that should be checked sometime/somehow
   try {
-    const comparison = await layoutService.layout.compareWithCloudinary();
+    const comparison = await layoutService.compareWithCloudinary();
     res.json(comparison);
   } catch (error) {
     logger.error({ error }, "Error comparing layouts with Cloudinary");

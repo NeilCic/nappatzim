@@ -16,7 +16,7 @@ import TimerScreen from "./src/screens/TimerScreen";
 import WorkoutExecutionScreen from "./src/screens/WorkoutExecutionScreen";
 import ConversationsListScreen from "./src/screens/ConversationsListScreen";
 import ConversationScreen from "./src/screens/ConversationScreen";
-import PreferencesScreen from "./src/screens/PreferencesScreen";
+import SettingsScreen from "./src/screens/SettingsScreen";
 import LayoutSelectionScreen from "./src/screens/LayoutSelectionScreen";
 import LayoutDetailScreen from "./src/screens/LayoutDetailScreen";
 
@@ -152,10 +152,10 @@ export default function App() {
     );
   }
 
-  const PreferencesButton = ({ navigation }) => (
+  const SettingsButton = ({ navigation }) => (
     <TouchableOpacity
       style={styles.preferencesButton}
-      onPress={() => navigation.navigate("Preferences")}
+      onPress={() => navigation.navigate("Settings")}
     >
       <Text style={styles.preferencesIcon}>⚙️</Text>
     </TouchableOpacity>
@@ -163,7 +163,7 @@ export default function App() {
 
   const HeaderRightButtons = ({ navigation }) => (
     <View style={styles.headerRightContainer}>
-      <PreferencesButton navigation={navigation} />
+      <SettingsButton navigation={navigation} />
       <TouchableOpacity
         style={styles.chatButton}
         onPress={() => navigation.navigate("Conversations")}
@@ -274,9 +274,9 @@ export default function App() {
                 options={{ title: "Chat" }}
               />
               <Stack.Screen
-                name="Preferences"
-                component={PreferencesScreen}
-                options={{ title: "Preferences" }}
+                name="Settings"
+                component={SettingsScreen}
+                options={{ title: "Settings" }}
               />
               <Stack.Screen
                 name="Layout Selection"
