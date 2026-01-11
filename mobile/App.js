@@ -19,9 +19,11 @@ import ConversationScreen from "./src/screens/ConversationScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import LayoutSelectionScreen from "./src/screens/LayoutSelectionScreen";
 import LayoutDetailScreen from "./src/screens/LayoutDetailScreen";
+import ClimbDetailScreen from "./src/screens/ClimbDetailScreen";
 
 import { ApiProvider } from "./src/ApiProvider";
 import { createApi } from "./src/ApiClient";
+import { clearCachedUserId } from "./src/utils/jwtUtils";
 
 const Stack = createNativeStackNavigator();
 
@@ -56,6 +58,7 @@ export default function App() {
 
   const clearAuth = async () => {
     await AsyncStorage.multiRemove(["token", "refreshToken"]);
+    clearCachedUserId();
     setAuthToken(undefined);
     setIsAuthed(false);
   };
@@ -291,6 +294,14 @@ export default function App() {
                 component={LayoutDetailScreen}
                 options={({ navigation }) => ({
                   title: "Layout Detail",
+                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
+                })}
+              />
+              <Stack.Screen
+                name="Climb Detail"
+                component={ClimbDetailScreen}
+                options={({ navigation }) => ({
+                  title: "Climb Detail",
                   headerRight: () => <HeaderRightButtons navigation={navigation} />,
                 })}
               />

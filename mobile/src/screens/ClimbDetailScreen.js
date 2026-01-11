@@ -1,0 +1,1301 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView,
+  Keyboard,
+  Platform,
+} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useApi } from '../ApiProvider';
+import { showError } from '../utils/errorHandler';
+import StyledTextInput from '../components/StyledTextInput';
+import LoadingScreen from '../components/LoadingScreen';
+import { showErrorAlert, showSuccessAlert } from '../utils/alert';
+import Button from '../components/Button';
+import Pressable from '../components/Pressable';
+import { getCurrentUserId } from '../utils/jwtUtils';
+import KeyboardAvoidingContainer from '../components/KeyboardAvoidingContainer';
+
+export default function ClimbDetailScreen({ navigation, route }) {
+  const { climbId } = route.params;
+  const [climbDetails, setClimbDetails] = useState(null);
+  const [voteStatistics, setVoteStatistics] = useState(null);
+  const [myVote, setMyVote] = useState(null);
+  const [selectedVoteGrade, setSelectedVoteGrade] = useState('');
+  const [submittingVote, setSubmittingVote] = useState(false);
+  const [userHeight, setUserHeight] = useState(null);
+  const [climbComments, setClimbComments] = useState([]);
+  const [climbVideos, setClimbVideos] = useState([]);
+  const [loadingClimbDetails, setLoadingClimbDetails] = useState(true);
+  const [newCommentContent, setNewCommentContent] = useState('');
+  const [replyingToCommentId, setReplyingToCommentId] = useState(null);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editCommentContent, setEditCommentContent] = useState('');
+  const [commentSortBy, setCommentSortBy] = useState('newest');
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [submittingReaction, setSubmittingReaction] = useState({});
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const scrollViewRef = useRef(null);
+  const commentInputContainerRef = useRef(null);
+  const { api } = useApi();
+
+  useEffect(() => {
+    const initUserId = async () => {
+      const userId = await getCurrentUserId();
+      setCurrentUserId(userId);
+    };
+    initUserId();
+  }, []);
+
+  useEffect(() => {
+    const keyboardWillShowListener = Keyboard.addListener(  // todo check if this is how we've done things up until now - make it consistent
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        // Additional scroll when keyboard appears
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
+    );
+
+    return () => {
+      keyboardWillShowListener?.remove();
+    };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (climbId) {
+        fetchClimbDetails(climbId);
+      }
+      return () => {
+        // Cleanup if needed
+      };
+    }, [climbId])
+  );
+
+  const fetchClimbDetails = async (climbId) => {
+    setLoadingClimbDetails(true);
+    try {
+      const [climbRes, statisticsRes, myVoteRes, commentsRes, videosRes, userRes] = await Promise.all([
+        api.get(`/climbs/${climbId}`),
+        api.get(`/climbs/${climbId}/votes/statistics`),
+        api.get(`/climbs/${climbId}/votes/me`).catch(() => ({ data: { vote: null } })),
+        api.get(`/climbs/${climbId}/comments?sortBy=${commentSortBy}`),
+        api.get(`/climbs/${climbId}/videos`),
+        api.get('/auth/me').catch(() => ({ data: { height: null } })),
+      ]);
+
+      setClimbDetails(climbRes.data.climb);
+      setVoteStatistics(statisticsRes.data.statistics);
+      setMyVote(myVoteRes.data.vote || null);
+      setSelectedVoteGrade(myVoteRes.data.vote?.grade || '');
+      setUserHeight(userRes.data?.height || null);
+      setClimbComments(commentsRes.data.comments || []);
+      setClimbVideos(videosRes.data.videos || []);
+    } catch (error) {
+      showError(error, "Error", "Failed to load climb details");
+    } finally {
+      setLoadingClimbDetails(false);
+    }
+  };
+
+  const fetchComments = async (climbId) => {
+    try {
+      const commentsRes = await api.get(`/climbs/${climbId}/comments?sortBy=${commentSortBy}`);
+      setClimbComments(commentsRes.data.comments || []);
+    } catch (error) {
+      showError(error, "Error", "Failed to load comments");
+    }
+  };
+
+  const formatCommentDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const getGradeOptions = (climbGrade, gradeSystem) => {  // todo maybe make utils for grades
+    if (!climbGrade) return [];
+
+    if (gradeSystem === 'V-Scale' || gradeSystem === 'V-Scale Range') {
+      const rangeMatch = climbGrade.match(/^V(\d+)-V(\d+)$/);
+      const singleMatch = climbGrade.match(/^V(\d+)$/);
+
+      if (rangeMatch) {
+        const lower = parseInt(rangeMatch[1], 10);
+        const upper = parseInt(rangeMatch[2], 10);
+        const minGrade = Math.max(0, lower - 1);
+        const maxGrade = Math.min(17, upper + 1);
+        
+        const options = [];
+        for (let i = minGrade; i <= maxGrade; i++) {
+          options.push(`V${i}`);
+        }
+        return options;
+      } else if (singleMatch) {
+        const grade = parseInt(singleMatch[1], 10);
+        const minGrade = Math.max(0, grade - 1);
+        const maxGrade = Math.min(17, grade + 1);
+        
+        const options = [];
+        for (let i = minGrade; i <= maxGrade; i++) {
+          options.push(`V${i}`);
+        }
+        return options;
+      }
+      return [];
+    } else if (gradeSystem === 'French') {
+      const frenchMatch = climbGrade.match(/^([1-9])([a-c])(\+?)$/);
+      if (frenchMatch) {
+        const number = parseInt(frenchMatch[1], 10);
+        const letter = frenchMatch[2];
+        const hasPlus = frenchMatch[3] === '+';
+        
+        const letterIndex = ['a', 'b', 'c'].indexOf(letter);
+        const letterValue = letterIndex * 2 + (hasPlus ? 1 : 0);
+        const baseValue = (number - 1) * 6;
+        const totalValue = baseValue + letterValue;
+        
+        const minValue = Math.max(0, totalValue - 2);
+        const maxValue = Math.min(53, totalValue + 2);
+        
+        const options = [];
+        for (let value = minValue; value <= maxValue; value++) {
+          const num = Math.floor(value / 6) + 1;
+          const letterVal = value % 6;
+          const hasPlusLocal = letterVal % 2 === 1;
+          const letterIndexLocal = Math.floor(letterVal / 2);
+          const letterLocal = ['a', 'b', 'c'][letterIndexLocal];
+          options.push(`${num}${letterLocal}${hasPlusLocal ? '+' : ''}`);
+        }
+        
+        return options;
+      }
+      return [];
+    }
+    return [];
+  };
+
+  const handleSubmitVote = async () => {
+    if (!climbId || !selectedVoteGrade.trim()) {
+      showErrorAlert("Please select a grade");
+      return;
+    }
+
+    setSubmittingVote(true);
+    try {
+      await api.post(`/climbs/${climbId}/votes`, {
+        grade: selectedVoteGrade.trim(),
+      });
+
+      await fetchClimbDetails(climbId);
+      showSuccessAlert(myVote ? "Vote updated successfully!" : "Vote submitted successfully!");
+    } catch (error) {
+      showError(error, "Error", "Failed to submit vote");
+    } finally {
+      setSubmittingVote(false);
+    }
+  };
+
+  const handleDeleteVote = async () => {
+    if (!climbId || !myVote) return;
+
+    setSubmittingVote(true);
+    try {
+      await api.delete(`/climbs/${climbId}/votes`);
+
+      await fetchClimbDetails(climbId);
+      showSuccessAlert("Vote removed successfully!");
+    } catch (error) {
+      showError(error, "Error", "Failed to delete vote");
+    } finally {
+      setSubmittingVote(false);
+    }
+  };
+
+  const handleSubmitComment = async (commentId = null) => {
+    const content = commentId ? editCommentContent : newCommentContent;
+    const isReply = !commentId && replyingToCommentId;
+    
+    if (!climbId || !content.trim()) return;
+
+    setSubmittingComment(true);
+    try {
+      if (commentId) {
+        await api.put(`/climbs/${climbId}/comments/${commentId}`, {
+          content: content.trim(),
+        });
+        setEditingCommentId(null);
+        setEditCommentContent('');
+        showSuccessAlert("Comment updated!");
+      } else {
+        await api.post(`/climbs/${climbId}/comments`, {
+          content: content.trim(),
+          parentCommentId: replyingToCommentId || undefined,
+        });
+        setNewCommentContent('');
+        setReplyingToCommentId(null);
+        showSuccessAlert(isReply ? "Reply posted!" : "Comment posted!");
+      }
+
+      await fetchComments(climbId);
+    } catch (error) {
+      showError(error, "Error", commentId ? "Failed to update comment" : "Failed to post comment");
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!climbId) return;
+
+    setSubmittingComment(true);
+    try {
+      await api.delete(`/climbs/${climbId}/comments/${commentId}`);
+
+      await fetchComments(climbId);
+      showSuccessAlert("Comment deleted!");
+    } catch (error) {
+      showError(error, "Error", "Failed to delete comment");
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleSubmitReaction = async (commentId, reaction) => {
+    if (!climbId) return;
+
+    setSubmittingReaction({ ...submittingReaction, [commentId]: true });
+    try {
+      await api.post(`/climbs/${climbId}/comments/${commentId}/reactions`, {
+        reaction,
+      });
+
+      await fetchComments(climbId);
+    } catch (error) {
+      if (error.response?.status === 204 || error.response?.status === 200) {
+        // This is actually a success - reaction was toggled off or updated
+        await fetchComments(climbId);
+      } else {
+        console.error('Reaction error:', error.response?.status, error.response?.data, error.message);
+        showError(error, "Error", "Failed to submit reaction");
+      }
+    } finally {
+      setSubmittingReaction({ ...submittingReaction, [commentId]: false });
+    }
+  };
+
+  const handleCommentSortChange = async (sortBy) => {
+    setCommentSortBy(sortBy);
+    if (climbId) {
+      await fetchComments(climbId);
+    }
+  };
+
+  const handleCommentInputFocus = () => {
+    // Delay to ensure keyboard animation starts
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, Platform.OS === 'ios' ? 300 : 100);
+  };
+
+  if (loadingClimbDetails || !climbDetails) {
+    return <LoadingScreen />;
+  }
+
+  return (
+    <KeyboardAvoidingContainer 
+      style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={true}
+        keyboardShouldPersistTaps="handled"
+      >
+      <View style={styles.climbHeader}>
+        <View style={[styles.climbColorIndicatorLarge, { backgroundColor: climbDetails.color }]} />
+        <View style={styles.climbHeaderInfo}>
+          <Text style={styles.climbHeaderGrade}>{climbDetails.grade}</Text>
+          {climbDetails.length && (
+            <Text style={styles.climbHeaderLength}>{climbDetails.length}m</Text>
+          )}
+        </View>
+      </View>
+
+      {/* Votes Section */}
+      {voteStatistics && climbDetails && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Votes ({voteStatistics.totalVotes})</Text>
+          
+          {/* Statistics */}
+          {voteStatistics.totalVotes > 0 && (
+            <View style={styles.statisticsContainer}>
+              {voteStatistics.averageGrade && (
+                <View style={styles.statisticRow}>
+                  <Text style={styles.statisticLabel}>Average:</Text>
+                  <Text style={styles.statisticValue}>{voteStatistics.averageGrade}</Text>
+                </View>
+              )}
+              
+              {/* Grade Distribution */}
+              {Object.keys(voteStatistics.gradeDistribution || {}).length > 0 && (
+                <View style={styles.gradeDistributionContainer}>
+                  <Text style={styles.subsectionTitle}>Grade Distribution</Text>
+                  {Object.entries(voteStatistics.gradeDistribution)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([grade, count]) => (
+                      <View key={grade} style={styles.distributionRow}>
+                        <Text style={styles.distributionGrade}>{grade}</Text>
+                        <View style={styles.distributionBarContainer}>
+                          <View 
+                            style={[
+                              styles.distributionBar, 
+                              { 
+                                width: `${(count / voteStatistics.totalVotes) * 100}%` 
+                              }
+                            ]} 
+                          />
+                        </View>
+                        <Text style={styles.distributionCount}>{count}</Text>
+                      </View>
+                    ))}
+                </View>
+              )}
+
+              {/* Grade by Height Visualization */}
+              {voteStatistics.gradeByHeight && Object.keys(voteStatistics.gradeByHeight).length > 0 && (
+                <View style={styles.gradeByHeightContainer}>
+                  <Text style={styles.subsectionTitle}>Votes by Height</Text>
+                  <Text style={styles.legendDescription}>
+                    Shows how different height groups voted for each grade
+                  </Text>
+                  {Object.entries(voteStatistics.gradeByHeight)
+                    .sort((a, b) => {
+                      const totalA = Object.values(a[1]).reduce((sum, val) => sum + val, 0);
+                      const totalB = Object.values(b[1]).reduce((sum, val) => sum + val, 0);
+                      return totalB - totalA;
+                    })
+                    .map(([grade, heightData]) => {
+                      const total = heightData.short + heightData.average + heightData.tall + heightData.noHeight;
+                      if (total === 0) return null;
+                      
+                      return (
+                        <View key={grade} style={styles.gradeByHeightRow}>
+                          <Text style={styles.gradeByHeightGrade}>{grade}</Text>
+                          <View style={styles.gradeByHeightBarContainer}>
+                            {heightData.short > 0 && (
+                              <View 
+                                style={[
+                                  styles.gradeByHeightSegment,
+                                  styles.gradeByHeightShort,
+                                  { width: `${(heightData.short / total) * 100}%` }
+                                ]} 
+                              />
+                            )}
+                            {heightData.average > 0 && (
+                              <View 
+                                style={[
+                                  styles.gradeByHeightSegment,
+                                  styles.gradeByHeightAverage,
+                                  { width: `${(heightData.average / total) * 100}%` }
+                                ]} 
+                              />
+                            )}
+                            {heightData.tall > 0 && (
+                              <View 
+                                style={[
+                                  styles.gradeByHeightSegment,
+                                  styles.gradeByHeightTall,
+                                  { width: `${(heightData.tall / total) * 100}%` }
+                                ]} 
+                              />
+                            )}
+                            {heightData.noHeight > 0 && (
+                              <View 
+                                style={[
+                                  styles.gradeByHeightSegment,
+                                  styles.gradeByHeightNoHeight,
+                                  { width: `${(heightData.noHeight / total) * 100}%` }
+                                ]} 
+                              />
+                            )}
+                          </View>
+                          <Text style={styles.gradeByHeightCount}>{total}</Text>
+                        </View>
+                      );
+                    })}
+                  {/* Legend */}
+                  <View style={styles.heightLegend}>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendColor, styles.gradeByHeightShort]} />
+                      <Text style={styles.legendText}>Short (&lt;165cm)</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendColor, styles.gradeByHeightAverage]} />
+                      <Text style={styles.legendText}>Average (165-180cm)</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendColor, styles.gradeByHeightTall]} />
+                      <Text style={styles.legendText}>Tall (&gt;180cm)</Text>
+                    </View>
+                    {voteStatistics.heightBreakdown?.withoutHeight > 0 && (
+                      <View style={styles.legendItem}>
+                        <View style={[styles.legendColor, styles.gradeByHeightNoHeight]} />
+                        <Text style={styles.legendText}>No height</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* User's Current Vote */}
+          {myVote && (
+            <View style={styles.myVoteContainer}>
+              <Text style={styles.myVoteLabel}>Your Vote: <Text style={styles.myVoteGrade}>{myVote.grade}</Text></Text>
+              {myVote.height && (
+                <Text style={styles.myVoteHeight}>Height: {myVote.height}cm</Text>
+              )}
+            </View>
+          )}
+
+          {/* Vote Interface */}
+          <View style={styles.voteInterfaceContainer}>
+            <Text style={styles.subsectionTitle}>
+              {myVote ? 'Update Your Vote' : 'Vote on Difficulty'}
+            </Text>
+            
+            {/* Grade Selection */}
+            <View style={styles.gradeSelectorContainer}>
+              <Text style={styles.gradeSelectorLabel}>Select Grade:</Text>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                style={styles.gradeOptionsScroll}
+                contentContainerStyle={styles.gradeOptionsContent}
+              >
+                {getGradeOptions(climbDetails.grade, climbDetails.gradeSystem).map((grade) => (
+                  <Pressable
+                    key={grade}
+                    style={[
+                      styles.gradeOptionButton,
+                      selectedVoteGrade === grade && styles.gradeOptionButtonSelected,
+                    ]}
+                    onPress={() => setSelectedVoteGrade(grade)}
+                  >
+                    <Text
+                      style={[
+                        styles.gradeOptionText,
+                        selectedVoteGrade === grade && styles.gradeOptionTextSelected,
+                      ]}
+                    >
+                      {grade}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Height Info */}
+            {userHeight && (
+              <Text style={styles.heightInfo}>
+                Your height ({userHeight}cm) will be included with your vote
+              </Text>
+            )}
+
+            {/* Action Buttons */}
+            <View style={styles.voteActionsContainer}>
+              {myVote ? (
+                <>
+                  <Button
+                    title="Update Vote"
+                    onPress={handleSubmitVote}
+                    disabled={submittingVote || !selectedVoteGrade.trim() || selectedVoteGrade === myVote.grade}
+                    loading={submittingVote}
+                    variant="primary"
+                    size="medium"
+                    style={[styles.button, styles.voteButton]}
+                  />
+                  <Button
+                    title="Remove Vote"
+                    onPress={handleDeleteVote}
+                    disabled={submittingVote}
+                    loading={submittingVote}
+                    variant="secondary"
+                    size="medium"
+                    style={[styles.button, styles.deleteVoteButton]}
+                  />
+                </>
+              ) : (
+                <Button
+                  title="Submit Vote"
+                  onPress={handleSubmitVote}
+                  disabled={submittingVote || !selectedVoteGrade.trim()}
+                  loading={submittingVote}
+                  variant="primary"
+                  size="medium"
+                  style={[styles.button, styles.voteButton]}
+                />
+              )}
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Comments Section */}
+      <View style={styles.section}>
+        <View style={styles.commentsHeader}>
+          <Text style={styles.sectionTitle}>Comments ({climbComments.length})</Text>
+          <View style={styles.sortButtons}>
+            <Pressable
+              style={[styles.sortButton, commentSortBy === 'newest' && styles.sortButtonActive]}
+              onPress={() => handleCommentSortChange('newest')}
+            >
+              <Text style={[styles.sortButtonText, commentSortBy === 'newest' && styles.sortButtonTextActive]}>Newest</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.sortButton, commentSortBy === 'oldest' && styles.sortButtonActive]}
+              onPress={() => handleCommentSortChange('oldest')}
+            >
+              <Text style={[styles.sortButtonText, commentSortBy === 'oldest' && styles.sortButtonTextActive]}>Oldest</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.sortButton, commentSortBy === 'mostLiked' && styles.sortButtonActive]}
+              onPress={() => handleCommentSortChange('mostLiked')}
+            >
+              <Text style={[styles.sortButtonText, commentSortBy === 'mostLiked' && styles.sortButtonTextActive]}>Most Liked</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Comments List */}
+        {climbComments.length === 0 ? (
+          <Text style={styles.noCommentsText}>No comments yet. Be the first to comment!</Text>
+        ) : (
+          <View style={styles.commentsList}>
+            {climbComments.map((comment) => (
+              <View key={comment.id} style={styles.commentItem}>
+                {/* Comment Header */}
+                <View style={styles.commentHeader}>
+                  <Text style={styles.commentAuthor}>{comment.user?.username || 'Anonymous'}</Text>
+                  <Text style={styles.commentDate}>{formatCommentDate(comment.createdAt)}</Text>
+                  {comment.editedAt && (
+                    <Text style={styles.commentEdited}>(edited)</Text>
+                  )}
+                </View>
+
+                {/* Comment Content */}
+                {editingCommentId === comment.id ? (
+                  <View style={styles.editCommentContainer}>
+                    <StyledTextInput
+                      style={[styles.input, styles.textArea]}
+                      placeholder="Edit your comment"
+                      value={editCommentContent}
+                      onChangeText={setEditCommentContent}
+                      multiline
+                      numberOfLines={3}
+                    />
+                    <View style={styles.editActions}>
+                      <Button
+                        title="Cancel"
+                        onPress={() => {
+                          setEditingCommentId(null);
+                          setEditCommentContent('');
+                        }}
+                        variant="secondary"
+                        size="small"
+                        style={styles.editButton}
+                      />
+                        <Button
+                          title="Save"
+                          onPress={() => handleSubmitComment(comment.id)}
+                        variant="primary"
+                        size="small"
+                        disabled={!editCommentContent.trim() || submittingComment}
+                        loading={submittingComment}
+                        style={styles.editButton}
+                      />
+                    </View>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={styles.commentContent}>{comment.content}</Text>
+
+                    {/* Comment Actions */}
+                    <View style={styles.commentActions}>
+                      <Pressable
+                        style={styles.reactionButton}
+                        onPress={() => handleSubmitReaction(comment.id, 'like')}
+                        disabled={submittingReaction[comment.id]}
+                      >
+                        <Text style={styles.reactionIcon}>👍</Text>
+                        <Text style={styles.reactionCount}>{comment.likes || 0}</Text>
+                      </Pressable>
+                      <Pressable
+                        style={styles.reactionButton}
+                        onPress={() => handleSubmitReaction(comment.id, 'dislike')}
+                        disabled={submittingReaction[comment.id]}
+                      >
+                        <Text style={styles.reactionIcon}>👎</Text>
+                        <Text style={styles.reactionCount}>{comment.dislikes || 0}</Text>
+                      </Pressable>
+                      <Pressable
+                        style={styles.actionButton}
+                        onPress={() => {
+                          setReplyingToCommentId(replyingToCommentId === comment.id ? null : comment.id);
+                          setEditingCommentId(null);
+                        }}
+                      >
+                        <Text style={styles.actionButtonText}>Reply</Text>
+                      </Pressable>
+                      {currentUserId === comment.userId && (
+                        <>
+                          <Pressable
+                            style={styles.actionButton}
+                            onPress={() => {
+                              setEditingCommentId(comment.id);
+                              setEditCommentContent(comment.content);
+                              setReplyingToCommentId(null);
+                            }}
+                          >
+                            <Text style={styles.actionButtonText}>Edit</Text>
+                          </Pressable>
+                          <Pressable
+                            style={styles.actionButton}
+                            onPress={() => handleDeleteComment(comment.id)}
+                            disabled={submittingComment}
+                          >
+                            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Delete</Text>
+                          </Pressable>
+                        </>
+                      )}
+                    </View>
+
+                    {/* Reply Form */}
+                    {replyingToCommentId === comment.id && (
+                      <View style={styles.replyForm}>
+                        <StyledTextInput
+                          style={[styles.input, styles.textArea]}
+                          placeholder={`Reply to ${comment.user?.username || 'Anonymous'}...`}
+                          value={newCommentContent}
+                          onChangeText={setNewCommentContent}
+                          multiline
+                          numberOfLines={3}
+                        />
+                        <View style={styles.replyActions}>
+                          <Button
+                            title="Cancel"
+                            onPress={() => {
+                              setReplyingToCommentId(null);
+                              setNewCommentContent('');
+                            }}
+                            variant="secondary"
+                            size="small"
+                            style={styles.replyButton}
+                          />
+                          <Button
+                            title="Reply"
+                            onPress={() => handleSubmitComment()}
+                            variant="primary"
+                            size="small"
+                            disabled={!newCommentContent.trim() || submittingComment}
+                            loading={submittingComment}
+                            style={styles.replyButton}
+                          />
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Replies */}
+                    {comment.replies && comment.replies.length > 0 && (
+                      <View style={styles.repliesContainer}>
+                        {comment.replies.map((reply) => (
+                          <View key={reply.id} style={styles.replyItem}>
+                            <View style={styles.replyHeader}>
+                              <Text style={styles.replyAuthor}>{reply.user?.username || 'Anonymous'}</Text>
+                              <Text style={styles.replyDate}>{formatCommentDate(reply.createdAt)}</Text>
+                              {reply.editedAt && (
+                                <Text style={styles.commentEdited}>(edited)</Text>
+                              )}
+                            </View>
+                            {editingCommentId === reply.id ? (
+                              <View style={styles.editCommentContainer}>
+                                <StyledTextInput
+                                  style={[styles.input, styles.textArea]}
+                                  placeholder="Edit your reply"
+                                  value={editCommentContent}
+                                  onChangeText={setEditCommentContent}
+                                  multiline
+                                  numberOfLines={2}
+                                />
+                                <View style={styles.editActions}>
+                                  <Button
+                                    title="Cancel"
+                                    onPress={() => {
+                                      setEditingCommentId(null);
+                                      setEditCommentContent('');
+                                    }}
+                                    variant="secondary"
+                                    size="small"
+                                    style={styles.editButton}
+                                  />
+                                  <Button
+                                    title="Save"
+                                    onPress={() => handleSubmitComment(reply.id)}
+                                    variant="primary"
+                                    size="small"
+                                    disabled={!editCommentContent.trim() || submittingComment}
+                                    loading={submittingComment}
+                                    style={styles.editButton}
+                                  />
+                                </View>
+                              </View>
+                            ) : (
+                              <>
+                                <Text style={styles.replyContent}>{reply.content}</Text>
+                                <View style={styles.commentActions}>
+                                  <Pressable
+                                    style={styles.reactionButton}
+                                    onPress={() => handleSubmitReaction(reply.id, 'like')}
+                                    disabled={submittingReaction[reply.id]}
+                                  >
+                                    <Text style={styles.reactionIcon}>👍</Text>
+                                    <Text style={styles.reactionCount}>{reply.likes || 0}</Text>
+                                  </Pressable>
+                                  <Pressable
+                                    style={styles.reactionButton}
+                                    onPress={() => handleSubmitReaction(reply.id, 'dislike')}
+                                    disabled={submittingReaction[reply.id]}
+                                  >
+                                    <Text style={styles.reactionIcon}>👎</Text>
+                                    <Text style={styles.reactionCount}>{reply.dislikes || 0}</Text>
+                                  </Pressable>
+                                  {currentUserId === reply.userId && (
+                                    <>
+                                      <Pressable
+                                        style={styles.actionButton}
+                                        onPress={() => {
+                                          setEditingCommentId(reply.id);
+                                          setEditCommentContent(reply.content);
+                                        }}
+                                      >
+                                        <Text style={styles.actionButtonText}>Edit</Text>
+                                      </Pressable>
+                                      <Pressable
+                                        style={styles.actionButton}
+                                        onPress={() => handleDeleteComment(reply.id)}
+                                        disabled={submittingComment}
+                                      >
+                                        <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Delete</Text>
+                                      </Pressable>
+                                    </>
+                                  )}
+                                </View>
+                              </>
+                            )}
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Create Comment Form */}
+        {!replyingToCommentId && (
+          <View 
+            ref={commentInputContainerRef}
+            style={styles.createCommentContainer}
+          >
+            <StyledTextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Write a comment..."
+              value={newCommentContent}
+              onChangeText={setNewCommentContent}
+              onFocus={handleCommentInputFocus}
+              multiline
+              numberOfLines={4}
+            />
+            <Button
+              title="Post Comment"
+              onPress={() => handleSubmitComment()}
+              variant="primary"
+              size="medium"
+              disabled={!newCommentContent.trim() || submittingComment}
+              loading={submittingComment}
+              style={styles.postCommentButton}
+            />
+          </View>
+        )}
+      </View>
+
+      {/* Videos Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Videos ({climbVideos.length})</Text>
+        {/* TODO: Add videos list */}
+      </View>
+      </ScrollView>
+    </KeyboardAvoidingContainer>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  climbHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  climbColorIndicatorLarge: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    marginRight: 16,
+    borderWidth: 3,
+    borderColor: '#ddd',
+  },
+  climbHeaderInfo: {
+    flex: 1,
+  },
+  climbHeaderGrade: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  climbHeaderLength: {
+    fontSize: 16,
+    color: '#666',
+  },
+  section: {
+    marginBottom: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+    color: '#333',
+  },
+  statisticsContainer: {
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  statisticRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statisticLabel: {
+    fontSize: 16,
+    color: '#666',
+    marginRight: 8,
+    fontWeight: '500',
+  },
+  statisticValue: {
+    fontSize: 18,
+    color: '#333',
+    fontWeight: '600',
+  },
+  subsectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+    marginTop: 8,
+  },
+  gradeDistributionContainer: {
+    marginTop: 12,
+  },
+  distributionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  distributionGrade: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
+    width: 50,
+  },
+  distributionBarContainer: {
+    flex: 1,
+    height: 20,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 10,
+    marginHorizontal: 8,
+    overflow: 'hidden',
+  },
+  distributionBar: {
+    height: '100%',
+    backgroundColor: '#007AFF',
+    borderRadius: 10,
+  },
+  distributionCount: {
+    fontSize: 14,
+    color: '#666',
+    width: 30,
+    textAlign: 'right',
+  },
+  myVoteContainer: {
+    backgroundColor: '#f0f8ff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  myVoteLabel: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 4,
+  },
+  myVoteGrade: {
+    fontWeight: 'bold',
+    color: '#007AFF',
+  },
+  myVoteHeight: {
+    fontSize: 14,
+    color: '#666',
+  },
+  voteInterfaceContainer: {
+    marginTop: 8,
+  },
+  gradeSelectorContainer: {
+    marginBottom: 12,
+  },
+  gradeSelectorLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 8,
+  },
+  gradeOptionsScroll: {
+    maxHeight: 50,
+  },
+  gradeOptionsContent: {
+    paddingRight: 8,
+  },
+  gradeOptionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    marginRight: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  gradeOptionButtonSelected: {
+    backgroundColor: '#007AFF',
+    borderColor: '#0051D5',
+  },
+  gradeOptionText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  gradeOptionTextSelected: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  heightInfo: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    marginBottom: 12,
+  },
+  voteActionsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  voteButton: {
+    flex: 1,
+  },
+  deleteVoteButton: {
+    flex: 1,
+  },
+  button: {
+    marginTop: 8,
+  },
+  gradeByHeightContainer: {
+    marginTop: 16,
+  },
+  gradeByHeightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  gradeByHeightGrade: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
+    width: 50,
+  },
+  gradeByHeightBarContainer: {
+    flex: 1,
+    height: 24,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 12,
+    marginHorizontal: 8,
+    overflow: 'hidden',
+    flexDirection: 'row',
+  },
+  gradeByHeightSegment: {
+    height: '100%',
+  },
+  gradeByHeightShort: {
+    backgroundColor: '#FF6B6B',
+  },
+  gradeByHeightAverage: {
+    backgroundColor: '#4ECDC4',
+  },
+  gradeByHeightTall: {
+    backgroundColor: '#45B7D1',
+  },
+  gradeByHeightNoHeight: {
+    backgroundColor: '#95A5A6',
+  },
+  gradeByHeightCount: {
+    fontSize: 14,
+    color: '#666',
+    width: 30,
+    textAlign: 'right',
+  },
+  heightLegend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 12,
+    gap: 12,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  legendColor: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  legendText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  legendDescription: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    marginBottom: 12,
+  },
+  commentsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sortButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  sortButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#f0f0f0',
+  },
+  sortButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  sortButtonText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  sortButtonTextActive: {
+    color: '#fff',
+  },
+  noCommentsText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  commentsList: {
+    marginBottom: 16,
+  },
+  commentItem: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  commentAuthor: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  commentDate: {
+    fontSize: 12,
+    color: '#999',
+  },
+  commentEdited: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  commentContent: {
+    fontSize: 15,
+    color: '#333',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  commentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginTop: 8,
+  },
+  reactionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  reactionIcon: {
+    fontSize: 16,
+  },
+  reactionCount: {
+    fontSize: 14,
+    color: '#666',
+  },
+  actionButton: {
+    paddingVertical: 4,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    color: '#007AFF',
+  },
+  deleteButtonText: {
+    color: '#FF3B30',
+  },
+  replyForm: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  replyActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  replyButton: {
+    flex: 1,
+  },
+  repliesContainer: {
+    marginTop: 12,
+    paddingLeft: 16,
+    borderLeftWidth: 2,
+    borderLeftColor: '#e0e0e0',
+  },
+  replyItem: {
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  replyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 8,
+  },
+  replyAuthor: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+  },
+  replyDate: {
+    fontSize: 11,
+    color: '#999',
+  },
+  replyContent: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 18,
+    marginBottom: 6,
+  },
+  editCommentContainer: {
+    marginTop: 8,
+  },
+  editActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  editButton: {
+    flex: 1,
+  },
+  createCommentContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  postCommentButton: {
+    marginTop: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    fontSize: 16,
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+});

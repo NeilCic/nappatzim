@@ -1,5 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+// Simple in-memory cache for userId to avoid repeated JWT decoding
+let cachedUserId = null;
+let cachedToken = null;
+
 // Base64 decode polyfill for React Native
 function base64Decode(str) {
   // React Native doesn't have atob, so we use a polyfill
@@ -60,13 +64,33 @@ export function decodeJWT(token) {
 export async function getCurrentUserId() {
   try {
     const token = await AsyncStorage.getItem("token");
-    if (!token) return null;
+    if (!token) {
+      cachedUserId = null;
+      cachedToken = null;
+      return null;
+    }
+    
+    if (cachedUserId && cachedToken === token) {
+      return cachedUserId;
+    }
     
     const decoded = decodeJWT(token);
-    return decoded?.userId || null;
+    const userId = decoded?.userId || null;
+    
+    cachedUserId = userId;
+    cachedToken = token;
+    
+    return userId;
   } catch (error) {
+    cachedUserId = null;
+    cachedToken = null;
     return null;
   }
+}
+
+export function clearCachedUserId() {
+  cachedUserId = null;
+  cachedToken = null;
 }
 
 /**

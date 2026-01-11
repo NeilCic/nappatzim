@@ -35,7 +35,14 @@ class ClimbReactionService extends PrismaCrudService {
 
     if (existingReaction) {
       if (existingReaction.reaction === reaction) {
-        await this.delete({ commentId, userId });
+        await prisma.climbCommentReaction.delete({
+          where: {
+            commentId_userId: {
+              commentId,
+              userId,
+            },
+          },
+        });
         
         if (reaction === "like") {
           likesIncrement = -1;
@@ -109,7 +116,14 @@ class ClimbReactionService extends PrismaCrudService {
       throw new Error("Reaction not found");
     }
 
-    await this.delete({ commentId, userId });
+    await prisma.climbCommentReaction.delete({
+      where: {
+        commentId_userId: {
+          commentId,
+          userId,
+        },
+      },
+    });
 
     let likesIncrement = 0;
     let dislikesIncrement = 0;

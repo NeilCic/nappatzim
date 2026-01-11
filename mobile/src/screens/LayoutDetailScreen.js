@@ -37,17 +37,6 @@ export default function LayoutDetailScreen({ navigation, route }) {
   const [creatingClimb, setCreatingClimb] = useState(false);
   const [newClimbGrade, setNewClimbGrade] = useState('');
   const [newClimbColor, setNewClimbColor] = useState('#FF6B6B');
-  const [selectedClimb, setSelectedClimb] = useState(null);
-  const [showClimbDetailModal, setShowClimbDetailModal] = useState(false);
-  const [climbDetails, setClimbDetails] = useState(null);
-  const [voteStatistics, setVoteStatistics] = useState(null);
-  const [myVote, setMyVote] = useState(null);
-  const [selectedVoteGrade, setSelectedVoteGrade] = useState('');
-  const [submittingVote, setSubmittingVote] = useState(false);
-  const [userHeight, setUserHeight] = useState(null);
-  const [climbComments, setClimbComments] = useState([]);
-  const [climbVideos, setClimbVideos] = useState([]);
-  const [loadingClimbDetails, setLoadingClimbDetails] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
@@ -311,142 +300,10 @@ export default function LayoutDetailScreen({ navigation, route }) {
     setShowSpotDetailModal(true);
   };
 
-  const handleClimbPress = async (climb) => {
-    setSelectedClimb(climb);
-    setShowClimbDetailModal(true);
-    await fetchClimbDetails(climb.id);
+  const handleClimbPress = (climb) => {
+    navigation.navigate('Climb Detail', { climbId: climb.id });
   };
 
-  const fetchClimbDetails = async (climbId) => {
-    setLoadingClimbDetails(true);
-    try {
-      const [climbRes, statisticsRes, myVoteRes, commentsRes, videosRes, userRes] = await Promise.all([
-        api.get(`/climbs/${climbId}`),
-        api.get(`/climbs/${climbId}/votes/statistics`),
-        api.get(`/climbs/${climbId}/votes/me`).catch(() => ({ data: { vote: null } })),
-        api.get(`/climbs/${climbId}/comments`),
-        api.get(`/climbs/${climbId}/videos`),
-        api.get('/auth/me').catch(() => ({ data: { height: null } })),
-      ]);
-
-      setClimbDetails(climbRes.data.climb);
-      setVoteStatistics(statisticsRes.data.statistics);
-      setMyVote(myVoteRes.data.vote || null);
-      setSelectedVoteGrade(myVoteRes.data.vote?.grade || '');
-      setUserHeight(userRes.data?.height || null);
-      setClimbComments(commentsRes.data.comments || []);
-      setClimbVideos(videosRes.data.videos || []);
-    } catch (error) {
-      showError(error, "Error", "Failed to load climb details");
-    } finally {
-      setLoadingClimbDetails(false);
-    }
-  };
-
-  const getGradeOptions = (climbGrade, gradeSystem) => {  // todo we can make a util to handle grade options, conversions, etc.. (something already exists)
-    if (!climbGrade) return [];
-
-    if (gradeSystem === 'V-Scale' || gradeSystem === 'V-Scale Range') {
-      const rangeMatch = climbGrade.match(/^V(\d+)-V(\d+)$/);
-      const singleMatch = climbGrade.match(/^V(\d+)$/);
-
-      if (rangeMatch) {
-        // Range: V4-6 → allow V3, V4, V5, V6, V7
-        const lower = parseInt(rangeMatch[1], 10);
-        const upper = parseInt(rangeMatch[2], 10);
-        const minGrade = Math.max(0, lower - 1); // One below lower bound, but not below 0
-        const maxGrade = Math.min(17, upper + 1); // One above upper bound, but not above 17
-        
-        const options = [];
-        for (let i = minGrade; i <= maxGrade; i++) {
-          options.push(`V${i}`);
-        }
-        return options;
-      } else if (singleMatch) {
-        // Specific grade: V4 → allow V3, V4, V5
-        const grade = parseInt(singleMatch[1], 10);
-        const minGrade = Math.max(0, grade - 1); // One below, but not below 0
-        const maxGrade = Math.min(17, grade + 1); // One above, but not above 17
-        
-        const options = [];
-        for (let i = minGrade; i <= maxGrade; i++) {
-          options.push(`V${i}`);
-        }
-        return options;
-      }
-      return [];
-      } else if (gradeSystem === 'French') {
-        const frenchMatch = climbGrade.match(/^([1-9])([a-c])(\+?)$/);
-        if (frenchMatch) {
-          const number = parseInt(frenchMatch[1], 10);
-          const letter = frenchMatch[2];
-          const hasPlus = frenchMatch[3] === '+';
-          
-          // Convert to numeric value: each number has 6 sub-grades (a, a+, b, b+, c, c+)
-          // a=0, a+=1, b=2, b+=3, c=4, c+=5
-          const letterIndex = ['a', 'b', 'c'].indexOf(letter);
-          const letterValue = letterIndex * 2 + (hasPlus ? 1 : 0);
-          const baseValue = (number - 1) * 6;
-          const totalValue = baseValue + letterValue;
-          
-          // Allow ±2 ticks (2 sub-grades in each direction)
-          const minValue = Math.max(0, totalValue - 2);
-          const maxValue = Math.min(53, totalValue + 2); // 9c+ = 8*6 + 5 = 53
-          
-          const options = [];
-          for (let value = minValue; value <= maxValue; value++) {
-            const num = Math.floor(value / 6) + 1; // +1 because 1a starts at 0
-            const letterVal = value % 6;
-            const hasPlusLocal = letterVal % 2 === 1;
-            const letterIndexLocal = Math.floor(letterVal / 2);
-            const letterLocal = ['a', 'b', 'c'][letterIndexLocal];
-            options.push(`${num}${letterLocal}${hasPlusLocal ? '+' : ''}`);
-          }
-          
-          return options;
-        }
-        return [];
-      }
-    return [];
-  };
-
-  const handleSubmitVote = async () => {
-    if (!selectedClimb || !selectedVoteGrade.trim()) {
-      showErrorAlert("Please select a grade");
-      return;
-    }
-
-    setSubmittingVote(true);
-    try {
-      await api.post(`/climbs/${selectedClimb.id}/votes`, {
-        grade: selectedVoteGrade.trim(),
-      });
-
-      await fetchClimbDetails(selectedClimb.id);
-      showSuccessAlert(myVote ? "Vote updated successfully!" : "Vote submitted successfully!");
-    } catch (error) {
-      showError(error, "Error", "Failed to submit vote");
-    } finally {
-      setSubmittingVote(false);
-    }
-  };
-
-  const handleDeleteVote = async () => {
-    if (!selectedClimb || !myVote) return;
-
-    setSubmittingVote(true);
-    try {
-      await api.delete(`/climbs/${selectedClimb.id}/votes`);
-
-      // Refresh climb details
-      await fetchClimbDetails(selectedClimb.id);
-      showSuccessAlert("Vote removed successfully!");
-    } catch (error) {
-      showError(error, "Error", "Failed to delete vote");
-    } finally {
-      setSubmittingVote(false);
-    }
-  };
 
   const handleCreateClimb = async () => {
     if (!selectedSpot || !layout) return;
@@ -815,293 +672,6 @@ export default function LayoutDetailScreen({ navigation, route }) {
             )}
       </AppModal>
 
-      {/* Climb Detail Modal */}
-      <AppModal
-        visible={showClimbDetailModal}
-        onClose={() => {
-          setShowClimbDetailModal(false);
-          setSelectedClimb(null);
-          setClimbDetails(null);
-          setVoteStatistics(null);
-          setMyVote(null);
-          setSelectedVoteGrade('');
-          setClimbComments([]);
-          setClimbVideos([]);
-        }}
-        style={[styles.modalContent, { paddingBottom: 12 }]}
-      >
-        {loadingClimbDetails ? (
-          <LoadingScreen />
-        ) : selectedClimb && climbDetails ? (
-          <ScrollView
-            style={styles.climbDetailScroll}
-            contentContainerStyle={styles.climbDetailScrollContent}
-            showsVerticalScrollIndicator={true}
-          >
-            <View style={styles.climbHeader}>
-              <View style={[styles.climbColorIndicatorLarge, { backgroundColor: climbDetails.color }]} />
-              <View style={styles.climbHeaderInfo}>
-                <Text style={styles.climbHeaderGrade}>{climbDetails.grade}</Text>
-                {climbDetails.length && (
-                  <Text style={styles.climbHeaderLength}>{climbDetails.length}m</Text>
-                )}
-              </View>
-            </View>
-
-            {/* Votes Section */}
-            {voteStatistics && climbDetails && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Votes ({voteStatistics.totalVotes})</Text>
-                
-                {/* Statistics */}
-                {voteStatistics.totalVotes > 0 && (
-                  <View style={styles.statisticsContainer}>
-                    {voteStatistics.averageGrade && (
-                      <View style={styles.statisticRow}>
-                        <Text style={styles.statisticLabel}>Average:</Text>
-                        <Text style={styles.statisticValue}>{voteStatistics.averageGrade}</Text>
-                      </View>
-                    )}
-                    
-                    {/* Grade Distribution */}
-                    {Object.keys(voteStatistics.gradeDistribution || {}).length > 0 && (
-                      <View style={styles.gradeDistributionContainer}>
-                        <Text style={styles.subsectionTitle}>Grade Distribution</Text>
-                        {Object.entries(voteStatistics.gradeDistribution)
-                          .sort((a, b) => b[1] - a[1])
-                          .map(([grade, count]) => (
-                            <View key={grade} style={styles.distributionRow}>
-                              <Text style={styles.distributionGrade}>{grade}</Text>
-                              <View style={styles.distributionBarContainer}>
-                                <View 
-                                  style={[
-                                    styles.distributionBar, 
-                                    { 
-                                      width: `${(count / voteStatistics.totalVotes) * 100}%` 
-                                    }
-                                  ]} 
-                                />
-                              </View>
-                              <Text style={styles.distributionCount}>{count}</Text>
-                            </View>
-                          ))}
-                      </View>
-                    )}
-
-                    {/* Grade by Height Visualization */}
-                    {voteStatistics.gradeByHeight && Object.keys(voteStatistics.gradeByHeight).length > 0 && (
-                      <View style={styles.gradeByHeightContainer}>
-                        <Text style={styles.subsectionTitle}>Votes by Height</Text>
-                        <Text style={styles.legendDescription}>
-                          Shows how different height groups voted for each grade
-                        </Text>
-                        {Object.entries(voteStatistics.gradeByHeight)
-                          .sort((a, b) => {
-                            // Sort by total votes (sum of all height categories)
-                            const totalA = Object.values(a[1]).reduce((sum, val) => sum + val, 0);
-                            const totalB = Object.values(b[1]).reduce((sum, val) => sum + val, 0);
-                            return totalB - totalA;
-                          })
-                          .map(([grade, heightData]) => {
-                            const total = heightData.short + heightData.average + heightData.tall + heightData.noHeight;
-                            if (total === 0) return null;
-                            
-                            return (
-                              <View key={grade} style={styles.gradeByHeightRow}>
-                                <Text style={styles.gradeByHeightGrade}>{grade}</Text>
-                                <View style={styles.gradeByHeightBarContainer}>
-                                  {/* Stacked bar showing height breakdown */}
-                                  {heightData.short > 0 && (
-                                    <View 
-                                      style={[
-                                        styles.gradeByHeightSegment,
-                                        styles.gradeByHeightShort,
-                                        { width: `${(heightData.short / total) * 100}%` }
-                                      ]} 
-                                    />
-                                  )}
-                                  {heightData.average > 0 && (
-                                    <View 
-                                      style={[
-                                        styles.gradeByHeightSegment,
-                                        styles.gradeByHeightAverage,
-                                        { width: `${(heightData.average / total) * 100}%` }
-                                      ]} 
-                                    />
-                                  )}
-                                  {heightData.tall > 0 && (
-                                    <View 
-                                      style={[
-                                        styles.gradeByHeightSegment,
-                                        styles.gradeByHeightTall,
-                                        { width: `${(heightData.tall / total) * 100}%` }
-                                      ]} 
-                                    />
-                                  )}
-                                  {heightData.noHeight > 0 && (
-                                    <View 
-                                      style={[
-                                        styles.gradeByHeightSegment,
-                                        styles.gradeByHeightNoHeight,
-                                        { width: `${(heightData.noHeight / total) * 100}%` }
-                                      ]} 
-                                    />
-                                  )}
-                                </View>
-                                <Text style={styles.gradeByHeightCount}>{total}</Text>
-                              </View>
-                            );
-                          })}
-                        {/* Legend */}
-                        <View style={styles.heightLegend}>
-                          <View style={styles.legendItem}>
-                            <View style={[styles.legendColor, styles.gradeByHeightShort]} />
-                            <Text style={styles.legendText}>Short (&lt;165cm)</Text>
-                          </View>
-                          <View style={styles.legendItem}>
-                            <View style={[styles.legendColor, styles.gradeByHeightAverage]} />
-                            <Text style={styles.legendText}>Average (165-180cm)</Text>
-                          </View>
-                          <View style={styles.legendItem}>
-                            <View style={[styles.legendColor, styles.gradeByHeightTall]} />
-                            <Text style={styles.legendText}>Tall (&gt;180cm)</Text>
-                          </View>
-                          {voteStatistics.heightBreakdown?.withoutHeight > 0 && (
-                            <View style={styles.legendItem}>
-                              <View style={[styles.legendColor, styles.gradeByHeightNoHeight]} />
-                              <Text style={styles.legendText}>No height</Text>
-                            </View>
-                          )}
-                        </View>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {/* User's Current Vote */}
-                {myVote && (
-                  <View style={styles.myVoteContainer}>
-                    <Text style={styles.myVoteLabel}>Your Vote: <Text style={styles.myVoteGrade}>{myVote.grade}</Text></Text>
-                    {myVote.height && (
-                      <Text style={styles.myVoteHeight}>Height: {myVote.height}cm</Text>
-                    )}
-                  </View>
-                )}
-
-                {/* Vote Interface */}
-                <View style={styles.voteInterfaceContainer}>
-                  <Text style={styles.subsectionTitle}>
-                    {myVote ? 'Update Your Vote' : 'Vote on Difficulty'}
-                  </Text>
-                  
-                  {/* Grade Selection */}
-                  <View style={styles.gradeSelectorContainer}>
-                    <Text style={styles.gradeSelectorLabel}>Select Grade:</Text>
-                    <ScrollView 
-                      horizontal 
-                      showsHorizontalScrollIndicator={false}
-                      style={styles.gradeOptionsScroll}
-                      contentContainerStyle={styles.gradeOptionsContent}
-                    >
-                      {getGradeOptions(climbDetails.grade, climbDetails.gradeSystem).map((grade) => (
-                        <Pressable
-                          key={grade}
-                          style={[
-                            styles.gradeOptionButton,
-                            selectedVoteGrade === grade && styles.gradeOptionButtonSelected,
-                          ]}
-                          onPress={() => setSelectedVoteGrade(grade)}
-                        >
-                          <Text
-                            style={[
-                              styles.gradeOptionText,
-                              selectedVoteGrade === grade && styles.gradeOptionTextSelected,
-                            ]}
-                          >
-                            {grade}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </ScrollView>
-                  </View>
-
-                  {/* Height Info */}
-                  {userHeight && (
-                    <Text style={styles.heightInfo}>
-                      Your height ({userHeight}cm) will be included with your vote
-                    </Text>
-                  )}
-
-                  {/* Action Buttons */}
-                  <View style={styles.voteActionsContainer}>
-                    {myVote ? (
-                      <>
-                        <Button
-                          title="Update Vote"
-                          onPress={handleSubmitVote}
-                          disabled={submittingVote || !selectedVoteGrade.trim() || selectedVoteGrade === myVote.grade}
-                          loading={submittingVote}
-                          variant="primary"
-                          size="medium"
-                          style={[styles.button, styles.voteButton]}
-                        />
-                        <Button
-                          title="Remove Vote"
-                          onPress={handleDeleteVote}
-                          disabled={submittingVote}
-                          loading={submittingVote}
-                          variant="secondary"
-                          size="medium"
-                          style={[styles.button, styles.deleteVoteButton]}
-                        />
-                      </>
-                    ) : (
-                      <Button
-                        title="Submit Vote"
-                        onPress={handleSubmitVote}
-                        disabled={submittingVote || !selectedVoteGrade.trim()}
-                        loading={submittingVote}
-                        variant="primary"
-                        size="medium"
-                        style={[styles.button, styles.voteButton]}
-                      />
-                    )}
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {/* Comments Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Comments ({climbComments.length})</Text>
-              {/* TODO: Add comments list and create comment form */}
-            </View>
-
-            {/* Videos Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Videos ({climbVideos.length})</Text>
-              {/* TODO: Add videos list */}
-            </View>
-
-            <Button
-              title="Close"
-              onPress={() => {
-                setShowClimbDetailModal(false);
-                setSelectedClimb(null);
-                setClimbDetails(null);
-                setVoteStatistics(null);
-                setMyVote(null);
-                setSelectedVoteGrade('');
-                setClimbComments([]);
-                setClimbVideos([]);
-              }}
-              variant="secondary"
-              size="medium"
-              style={[styles.button, styles.cancelButton]}
-            />
-          </ScrollView>
-        ) : null}
-      </AppModal>
     </ScrollView>
   );
 }
@@ -1401,6 +971,170 @@ const styles = StyleSheet.create({
   },
   climbDetailScrollContent: {
     paddingBottom: 20,
+  },
+  commentsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sortButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  sortButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#f0f0f0',
+  },
+  sortButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  sortButtonText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  sortButtonTextActive: {
+    color: '#fff',
+  },
+  noCommentsText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  commentsList: {
+    marginBottom: 16,
+  },
+  commentItem: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  commentAuthor: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  commentDate: {
+    fontSize: 12,
+    color: '#999',
+  },
+  commentEdited: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  commentContent: {
+    fontSize: 15,
+    color: '#333',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  commentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginTop: 8,
+  },
+  reactionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  reactionIcon: {
+    fontSize: 16,
+  },
+  reactionCount: {
+    fontSize: 14,
+    color: '#666',
+  },
+  actionButton: {
+    paddingVertical: 4,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    color: '#007AFF',
+  },
+  deleteButtonText: {
+    color: '#FF3B30',
+  },
+  replyForm: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  replyActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  replyButton: {
+    flex: 1,
+  },
+  repliesContainer: {
+    marginTop: 12,
+    paddingLeft: 16,
+    borderLeftWidth: 2,
+    borderLeftColor: '#e0e0e0',
+  },
+  replyItem: {
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  replyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 8,
+  },
+  replyAuthor: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+  },
+  replyDate: {
+    fontSize: 11,
+    color: '#999',
+  },
+  replyContent: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 18,
+    marginBottom: 6,
+  },
+  editCommentContainer: {
+    marginTop: 8,
+  },
+  editActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  editButton: {
+    flex: 1,
+  },
+  createCommentContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  postCommentButton: {
+    marginTop: 8,
   },
   climbHeader: {
     flexDirection: 'row',
