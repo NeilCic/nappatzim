@@ -408,6 +408,11 @@ export default function LayoutDetailScreen({ navigation, route }) {
             const left = offsetX + imageLeft - (markerSize / 2);
             const top = offsetY + imageTop - (markerSize / 2);
             
+            // Extract climb colors (up to 4)
+            const climbs = spot.climbs || [];
+            const climbColors = climbs.slice(0, 4).map(climb => climb.color);
+            const remainingCount = Math.max(0, climbs.length - 4);
+            
             return (
               <Pressable
                 key={spot.id}
@@ -416,12 +421,42 @@ export default function LayoutDetailScreen({ navigation, route }) {
                   {
                     left: left,
                     top: top,
-                    backgroundColor: spot.color || '#FF0000',
                   },
                 ]}
                 onPress={() => handleSpotPress(spot)}
               >
-                <Text style={styles.spotMarkerText}>📍</Text>
+                {climbColors.length > 0 ? (
+                  <View style={styles.climbColorsContainer}>
+                    {climbColors.length === 1 ? (
+                      <View style={[styles.climbColorSingle, { backgroundColor: climbColors[0] }]} />
+                    ) : climbColors.length === 2 ? (
+                      <View style={styles.climbColorsRow}>
+                        <View style={[styles.climbColorHalf, { backgroundColor: climbColors[0] }]} />
+                        <View style={[styles.climbColorHalf, { backgroundColor: climbColors[1] }]} />
+                      </View>
+                    ) : climbColors.length === 3 ? (
+                      <View style={styles.climbColorsGrid}>
+                        <View style={[styles.climbColorQuarter, { backgroundColor: climbColors[0] }]} />
+                        <View style={[styles.climbColorQuarter, { backgroundColor: climbColors[1] }]} />
+                        <View style={[styles.climbColorHalf, styles.climbColorBottom, { backgroundColor: climbColors[2] }]} />
+                      </View>
+                    ) : (
+                      <View style={styles.climbColorsGrid}>
+                        <View style={[styles.climbColorQuarter, { backgroundColor: climbColors[0] }]} />
+                        <View style={[styles.climbColorQuarter, { backgroundColor: climbColors[1] }]} />
+                        <View style={[styles.climbColorQuarter, styles.climbColorBottom, { backgroundColor: climbColors[2] }]} />
+                        <View style={[styles.climbColorQuarter, styles.climbColorBottom, { backgroundColor: climbColors[3] }]} />
+                      </View>
+                    )}
+                    {remainingCount > 0 && (
+                      <View style={styles.climbCountOverlay}>
+                        <Text style={styles.climbCountText}>+{remainingCount}</Text>
+                      </View>
+                    )}
+                  </View>
+                ) : (
+                  <View style={[styles.climbColorSingle, styles.noClimbsMarker]} />
+                )}
               </Pressable>
             );
           })}
@@ -430,7 +465,10 @@ export default function LayoutDetailScreen({ navigation, route }) {
 
       <View style={styles.infoContainer}>
         <Text style={styles.layoutName}>{layout.name}</Text>
-        <Text style={styles.spotsCount}>{spots.length} spot{spots.length !== 1 ? 's' : ''}</Text>
+        <View style={styles.layoutInfoRow}>
+          <Text style={styles.spotsCount}>{spots.length} spot{spots.length !== 1 ? 's' : ''}</Text>
+          <Text style={styles.gradeSystem}>Grade System: {layout.gradeSystem || 'V-Scale'}</Text>
+        </View>
         <Text style={styles.instruction}>Tap on the map to add a new spot</Text>
       </View>
 
@@ -725,9 +763,56 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 3,
     elevation: 5,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
   },
-  spotMarkerText: {
-    fontSize: 16,
+  climbColorsContainer: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  climbColorSingle: {
+    width: '100%',
+    height: '100%',
+  },
+  noClimbsMarker: {
+    backgroundColor: '#ccc',
+  },
+  climbColorsRow: {
+    flexDirection: 'row',
+    width: '100%',
+    height: '100%',
+  },
+  climbColorHalf: {
+    width: '50%',
+    height: '100%',
+  },
+  climbColorsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    width: '100%',
+    height: '100%',
+  },
+  climbColorQuarter: {
+    width: '50%',
+    height: '50%',
+  },
+  climbColorBottom: {
+    marginTop: 0,
+  },
+  climbCountOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderTopLeftRadius: 4,
+  },
+  climbCountText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   infoContainer: {
     padding: 16,
@@ -737,10 +822,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 8,
   },
+  layoutInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   spotsCount: {
     fontSize: 16,
     color: '#666',
-    marginBottom: 16,
+  },
+  gradeSystem: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
   },
   instruction: {
     fontSize: 14,

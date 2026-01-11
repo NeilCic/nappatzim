@@ -1,6 +1,6 @@
 import climbCommentService from "../services/climbCommentService.js";
 import climbService from "../services/climbService.js";
-import authService from "../services/authService.js";
+import { authService } from "../services/authService.js";
 import { z } from "zod";
 import logger from "../lib/logger.js";
 import { formatZodError } from "../lib/zodErrorFormatter.js";
@@ -121,7 +121,6 @@ export const deleteCommentController = async (req, res) => {
 
     const { commentId } = req.params;
 
-    // Check if user is admin
     const user = await authService.getOne({ id: userId }, undefined, { role: true });
     const isAdmin = user?.role === "admin";
 

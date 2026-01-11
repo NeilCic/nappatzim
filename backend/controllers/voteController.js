@@ -1,6 +1,6 @@
 import climbVoteService from "../services/climbVoteService.js";
 import climbService from "../services/climbService.js";
-import authService from "../services/authService.js";
+import { authService } from "../services/authService.js";
 import { z } from "zod";
 import logger from "../lib/logger.js";
 import { formatZodError } from "../lib/zodErrorFormatter.js";

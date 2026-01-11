@@ -1,7 +1,8 @@
 /**
  * Admin script to manually create a gym layout
- * Usage: node backend/scripts/createLayout.js <layout-name> <image-path>
- * Example: node backend/scripts/createLayout.js "Main Gym" "../mobile/assets/gym-layout.jpg"
+ * Usage: node backend/scripts/createLayout.js <layout-name> <image-path> [grade-system]
+ * Example: node backend/scripts/createLayout.js "Main Gym" "../mobile/assets/gym-layout.jpg" "V-Scale"
+ * Grade system options: "V-Scale", "V-Scale Range", "French" (default: "V-Scale")
  */
 
 // Load environment variables FIRST, before any imports that use them
@@ -29,10 +30,11 @@ import { uploadToCloudinary, deleteFromCloudinary, getCloudinaryFolderPrefix } f
 import prisma from '../lib/prisma.js';
 import { readFileSync } from 'fs';
 
-async function createLayout(name, imagePath) {
+async function createLayout(name, imagePath, gradeSystem = "V-Scale") {
   try {
     console.log(`Creating layout: "${name}"`);
     console.log(`Image path: ${imagePath}`);
+    console.log(`Grade system: ${gradeSystem}`);
 
     // Resolve the image path (can be relative or absolute)
     const resolvedPath = resolve(__dirname, imagePath);
@@ -64,6 +66,7 @@ async function createLayout(name, imagePath) {
           name,
           layoutImageUrl: uploadResult.url,
           layoutImagePublicId: uploadResult.publicId,
+          gradeSystem,
         },
       });
       console.log('✓ Layout created in database');
@@ -99,14 +102,17 @@ async function createLayout(name, imagePath) {
 const args = process.argv.slice(2);
 
 if (args.length < 2) {
-  console.error('Usage: node backend/scripts/createLayout.js <layout-name> <image-path>');
-  console.error('Example: node backend/scripts/createLayout.js "Main Gym" "../mobile/assets/gym-layout.jpg"');
+  console.error('Usage: node backend/scripts/createLayout.js <layout-name> <image-path> [grade-system]');
+  console.error('Example: node backend/scripts/createLayout.js "Main Gym" "../mobile/assets/gym-layout.jpg" "V-Scale"');
+  console.error('Grade system options: "V-Scale", "V-Scale Range", "French" (default: "V-Scale")');
   process.exit(1);
 }
 
-const [layoutName, imagePath] = args;
+const [layoutName, imagePath, gradeSystem] = args;
+const validGradeSystems = ["V-Scale", "V-Scale Range", "French"];
+const finalGradeSystem = gradeSystem && validGradeSystems.includes(gradeSystem) ? gradeSystem : "V-Scale";
 
-createLayout(layoutName, imagePath)
+createLayout(layoutName, imagePath, finalGradeSystem)
   .then(() => {
     process.exit(0);
   })
