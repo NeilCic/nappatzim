@@ -7,6 +7,7 @@ import {
   Keyboard,
   Platform,
   Image,
+  Dimensions,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -23,8 +24,7 @@ import KeyboardAvoidingContainer from '../components/KeyboardAvoidingContainer';
 import AppModal from '../components/Modal';
 import Spinner from '../components/Spinner';
 import { isLightColor } from '../utils/colorUtils';
-import { BarChart, LineChart } from 'react-native-chart-kit';
-import { Dimensions } from 'react-native';
+import Svg, { G, Rect, Line, Text as SvgText, Circle, Path } from 'react-native-svg';
 
 export default function ClimbDetailScreen({ navigation, route }) {
   const { climbId } = route.params;
@@ -761,92 +761,251 @@ export default function ClimbDetailScreen({ navigation, route }) {
                   return weightedSum / total;
                 });
 
-                // Normalize height indices to fit on the same scale as vote counts
-                const maxVotes = Math.max(...voteCounts, 1);
-                const normalizedHeights = heightIndices.map(h => (h / 3) * maxVotes);
+                const chartWidthValue = Math.max(chartWidth, grades.length * 60);
+                const chartHeight = 250;
 
                 return (
                   <View style={styles.heightGradeChartContainer}>
                     <Text style={styles.subsectionTitle}>Height vs Grade Visualization</Text>
                     <Text style={styles.legendDescription}>
-                      Bars show vote count, line shows average height index (1=Short, 2=Average, 3=Tall)
+                      Bars show vote count (left axis), line shows average height index (right axis: 1=Short, 2=Average, 3=Tall)
                     </Text>
                     <ScrollView
                       horizontal={true}
                       showsHorizontalScrollIndicator={true}
                       contentContainerStyle={styles.chartScrollContainer}
                     >
-                      <BarChart
-                        data={{
-                          labels: grades,
-                          datasets: [{
-                            data: voteCounts,
-                          }],
-                        }}
-                        width={Math.max(chartWidth, grades.length * 50)}
-                        height={220}
-                        chartConfig={{
-                          backgroundColor: "#ffffff",
-                          backgroundGradientFrom: "#ffffff",
-                          backgroundGradientTo: "#ffffff",
-                          decimalPlaces: 0,
-                          color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
-                          labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                          style: {
-                            borderRadius: 16,
-                          },
-                          barPercentage: 0.7,
-                          propsForBackgroundLines: {
-                            strokeWidth: 1,
-                            stroke: "#e0e0e0",
-                          },
-                        }}
-                        style={styles.chart}
-                        showValuesOnTopOfBars={true}
-                        fromZero={true}
-                      />
-                    </ScrollView>
-                    <ScrollView
-                      horizontal={true}
-                      showsHorizontalScrollIndicator={true}
-                      contentContainerStyle={styles.chartScrollContainer}
-                    >
-                      <LineChart
-                        data={{
-                          labels: grades,
-                          datasets: [{
-                            data: normalizedHeights,
-                          }],
-                        }}
-                        width={Math.max(chartWidth, grades.length * 50)}
-                        height={220}
-                        chartConfig={{
-                          backgroundColor: "#ffffff",
-                          backgroundGradientFrom: "#ffffff",
-                          backgroundGradientTo: "#ffffff",
-                          decimalPlaces: 1,
-                          color: (opacity = 1) => `rgba(255, 149, 0, ${opacity})`,
-                          labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                          style: {
-                            borderRadius: 16,
-                          },
-                          propsForDots: {
-                            r: "5",
-                            strokeWidth: "2",
-                            stroke: "#FF9500",
-                            fill: "#FF9500",
-                          },
-                          propsForBackgroundLines: {
-                            strokeWidth: 1,
-                            stroke: "#e0e0e0",
-                          },
-                        }}
-                        bezier
-                        style={styles.chart}
-                        withDots={true}
-                        withShadow={false}
-                        fromZero={true}
-                      />
+                      <View style={[styles.chartWrapper, { width: chartWidthValue }]}>
+                        {(() => {
+                          const padding = { top: 20, right: 50, bottom: 60, left: 60 };
+                          const graphWidth = chartWidthValue - padding.left - padding.right;
+                          const graphHeight = chartHeight - padding.top - padding.bottom;
+
+                          // Calculate scales
+                          const maxVotes = Math.max(...voteCounts, 1);
+                          const voteScale = graphHeight / maxVotes;
+                          const heightScale = graphHeight / 3; // Height index is 0-3
+                          const barWidth = Math.min(30, graphWidth / grades.length - 10);
+                          const xStep = graphWidth / (grades.length - 1 || 1);
+
+                          // Generate points for line
+                          const linePoints = grades.map((grade, index) => {
+                            const x = padding.left + (index * xStep);
+                            const y = padding.top + graphHeight - (heightIndices[index] * heightScale);
+                            return { x, y };
+                          });
+
+                          // Generate bars
+                          const bars = grades.map((grade, index) => {
+                            const x = padding.left + (index * xStep) - barWidth / 2;
+                            const barHeight = voteCounts[index] * voteScale;
+                            const y = padding.top + graphHeight - barHeight;
+                            return { x, y, width: barWidth, height: barHeight, value: voteCounts[index] };
+                          });
+
+                          // Y-axis ticks for votes (left)
+                          const voteTicks = [];
+                          const numVoteTicks = 5;
+                          for (let i = 0; i <= numVoteTicks; i++) {
+                            const value = Math.round((maxVotes / numVoteTicks) * i);
+                            const y = padding.top + graphHeight - (value * voteScale);
+                            voteTicks.push({ value, y });
+                          }
+
+                          // Y-axis ticks for height (right)
+                          const heightTicks = [
+                            { label: 'Short', value: 1, y: padding.top + graphHeight - (1 * heightScale) },
+                            { label: 'Avg', value: 2, y: padding.top + graphHeight - (2 * heightScale) },
+                            { label: 'Tall', value: 3, y: padding.top + graphHeight - (3 * heightScale) },
+                          ];
+
+                          return (
+                            <Svg width={chartWidthValue} height={chartHeight}>
+                              <G>
+                                {/* Grid lines for votes */}
+                                {voteTicks.map((tick, i) => (
+                                  <Line
+                                    key={`grid-${i}`}
+                                    x1={padding.left}
+                                    y1={tick.y}
+                                    x2={padding.left + graphWidth}
+                                    y2={tick.y}
+                                    stroke="#e0e0e0"
+                                    strokeWidth="1"
+                                  />
+                                ))}
+
+                                {/* Left Y-axis (Votes) */}
+                                <Line
+                                  x1={padding.left}
+                                  y1={padding.top}
+                                  x2={padding.left}
+                                  y2={padding.top + graphHeight}
+                                  stroke="#333"
+                                  strokeWidth="2"
+                                />
+                                {voteTicks.map((tick, i) => (
+                                  <G key={`vote-tick-${i}`}>
+                                    <Line
+                                      x1={padding.left - 5}
+                                      y1={tick.y}
+                                      x2={padding.left}
+                                      y2={tick.y}
+                                      stroke="#333"
+                                      strokeWidth="1"
+                                    />
+                                    <SvgText
+                                      x={padding.left - 10}
+                                      y={tick.y + 4}
+                                      fontSize="10"
+                                      fill="#007AFF"
+                                      textAnchor="end"
+                                    >
+                                      {tick.value}
+                                    </SvgText>
+                                  </G>
+                                ))}
+                                <SvgText
+                                  x={15}
+                                  y={padding.top + graphHeight / 2}
+                                  fontSize="12"
+                                  fill="#007AFF"
+                                  fontWeight="bold"
+                                  transform={`rotate(-90, 15, ${padding.top + graphHeight / 2})`}
+                                >
+                                  Votes
+                                </SvgText>
+
+                                {/* Right Y-axis (Height) */}
+                                <Line
+                                  x1={padding.left + graphWidth}
+                                  y1={padding.top}
+                                  x2={padding.left + graphWidth}
+                                  y2={padding.top + graphHeight}
+                                  stroke="#333"
+                                  strokeWidth="2"
+                                />
+                                {heightTicks.map((tick, i) => (
+                                  <G key={`height-tick-${i}`}>
+                                    <Line
+                                      x1={padding.left + graphWidth}
+                                      y1={tick.y}
+                                      x2={padding.left + graphWidth + 5}
+                                      y2={tick.y}
+                                      stroke="#333"
+                                      strokeWidth="1"
+                                    />
+                                    <SvgText
+                                      x={padding.left + graphWidth + 10}
+                                      y={tick.y + 4}
+                                      fontSize="10"
+                                      fill="#FF9500"
+                                      textAnchor="start"
+                                    >
+                                      {tick.label}
+                                    </SvgText>
+                                  </G>
+                                ))}
+                                <SvgText
+                                  x={chartWidthValue - 15}
+                                  y={padding.top + graphHeight / 2}
+                                  fontSize="12"
+                                  fill="#FF9500"
+                                  fontWeight="bold"
+                                  transform={`rotate(90, ${chartWidthValue - 15}, ${padding.top + graphHeight / 2})`}
+                                >
+                                  Height
+                                </SvgText>
+
+                                {/* X-axis */}
+                                <Line
+                                  x1={padding.left}
+                                  y1={padding.top + graphHeight}
+                                  x2={padding.left + graphWidth}
+                                  y2={padding.top + graphHeight}
+                                  stroke="#333"
+                                  strokeWidth="2"
+                                />
+
+                                {/* Bars */}
+                                {bars.map((bar, i) => (
+                                  <G key={`bar-${i}`}>
+                                    <Rect
+                                      x={bar.x}
+                                      y={bar.y}
+                                      width={bar.width}
+                                      height={bar.height}
+                                      fill="#007AFF"
+                                      fillOpacity="0.7"
+                                    />
+                                    {bar.value > 0 && (
+                                      <SvgText
+                                        x={bar.x + bar.width / 2}
+                                        y={bar.y - 5}
+                                        fontSize="10"
+                                        fill="#007AFF"
+                                        textAnchor="middle"
+                                      >
+                                        {bar.value}
+                                      </SvgText>
+                                    )}
+                                  </G>
+                                ))}
+
+                                {/* Line for height index */}
+                                {linePoints.length > 1 && (
+                                  <Path
+                                    d={`M ${linePoints.map(p => `${p.x},${p.y}`).join(' L ')}`}
+                                    fill="none"
+                                    stroke="#FF9500"
+                                    strokeWidth="2"
+                                  />
+                                )}
+
+                                {/* Dots for height index */}
+                                {linePoints.map((point, i) => (
+                                  <Circle
+                                    key={`dot-${i}`}
+                                    cx={point.x}
+                                    cy={point.y}
+                                    r="5"
+                                    fill="#FF9500"
+                                    stroke="#FF9500"
+                                    strokeWidth="2"
+                                  />
+                                ))}
+
+                                {/* X-axis labels (grades) */}
+                                {grades.map((grade, i) => {
+                                  const x = padding.left + (i * xStep);
+                                  return (
+                                    <G key={`grade-${i}`}>
+                                      <Line
+                                        x1={x}
+                                        y1={padding.top + graphHeight}
+                                        x2={x}
+                                        y2={padding.top + graphHeight + 5}
+                                        stroke="#333"
+                                        strokeWidth="1"
+                                      />
+                                      <SvgText
+                                        x={x}
+                                        y={padding.top + graphHeight + 25}
+                                        fontSize="10"
+                                        fill="#333"
+                                        textAnchor="middle"
+                                        transform={`rotate(-45, ${x}, ${padding.top + graphHeight + 25})`}
+                                      >
+                                        {grade}
+                                      </SvgText>
+                                    </G>
+                                  );
+                                })}
+                              </G>
+                            </Svg>
+                          );
+                        })()}
+                      </View>
                     </ScrollView>
                   </View>
                 );
@@ -1684,10 +1843,11 @@ const styles = StyleSheet.create({
     borderTopColor: '#eee',
     backgroundColor: '#fff',
   },
-  chart: {
-    marginVertical: 8,
-    borderRadius: 16,
+  chartWrapper: {
     backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 8,
+    marginVertical: 8,
   },
   chartScrollContainer: {
     paddingRight: 16,
