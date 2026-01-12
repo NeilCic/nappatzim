@@ -22,6 +22,7 @@ import { getCurrentUserId } from '../utils/jwtUtils';
 import KeyboardAvoidingContainer from '../components/KeyboardAvoidingContainer';
 import AppModal from '../components/Modal';
 import Spinner from '../components/Spinner';
+import { isLightColor } from '../utils/colorUtils';
 
 export default function ClimbDetailScreen({ navigation, route }) {
   const { climbId } = route.params;
@@ -49,6 +50,7 @@ export default function ClimbDetailScreen({ navigation, route }) {
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [newVideoTitle, setNewVideoTitle] = useState('');
   const [newVideoDescription, setNewVideoDescription] = useState('');
+  const [activeTab, setActiveTab] = useState('votes');
   const scrollViewRef = useRef(null);
   const commentInputContainerRef = useRef(null);
   const videoLoadTimeoutRef = useRef(null);
@@ -553,17 +555,50 @@ export default function ClimbDetailScreen({ navigation, route }) {
         keyboardShouldPersistTaps="handled"
       >
       <View style={styles.climbHeader}>
-        <View style={[styles.climbColorIndicatorLarge, { backgroundColor: climbDetails.color }]} />
+        <View style={[styles.climbColorIndicatorLarge, { backgroundColor: climbDetails.color }]}>
+          <Text style={[
+            styles.climbHeaderGrade,
+            { color: isLightColor(climbDetails.color) ? '#000' : '#fff' }
+          ]}>
+            {climbDetails.grade}
+          </Text>
+        </View>
         <View style={styles.climbHeaderInfo}>
-          <Text style={styles.climbHeaderGrade}>{climbDetails.grade}</Text>
           {climbDetails.length && (
             <Text style={styles.climbHeaderLength}>{climbDetails.length}m</Text>
           )}
+          {/* Tabs */}
+          <View style={styles.tabsContainer}>
+            <Pressable
+              style={[styles.tab, activeTab === 'votes' && styles.tabActive]}
+              onPress={() => setActiveTab('votes')}
+            >
+              <Text style={[styles.tabText, activeTab === 'votes' && styles.tabTextActive]}>
+                Votes
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.tab, activeTab === 'comments' && styles.tabActive]}
+              onPress={() => setActiveTab('comments')}
+            >
+              <Text style={[styles.tabText, activeTab === 'comments' && styles.tabTextActive]}>
+                Comments
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.tab, activeTab === 'videos' && styles.tabActive]}
+              onPress={() => setActiveTab('videos')}
+            >
+              <Text style={[styles.tabText, activeTab === 'videos' && styles.tabTextActive]}>
+                Videos
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </View>
 
       {/* Votes Section */}
-      {voteStatistics && climbDetails && (
+      {activeTab === 'votes' && voteStatistics && climbDetails && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Votes ({voteStatistics.totalVotes})</Text>
           
@@ -784,6 +819,7 @@ export default function ClimbDetailScreen({ navigation, route }) {
       )}
 
       {/* Comments Section */}
+      {activeTab === 'comments' && (
       <View style={styles.section}>
         <View style={styles.commentsHeader}>
           <Text style={styles.sectionTitle}>Comments ({climbComments.length})</Text>
@@ -1072,8 +1108,10 @@ export default function ClimbDetailScreen({ navigation, route }) {
           </View>
         )}
       </View>
+      )}
 
       {/* Videos Section */}
+      {activeTab === 'videos' && (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Videos ({climbVideos.length})</Text>
         
@@ -1151,6 +1189,7 @@ export default function ClimbDetailScreen({ navigation, route }) {
           />
         </View>
       </View>
+      )}
       </ScrollView>
 
       {/* Video Player Modal */}
@@ -1275,19 +1314,43 @@ const styles = StyleSheet.create({
     marginRight: 16,
     borderWidth: 3,
     borderColor: '#ddd',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   climbHeaderInfo: {
     flex: 1,
+    justifyContent: 'center',
   },
   climbHeaderGrade: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
   },
   climbHeaderLength: {
     fontSize: 16,
     color: '#666',
+    marginBottom: 12,
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    marginTop: 8,
+  },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginRight: 4,
+    borderRadius: 7,
+  },
+  tabActive: {
+    backgroundColor: '#E3F2FD',
+  },
+  tabText: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#999',
+  },
+  tabTextActive: {
+    color: '#007AFF',
+    fontWeight: '600',
   },
   section: {
     marginBottom: 24,
