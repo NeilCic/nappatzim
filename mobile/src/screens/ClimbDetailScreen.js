@@ -23,6 +23,8 @@ import KeyboardAvoidingContainer from '../components/KeyboardAvoidingContainer';
 import AppModal from '../components/Modal';
 import Spinner from '../components/Spinner';
 import { isLightColor } from '../utils/colorUtils';
+import { BarChart, LineChart } from 'react-native-chart-kit';
+import { Dimensions } from 'react-native';
 
 export default function ClimbDetailScreen({ navigation, route }) {
   const { climbId } = route.params;
@@ -722,6 +724,133 @@ export default function ClimbDetailScreen({ navigation, route }) {
                   </View>
                 </View>
               )}
+
+              {/* Height vs Grade Chart */}
+              {voteStatistics.gradeByHeight && Object.keys(voteStatistics.gradeByHeight).length > 0 && (() => {
+                const screenWidth = Dimensions.get('window').width;
+                const chartWidth = screenWidth - 64; // Account for padding
+                
+                // Process data: get grades sorted, vote counts, and average height indices
+                const grades = Object.keys(voteStatistics.gradeByHeight).sort((a, b) => {
+                  // Try to sort by grade value (V4, V5, etc. or French grades)
+                  const aMatch = a.match(/V(\d+)/);
+                  const bMatch = b.match(/V(\d+)/);
+                  if (aMatch && bMatch) {
+                    return parseInt(aMatch[1]) - parseInt(bMatch[1]);
+                  }
+                  return a.localeCompare(b);
+                });
+
+                const voteCounts = grades.map(grade => {
+                  const heightData = voteStatistics.gradeByHeight[grade];
+                  return heightData.short + heightData.average + heightData.tall + (heightData.noHeight || 0);
+                });
+
+                // Calculate weighted average height index (short=1, average=2, tall=3, noHeight=2)
+                const heightIndices = grades.map(grade => {
+                  const heightData = voteStatistics.gradeByHeight[grade];
+                  const total = heightData.short + heightData.average + heightData.tall + (heightData.noHeight || 0);
+                  if (total === 0) return 2; // Default to average
+                  
+                  const weightedSum = 
+                    (heightData.short * 1) + 
+                    (heightData.average * 2) + 
+                    (heightData.tall * 3) + 
+                    ((heightData.noHeight || 0) * 2);
+                  
+                  return weightedSum / total;
+                });
+
+                // Normalize height indices to fit on the same scale as vote counts
+                const maxVotes = Math.max(...voteCounts, 1);
+                const normalizedHeights = heightIndices.map(h => (h / 3) * maxVotes);
+
+                return (
+                  <View style={styles.heightGradeChartContainer}>
+                    <Text style={styles.subsectionTitle}>Height vs Grade Visualization</Text>
+                    <Text style={styles.legendDescription}>
+                      Bars show vote count, line shows average height index (1=Short, 2=Average, 3=Tall)
+                    </Text>
+                    <ScrollView
+                      horizontal={true}
+                      showsHorizontalScrollIndicator={true}
+                      contentContainerStyle={styles.chartScrollContainer}
+                    >
+                      <BarChart
+                        data={{
+                          labels: grades,
+                          datasets: [{
+                            data: voteCounts,
+                          }],
+                        }}
+                        width={Math.max(chartWidth, grades.length * 50)}
+                        height={220}
+                        chartConfig={{
+                          backgroundColor: "#ffffff",
+                          backgroundGradientFrom: "#ffffff",
+                          backgroundGradientTo: "#ffffff",
+                          decimalPlaces: 0,
+                          color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`,
+                          labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                          style: {
+                            borderRadius: 16,
+                          },
+                          barPercentage: 0.7,
+                          propsForBackgroundLines: {
+                            strokeWidth: 1,
+                            stroke: "#e0e0e0",
+                          },
+                        }}
+                        style={styles.chart}
+                        showValuesOnTopOfBars={true}
+                        fromZero={true}
+                      />
+                    </ScrollView>
+                    <ScrollView
+                      horizontal={true}
+                      showsHorizontalScrollIndicator={true}
+                      contentContainerStyle={styles.chartScrollContainer}
+                    >
+                      <LineChart
+                        data={{
+                          labels: grades,
+                          datasets: [{
+                            data: normalizedHeights,
+                          }],
+                        }}
+                        width={Math.max(chartWidth, grades.length * 50)}
+                        height={220}
+                        chartConfig={{
+                          backgroundColor: "#ffffff",
+                          backgroundGradientFrom: "#ffffff",
+                          backgroundGradientTo: "#ffffff",
+                          decimalPlaces: 1,
+                          color: (opacity = 1) => `rgba(255, 149, 0, ${opacity})`,
+                          labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                          style: {
+                            borderRadius: 16,
+                          },
+                          propsForDots: {
+                            r: "5",
+                            strokeWidth: "2",
+                            stroke: "#FF9500",
+                            fill: "#FF9500",
+                          },
+                          propsForBackgroundLines: {
+                            strokeWidth: 1,
+                            stroke: "#e0e0e0",
+                          },
+                        }}
+                        bezier
+                        style={styles.chart}
+                        withDots={true}
+                        withShadow={false}
+                        fromZero={true}
+                      />
+                    </ScrollView>
+                  </View>
+                );
+              })()}
             </View>
           )}
 
@@ -1547,6 +1676,21 @@ const styles = StyleSheet.create({
     color: '#666',
     width: 30,
     textAlign: 'right',
+  },
+  heightGradeChartContainer: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    backgroundColor: '#fff',
+  },
+  chart: {
+    marginVertical: 8,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+  },
+  chartScrollContainer: {
+    paddingRight: 16,
   },
   heightLegend: {
     flexDirection: 'row',

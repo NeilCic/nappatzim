@@ -7,8 +7,9 @@ const router = express.Router();
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 attempts only
-  message: 'Too many authentication attempts, please try again later.'
+  max: 10, // 10 attempts per window
+  message: 'Too many authentication attempts, please try again later.',
+  skip: (req) => process.env.NODE_ENV !== 'production', // Skip rate limiting in development
 });
 
 router.post('/register', authLimiter, addUser);

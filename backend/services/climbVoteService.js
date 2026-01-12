@@ -78,6 +78,13 @@ class ClimbVoteService extends PrismaCrudService {
     return await this.delete({ climbId, userId });
   }
 
+  async updateVotesHeightByUserId(userId, newHeight) {
+    return await prisma.climbGradeVote.updateMany({
+      where: { userId },
+      data: { height: newHeight },
+    });
+  }
+
   async getVoteStatistics(climbId) {
     const climb = await climbService.getClimbById(climbId);
     if (!climb) {

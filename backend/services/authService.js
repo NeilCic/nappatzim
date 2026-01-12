@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import PrismaCrudService from './prismaCrudService.js';
 import { USER_MODEL } from '../lib/dbModels.js';
+import climbVoteService from './climbVoteService.js';
 
 const hashPassword = async (password) => {
     const saltRounds = 10;
@@ -118,6 +119,7 @@ class AuthService extends PrismaCrudService {
         
         if (height !== undefined) {
             updateData.height = height;
+            await climbVoteService.updateVotesHeightByUserId(userId, height);
         }
         
         return await this.update({ id: userId }, updateData);
