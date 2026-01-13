@@ -261,7 +261,13 @@ export default function App() {
                   headerRight: () => <HeaderRightButtons navigation={navigation} />,
                 })}
               />
-              <Stack.Screen name="Timer" component={TimerScreen} />
+              <Stack.Screen
+                name="Timer"
+                component={TimerScreen}
+                options={({ navigation }) => ({
+                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
+                })}
+              />
               <Stack.Screen
                 name="Workout Execution"
                 component={WorkoutExecutionScreen}
@@ -269,7 +275,10 @@ export default function App() {
               <Stack.Screen
                 name="Conversations"
                 component={ConversationsListScreen}
-                options={{ title: "Messages" }}
+                options={({ navigation }) => ({
+                  title: "Messages",
+                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
+                })}
               />
               <Stack.Screen
                 name="Conversation"
@@ -279,7 +288,10 @@ export default function App() {
               <Stack.Screen
                 name="Settings"
                 component={SettingsScreen}
-                options={{ title: "Settings" }}
+                options={({ navigation }) => ({
+                  title: "Settings",
+                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
+                })}
               />
               <Stack.Screen
                 name="Layout Selection"
