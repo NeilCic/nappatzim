@@ -30,8 +30,7 @@ export default function LayoutSelectionScreen({ navigation }) {
   };
 
   const handleLayoutPress = (layout) => {
-    // TODO: Navigate to layout detail screen where user can add spots
-    navigation.navigate('Layout Detail', { layoutId: layout.id });
+    navigation.navigate('Layout', { layoutId: layout.id });
   };
 
   if (loading) {

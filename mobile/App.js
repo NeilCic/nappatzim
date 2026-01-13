@@ -290,18 +290,18 @@ export default function App() {
                 })}
               />
               <Stack.Screen
-                name="Layout Detail"
+                name="Layout"
                 component={LayoutDetailScreen}
                 options={({ navigation }) => ({
-                  title: "Layout Detail",
+                  title: "Layout",
                   headerRight: () => <HeaderRightButtons navigation={navigation} />,
                 })}
               />
               <Stack.Screen
-                name="Climb Detail"
+                name="Route"
                 component={ClimbDetailScreen}
                 options={({ navigation }) => ({
-                  title: "Climb Detail",
+                  title: "Route",
                   headerRight: () => <HeaderRightButtons navigation={navigation} />,
                 })}
               />

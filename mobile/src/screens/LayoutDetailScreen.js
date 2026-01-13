@@ -301,7 +301,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
   };
 
   const handleClimbPress = (climb) => {
-    navigation.navigate('Climb Detail', { climbId: climb.id });
+    navigation.navigate('Route', { climbId: climb.id });
   };
 
 
