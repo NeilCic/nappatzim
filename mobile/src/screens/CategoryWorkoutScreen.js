@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Dimensions } from "react-native";
 import { LineChart } from "react-native-chart-kit";
@@ -44,12 +45,17 @@ export default function CategoryWorkoutsScreen({ navigation, route }) {
   const { api } = useApi();
 
   useEffect(() => {
-    fetchWorkouts();
     (async () => {
       const username = await getCurrentUsername(api);
       setCurrentUsername(username);
     })();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchWorkouts();
+    }, [category.id])
+  );
 
   const fetchWorkouts = async (includeProgress = false) => {
     try {
