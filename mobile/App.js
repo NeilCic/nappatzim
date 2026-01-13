@@ -62,15 +62,17 @@ const CustomHeader = ({ HeaderRightButtons, navigationRef, currentRoute }) => {
     <View style={styles.customHeader}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
       <View style={styles.headerContent}>
-        {canGoBack && (
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBack}
-          >
-            <Text style={styles.backIcon}>←</Text>
-          </TouchableOpacity>
-        )}
-        <Text style={[styles.headerTitle, !canGoBack && styles.headerTitleCentered]}>{title}</Text>
+        <View style={styles.backButtonContainer}>
+          {canGoBack && (
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleBack}
+            >
+              <Text style={styles.backIcon}>←</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        <Text style={styles.headerTitle}>{title}</Text>
         <HeaderRightButtons navigation={navigation} />
       </View>
     </View>
@@ -392,10 +394,14 @@ const styles = StyleSheet.create({
     height: 56,
     paddingHorizontal: 16,
   },
+  backButtonContainer: {
+    width: 40,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
   backButton: {
     padding: 8,
     marginLeft: -8,
-    marginRight: 8,
   },
   backIcon: {
     fontSize: 24,
@@ -407,9 +413,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1D1D1F',
     flex: 1,
-  },
-  headerTitleCentered: {
-    marginLeft: 0,
   },
   headerRightContainer: {
     flexDirection: "row",
