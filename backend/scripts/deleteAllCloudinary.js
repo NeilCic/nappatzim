@@ -148,17 +148,83 @@ async function deleteAllResources() {
     console.log('\n🗑️  Deleting from database...');
     
     try {
-      // Delete all videos first (they reference climbs)
-      const videosDeleted = await prisma.climbVideo.deleteMany({});
-      console.log(`   ✓ Deleted ${videosDeleted.count} videos from database`);
+      // Delete in order respecting foreign key constraints
+      // Order: Delete parent tables last (cascade deletes will handle children)
+      
+      // First, delete Climb-related tables that reference Climb
+      try {
+        const climbCommentReactionsDeleted = await prisma.climbCommentReaction.deleteMany({});
+        console.log(`   ✓ Deleted ${climbCommentReactionsDeleted.count} climb comment reactions`);
+      } catch (err) {
+        // Table might not exist if migrations haven't run
+        if (!err.message.includes("does not exist") && !err.message.includes("Unknown")) {
+          console.log(`   ⚠️  Error deleting climb comment reactions: ${err.message}`);
+        }
+      }
 
-      // Delete all spots (they reference layouts)
-      const spotsDeleted = await prisma.spot.deleteMany({});
-      console.log(`   ✓ Deleted ${spotsDeleted.count} spots from database`);
+      try {
+        const climbCommentsDeleted = await prisma.climbComment.deleteMany({});
+        console.log(`   ✓ Deleted ${climbCommentsDeleted.count} climb comments`);
+      } catch (err) {
+        if (!err.message.includes("does not exist") && !err.message.includes("Unknown")) {
+          console.log(`   ⚠️  Error deleting climb comments: ${err.message}`);
+        }
+      }
 
-      // Delete all layouts
-      const layoutsDeleted = await prisma.layout.deleteMany({});
-      console.log(`   ✓ Deleted ${layoutsDeleted.count} layouts from database`);
+      try {
+        const climbVotesDeleted = await prisma.climbGradeVote.deleteMany({});
+        console.log(`   ✓ Deleted ${climbVotesDeleted.count} climb votes`);
+      } catch (err) {
+        if (!err.message.includes("does not exist") && !err.message.includes("Unknown")) {
+          console.log(`   ⚠️  Error deleting climb votes: ${err.message}`);
+        }
+      }
+
+      try {
+        const climbVideosDeleted = await prisma.climbVideo.deleteMany({});
+        console.log(`   ✓ Deleted ${climbVideosDeleted.count} climb videos`);
+      } catch (err) {
+        if (!err.message.includes("does not exist") && !err.message.includes("Unknown")) {
+          console.log(`   ⚠️  Error deleting climb videos: ${err.message}`);
+        }
+      }
+
+      try {
+        const climbsDeleted = await prisma.climb.deleteMany({});
+        console.log(`   ✓ Deleted ${climbsDeleted.count} climbs`);
+      } catch (err) {
+        if (!err.message.includes("does not exist") && !err.message.includes("Unknown")) {
+          console.log(`   ⚠️  Error deleting climbs: ${err.message}`);
+        }
+      }
+
+      // Delete spots (cascade will handle climbs if they exist)
+      try {
+        const spotsDeleted = await prisma.spot.deleteMany({});
+        console.log(`   ✓ Deleted ${spotsDeleted.count} spots`);
+      } catch (err) {
+        if (!err.message.includes("does not exist") && !err.message.includes("Unknown")) {
+          console.log(`   ⚠️  Error deleting spots: ${err.message}`);
+        }
+      }
+
+      // Delete layouts last (cascade will handle spots if they exist)
+      try {
+        const layoutsDeleted = await prisma.layout.deleteMany({});
+        console.log(`   ✓ Deleted ${layoutsDeleted.count} layouts`);
+      } catch (err) {
+        if (!err.message.includes("does not exist") && !err.message.includes("Unknown")) {
+          console.log(`   ⚠️  Error deleting layouts: ${err.message}`);
+        }
+      }
+
+      // Also try to delete old SpotVideo table if it exists (for backwards compatibility)
+      try {
+        await prisma.$executeRawUnsafe('DELETE FROM "SpotVideo"');
+        console.log(`   ✓ Deleted old SpotVideo records (if any)`);
+      } catch (err) {
+        // Table doesn't exist, which is fine
+      }
 
       console.log('\n✅ All database records have been deleted!');
     } catch (dbError) {

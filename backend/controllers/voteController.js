@@ -6,9 +6,31 @@ import logger from "../lib/logger.js";
 import { formatZodError } from "../lib/zodErrorFormatter.js";
 import { validateGrade } from "../lib/gradeValidation.js";
 
+const descriptorEnum = z.enum([
+  "reachy",
+  "balance",
+  "slopey",
+  "crimpy",
+  "slippery",
+  "static",
+  "dyno",
+  "coordination",
+  "explosive",
+  "endurance",
+  "powerful",
+  "must-try",
+  "dangerous",
+  "pockety",
+  "dual-tex",
+  "compression",
+  "campusy",
+  "shouldery",
+]);
+
 const submitVoteSchema = z.object({
   grade: z.string().min(1, "Grade is required"),
   height: z.number().positive("Height must be positive").optional(),
+  descriptors: z.array(descriptorEnum).max(10).optional(),
 });
 
 // Get all votes for a climb
@@ -99,7 +121,8 @@ export const submitVoteController = async (req, res) => {
       userId,
       validation.data.grade.trim(),
       climb.gradeSystem,
-      heightToUse
+      heightToUse,
+      validation.data.descriptors || []
     );
 
     res.json({ vote });
@@ -117,9 +140,10 @@ export const deleteVoteController = async (req, res) => {
     }
 
     const { climbId } = req.params;
-    const deleted = await climbVoteService.deleteVote(climbId, userId);
+    const result = await climbVoteService.deleteVote(climbId, userId);
     
-    if (!deleted) {
+    // deleteMany returns { count: number }
+    if (result.count === 0) {
       return res.status(404).json({ error: "Vote not found" });
     }
 

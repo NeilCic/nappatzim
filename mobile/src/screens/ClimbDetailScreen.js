@@ -53,6 +53,7 @@ export default function ClimbDetailScreen({ navigation, route }) {
   const [newVideoTitle, setNewVideoTitle] = useState('');
   const [newVideoDescription, setNewVideoDescription] = useState('');
   const [activeTab, setActiveTab] = useState('votes');
+  const [selectedDescriptors, setSelectedDescriptors] = useState([]);
   const scrollViewRef = useRef(null);
   const commentInputContainerRef = useRef(null);
   const videoLoadTimeoutRef = useRef(null);
@@ -60,6 +61,27 @@ export default function ClimbDetailScreen({ navigation, route }) {
   const errorLoggedRef = useRef(false);
   const hasAutoPlayedRef = useRef(false);
   const { api } = useApi();
+
+  const DESCRIPTOR_OPTIONS = [
+    'reachy',
+    'balance',
+    'slopey',
+    'crimpy',
+    'slippery',
+    'static',
+    'dyno',
+    'coordination',
+    'explosive',
+    'endurance',
+    'powerful',
+    'must-try',
+    'dangerous',
+    'pockety',
+    'dual-tex',
+    'compression',
+    'campusy',
+    'shouldery',
+  ];
   
   const videoPlayer = useVideoPlayer(selectedVideo?.videoUrl || '');
 
@@ -114,6 +136,7 @@ export default function ClimbDetailScreen({ navigation, route }) {
       setVoteStatistics(statisticsRes.data.statistics);
       setMyVote(myVoteRes.data.vote || null);
       setSelectedVoteGrade(myVoteRes.data.vote?.grade || '');
+      setSelectedDescriptors(myVoteRes.data.vote?.descriptors || []);
       setUserHeight(userRes.data?.height || null);
       setClimbComments(commentsRes.data.comments || []);
       setClimbVideos(videosRes.data.videos || []);
@@ -227,6 +250,7 @@ export default function ClimbDetailScreen({ navigation, route }) {
     try {
       await api.post(`/climbs/${climbId}/votes`, {
         grade: selectedVoteGrade.trim(),
+        descriptors: selectedDescriptors,
       });
 
       await fetchClimbDetails(climbId);
@@ -251,6 +275,7 @@ export default function ClimbDetailScreen({ navigation, route }) {
       showError(error, "Error", "Failed to delete vote");
     } finally {
       setSubmittingVote(false);
+      setSelectedDescriptors([]);
     }
   };
 
@@ -1020,6 +1045,18 @@ export default function ClimbDetailScreen({ navigation, route }) {
               {myVote.height && (
                 <Text style={styles.myVoteHeight}>Height: {myVote.height}cm</Text>
               )}
+              {myVote.descriptors && myVote.descriptors.length > 0 && (
+                <View style={styles.myVoteDescriptors}>
+                  <Text style={styles.myVoteDescriptorsLabel}>Descriptors: </Text>
+                  <View style={styles.myVoteDescriptorsList}>
+                    {myVote.descriptors.map((desc, idx) => (
+                      <Text key={idx} style={styles.myVoteDescriptorTag}>
+                        {desc}{idx < myVote.descriptors.length - 1 ? ', ' : ''}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
           )}
 
@@ -1060,6 +1097,62 @@ export default function ClimbDetailScreen({ navigation, route }) {
               </ScrollView>
             </View>
 
+            {/* Route Descriptors Selection */}
+            <View style={styles.descriptorContainer}>
+              <Text style={styles.descriptorLabel}>Route descriptors:</Text>
+              <View style={styles.descriptorGrid}>
+                {DESCRIPTOR_OPTIONS.map((descriptor) => {
+                  const isSelected = selectedDescriptors.includes(descriptor);
+                  const count = voteStatistics?.descriptors?.[descriptor] || 0;
+
+                  const selectedChipStyle =
+                    descriptor === 'must-try'
+                      ? styles.descriptorChipSelectedMustTry
+                      : descriptor === 'dangerous'
+                      ? styles.descriptorChipSelectedDangerous
+                      : styles.descriptorChipSelected;
+
+                  const selectedTextStyle =
+                    descriptor === 'must-try'
+                      ? styles.descriptorTextSelectedMustTry
+                      : descriptor === 'dangerous'
+                      ? styles.descriptorTextSelectedDangerous
+                      : styles.descriptorTextSelected;
+
+                  return (
+                    <Pressable
+                      key={descriptor}
+                      style={[
+                        styles.descriptorChip,
+                        isSelected && selectedChipStyle,
+                      ]}
+                      onPress={() => {
+                        setSelectedDescriptors((prev) =>
+                          prev.includes(descriptor)
+                            ? prev.filter((d) => d !== descriptor)
+                            : [...prev, descriptor]
+                        );
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.descriptorText,
+                          isSelected && selectedTextStyle,
+                        ]}
+                      >
+                        {descriptor}
+                      </Text>
+                      {count > 0 && (
+                        <View style={styles.descriptorCountBadge}>
+                          <Text style={styles.descriptorCountText}>{count}</Text>
+                        </View>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
             {/* Height Info */}
             {userHeight && (
               <Text style={styles.heightInfo}>
@@ -1074,7 +1167,12 @@ export default function ClimbDetailScreen({ navigation, route }) {
                   <Button
                     title="Update Vote"
                     onPress={handleSubmitVote}
-                    disabled={submittingVote || !selectedVoteGrade.trim() || selectedVoteGrade === myVote.grade}
+                    disabled={
+                      submittingVote || 
+                      !selectedVoteGrade.trim() || 
+                      (selectedVoteGrade === myVote.grade && 
+                       JSON.stringify(selectedDescriptors.sort()) === JSON.stringify((myVote.descriptors || []).sort()))
+                    }
                     loading={submittingVote}
                     variant="primary"
                     size="medium"
@@ -1733,6 +1831,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
+  myVoteDescriptors: {
+    marginTop: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  myVoteDescriptorsLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginRight: 4,
+  },
+  myVoteDescriptorsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  myVoteDescriptorTag: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '500',
+  },
   voteInterfaceContainer: {
     marginTop: 8,
   },
@@ -1791,6 +1909,73 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 8,
+  },
+  descriptorContainer: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  descriptorLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 6,
+  },
+  descriptorGrid: {
+    marginTop: 4,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  descriptorChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#f0f0f0',
+    marginRight: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  descriptorChipSelected: {
+    backgroundColor: '#FFE0B2',
+    borderColor: '#FF9500',
+  },
+  descriptorChipSelectedMustTry: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#2E7D32',
+  },
+  descriptorChipSelectedDangerous: {
+    backgroundColor: '#FFEBEE',
+    borderColor: '#C62828',
+  },
+  descriptorText: {
+    fontSize: 13,
+    color: '#555',
+  },
+  descriptorTextSelected: {
+    color: '#BF6600',
+    fontWeight: '600',
+  },
+  descriptorTextSelectedMustTry: {
+    color: '#2E7D32',
+    fontWeight: '600',
+  },
+  descriptorTextSelectedDangerous: {
+    color: '#C62828',
+    fontWeight: '600',
+  },
+  descriptorCountBadge: {
+    marginLeft: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: '#eee',
+  },
+  descriptorCountText: {
+    fontSize: 11,
+    color: '#555',
+    fontWeight: '500',
   },
   gradeByHeightContainer: {
     marginTop: 16,

@@ -238,12 +238,13 @@ model Climb {
 }
 
 model ClimbGradeVote {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   climbId     String
   userId      String
-  grade       String // What grade the user thinks it is - ALWAYS specific (no ranges, e.g., "V4", "6a+")
-  gradeSystem String // "V-Scale", "V-Scale Range", "French" - must match climb's gradeSystem
-  height      Float? // Optional: User's height in cm (auto-filled from user preferences if available)
+  grade       String   // What grade the user thinks it is - ALWAYS specific (no ranges, e.g., "V4", "6a+")
+  gradeSystem String   // "V-Scale", "V-Scale Range", "French" - must match climb's gradeSystem
+  height      Float?   // Optional: User's height in cm (auto-filled from user preferences if available)
+  descriptors String[] @default([]) // descriptors like "reachy", "crimpy", etc.
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

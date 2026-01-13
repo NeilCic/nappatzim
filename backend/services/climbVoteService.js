@@ -41,7 +41,9 @@ class ClimbVoteService extends PrismaCrudService {
     );
   }
 
-  async submitOrUpdateVote(climbId, userId, grade, gradeSystem, height) {
+  async submitOrUpdateVote(climbId, userId, grade, gradeSystem, height, descriptors = []) {
+    const safeDescriptors = Array.isArray(descriptors) ? descriptors : [];
+
     return await prisma.climbGradeVote.upsert({ // todo maybe add this to prisma crud service
       where: {
         climbId_userId: {
@@ -53,6 +55,7 @@ class ClimbVoteService extends PrismaCrudService {
         grade,
         gradeSystem,
         height: height || null,
+        descriptors: safeDescriptors,
       },
       create: {
         climbId,
@@ -60,6 +63,7 @@ class ClimbVoteService extends PrismaCrudService {
         grade,
         gradeSystem,
         height: height || null,
+        descriptors: safeDescriptors,
       },
       include: {
         climb: true,
@@ -75,7 +79,12 @@ class ClimbVoteService extends PrismaCrudService {
   }
 
   async deleteVote(climbId, userId) {
-    return await this.delete({ climbId, userId });
+    return await prisma.climbGradeVote.deleteMany({
+      where: {
+        climbId,
+        userId,
+      },
+    });
   }
 
   async updateVotesHeightByUserId(userId, newHeight) {
@@ -96,6 +105,7 @@ class ClimbVoteService extends PrismaCrudService {
       select: {
         grade: true,
         height: true,
+        descriptors: true,
       },
     });
 
@@ -106,6 +116,7 @@ class ClimbVoteService extends PrismaCrudService {
         gradeDistribution: {},
         heightBreakdown: {},
         gradeByHeight: {},
+        descriptors: {},
       };
     }
 
@@ -127,6 +138,7 @@ class ClimbVoteService extends PrismaCrudService {
     };
 
     const gradeByHeight = {};
+    const descriptorCounts = {};
 
     votes.forEach((vote) => {
       if (!gradeByHeight[vote.grade]) {
@@ -156,19 +168,28 @@ class ClimbVoteService extends PrismaCrudService {
         heightBreakdown.withoutHeight++;
         gradeByHeight[vote.grade].noHeight++;
       }
+
+      // Descriptors aggregation
+      if (Array.isArray(vote.descriptors)) {
+        vote.descriptors.forEach((descriptor) => {
+          if (!descriptor) return;
+          descriptorCounts[descriptor] = (descriptorCounts[descriptor] || 0) + 1;
+        });
+      }
     });
 
     // Calculate average grade
     const grades = votes.map(vote => vote.grade);
     const averageGrade = calculateAverageGrade(grades, climb.gradeSystem);
 
-    return {
-      totalVotes: votes.length,
-      averageGrade,
-      gradeDistribution,
-      heightBreakdown,
-      gradeByHeight,
-    };
+      return {
+        totalVotes: votes.length,
+        averageGrade,
+        gradeDistribution,
+        heightBreakdown,
+        gradeByHeight,
+        descriptors: descriptorCounts,
+      };
   }
 }
 
