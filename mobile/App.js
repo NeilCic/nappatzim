@@ -285,7 +285,7 @@ export default function App() {
                 name="Layout Selection"
                 component={LayoutSelectionScreen}
                 options={({ navigation }) => ({
-                  title: "Gym Layouts",
+                  title: "Gyms",
                   headerRight: () => <HeaderRightButtons navigation={navigation} />,
                 })}
               />
