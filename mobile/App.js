@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { NavigationContainer, useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { TouchableOpacity, StyleSheet, Image, Text, View, ActivityIndicator } from "react-native";
+import { TouchableOpacity, StyleSheet, Image, Text, View, ActivityIndicator, Platform, StatusBar } from "react-native";
 import axios from "axios";
 import Constants from "expo-constants";
 
@@ -27,6 +27,142 @@ import { clearCachedUserId } from "./src/utils/jwtUtils";
 
 const Stack = createNativeStackNavigator();
 
+// Map route names to display titles
+const routeTitleMap = {
+  "Home": "Home",
+  "Create Category": "Create Category",
+  "Edit Category": "Edit Category",
+  "Create Workout": "Create Workout",
+  "Category Workouts": "Category Workouts",
+  "Timer": "Timer",
+  "Workout Execution": "Workout Execution",
+  "Conversations": "Messages",
+  "Conversation": "Chat",
+  "Settings": "Settings",
+  "Layout Selection": "Gyms",
+  "Layout": "Layout",
+  "Route": "Route",
+};
+
+// Custom Header Component that stays fixed
+const CustomHeader = ({ HeaderRightButtons, navigationRef, currentRoute }) => {
+  const navigation = useNavigation();
+  const title = routeTitleMap[currentRoute] || currentRoute;
+  
+  // Check if we can go back (not on root/home screen)
+  const canGoBack = navigation.canGoBack() && currentRoute !== "Home";
+
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  };
+
+  return (
+    <View style={styles.customHeader}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+      <View style={styles.headerContent}>
+        {canGoBack && (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+          >
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+        )}
+        <Text style={[styles.headerTitle, !canGoBack && styles.headerTitleCentered]}>{title}</Text>
+        <HeaderRightButtons navigation={navigation} />
+      </View>
+    </View>
+  );
+};
+
+// Navigation Wrapper that includes the fixed header
+const NavigationWrapper = ({ isAuthed, HeaderRightButtons, handleLogout, Stack, onLoggedIn, navigationRef, currentRoute }) => {
+  const headerHeight = Platform.OS === 'ios' ? 56 : 56 + (StatusBar.currentHeight || 0);
+  
+  return (
+    <View style={styles.container}>
+      {isAuthed && <CustomHeader HeaderRightButtons={HeaderRightButtons} navigationRef={navigationRef} currentRoute={currentRoute} />}
+      <View style={[styles.navigatorContainer, isAuthed && { paddingTop: headerHeight }]}>
+        <Stack.Navigator
+          screenOptions={{
+            animation: 'slide_from_right',
+            animationDuration: 300,
+            headerShown: false, // Hide default headers
+          }}
+        >
+        {isAuthed ? (
+          <>
+            <Stack.Screen
+              name="Home"
+            >
+              {(props) => (
+                <HomeScreen {...props} onLogout={handleLogout} />
+              )}
+            </Stack.Screen>
+            <Stack.Screen
+              name="Create Category"
+              component={CreateCategoryScreen}
+            />
+            <Stack.Screen
+              name="Edit Category"
+              component={EditCategoryScreen}
+            />
+            <Stack.Screen
+              name="Create Workout"
+              component={CreateWorkoutScreen}
+            />
+            <Stack.Screen
+              name="Category Workouts"
+              component={CategoryWorkoutsScreen}
+            />
+            <Stack.Screen
+              name="Timer"
+              component={TimerScreen}
+            />
+            <Stack.Screen
+              name="Workout Execution"
+              component={WorkoutExecutionScreen}
+            />
+            <Stack.Screen
+              name="Conversations"
+              component={ConversationsListScreen}
+            />
+            <Stack.Screen
+              name="Conversation"
+              component={ConversationScreen}
+            />
+            <Stack.Screen
+              name="Settings"
+              component={SettingsScreen}
+            />
+            <Stack.Screen
+              name="Layout Selection"
+              component={LayoutSelectionScreen}
+            />
+            <Stack.Screen
+              name="Layout"
+              component={LayoutDetailScreen}
+            />
+            <Stack.Screen
+              name="Route"
+              component={ClimbDetailScreen}
+            />
+          </>
+        ) : (
+          <Stack.Screen name="Login">
+            {(props) => (
+              <LoginScreen {...props} onLoggedIn={onLoggedIn} />
+            )}
+          </Stack.Screen>
+        )}
+        </Stack.Navigator>
+      </View>
+    </View>
+  );
+};
+
 const getApiBaseUrl = () => {
   // Explicitly check for false, default to true (production)
   const useProduction = Constants.expoConfig?.extra?.useProduction !== false;
@@ -45,6 +181,8 @@ const getApiBaseUrl = () => {
 export default function App() {
   const [isAuthed, setIsAuthed] = useState(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const navigationRef = useRef(null);
+  const [currentRoute, setCurrentRoute] = useState("Home");
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
 
   const { api, setAuthToken } = useMemo(
@@ -204,134 +342,75 @@ export default function App() {
     }
   };
 
+  const handleStateChange = (state) => {
+    if (state) {
+      const route = state.routes[state.index];
+      setCurrentRoute(route?.name || "Home");
+    }
+  };
+
   return (
     <ApiProvider value={{ api, setAuthToken }}>
-      <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            animation: 'slide_from_right',
-            animationDuration: 300,
-            headerStyle: {
-              backgroundColor: '#F8F9FA',
-            },
-            headerTintColor: '#1D1D1F',
-            headerTitleStyle: {
-              fontWeight: '700',
-            },
-          }}
-        >
-          {isAuthed ? (
-            <>
-              <Stack.Screen
-                name="Home"
-                options={({ navigation }) => ({
-                  title: "Home",
-                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
-                })}
-              >
-                {(props) => (
-                  <HomeScreen {...props} onLogout={handleLogout} />
-                )}
-              </Stack.Screen>
-              <Stack.Screen
-                name="Create Category"
-                component={CreateCategoryScreen}
-                options={({ navigation }) => ({
-                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
-                })}
-              />
-              <Stack.Screen
-                name="Edit Category"
-                component={EditCategoryScreen}
-                options={({ navigation }) => ({
-                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
-                })}
-              />
-              <Stack.Screen
-                name="Create Workout"
-                component={CreateWorkoutScreen}
-                options={({ navigation }) => ({
-                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
-                })}
-              />
-              <Stack.Screen
-                name="Category Workouts"
-                component={CategoryWorkoutsScreen}
-                options={({ navigation }) => ({
-                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
-                })}
-              />
-              <Stack.Screen
-                name="Timer"
-                component={TimerScreen}
-                options={({ navigation }) => ({
-                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
-                })}
-              />
-              <Stack.Screen
-                name="Workout Execution"
-                component={WorkoutExecutionScreen}
-              />
-              <Stack.Screen
-                name="Conversations"
-                component={ConversationsListScreen}
-                options={({ navigation }) => ({
-                  title: "Messages",
-                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
-                })}
-              />
-              <Stack.Screen
-                name="Conversation"
-                component={ConversationScreen}
-                options={{ title: "Chat" }}
-              />
-              <Stack.Screen
-                name="Settings"
-                component={SettingsScreen}
-                options={({ navigation }) => ({
-                  title: "Settings",
-                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
-                })}
-              />
-              <Stack.Screen
-                name="Layout Selection"
-                component={LayoutSelectionScreen}
-                options={({ navigation }) => ({
-                  title: "Gyms",
-                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
-                })}
-              />
-              <Stack.Screen
-                name="Layout"
-                component={LayoutDetailScreen}
-                options={({ navigation }) => ({
-                  title: "Layout",
-                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
-                })}
-              />
-              <Stack.Screen
-                name="Route"
-                component={ClimbDetailScreen}
-                options={({ navigation }) => ({
-                  title: "Route",
-                  headerRight: () => <HeaderRightButtons navigation={navigation} />,
-                })}
-              />
-            </>
-          ) : (
-            <Stack.Screen name="Login">
-              {(props) => (
-                <LoginScreen {...props} onLoggedIn={() => setIsAuthed(true)} />
-              )}
-            </Stack.Screen>
-          )}
-        </Stack.Navigator>
+      <NavigationContainer ref={navigationRef} onStateChange={handleStateChange}>
+        <NavigationWrapper 
+          isAuthed={isAuthed} 
+          HeaderRightButtons={HeaderRightButtons} 
+          handleLogout={handleLogout}
+          Stack={Stack}
+          onLoggedIn={() => setIsAuthed(true)}
+          navigationRef={navigationRef}
+          currentRoute={currentRoute}
+        />
       </NavigationContainer>
     </ApiProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  navigatorContainer: {
+    flex: 1,
+  },
+  customHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#F8F9FA',
+    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    zIndex: 1000,
+    elevation: 5,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 56,
+    paddingHorizontal: 16,
+  },
+  backButton: {
+    padding: 8,
+    marginLeft: -8,
+    marginRight: 8,
+  },
+  backIcon: {
+    fontSize: 24,
+    color: '#1D1D1F',
+    fontWeight: '600',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1D1D1F',
+    flex: 1,
+  },
+  headerTitleCentered: {
+    marginLeft: 0,
+  },
   headerRightContainer: {
     flexDirection: "row",
     alignItems: "center",
