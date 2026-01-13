@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
@@ -12,54 +9,51 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  username     String?  @unique
-  passwordHash String // todo use signin with google and facebook later so as not to store passwords
-  role         String   @default("user") // could be "admin" or "user"
-  height       Float? // Height in cm
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  workouts                 Workout[]
-  categories               WorkoutCategory[]
-  exerciseProgress         ExerciseProgress[]
-  conversationParticipants ConversationParticipant[]
-  sentMessages             Message[]
-  spots                    Spot[]
-  climbs                   Climb[] // Routes they've set (todo future use - setterId)
-  climbVotes               ClimbGradeVote[]
+  id                       String                    @id @default(uuid())
+  email                    String                    @unique
+  passwordHash             String
+  role                     String                    @default("user")
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  username                 String?                   @unique
+  height                   Float?
+  climbs                   Climb[]
   climbComments            ClimbComment[]
   climbReactions           ClimbCommentReaction[]
+  climbVotes               ClimbGradeVote[]
+  conversationParticipants ConversationParticipant[]
+  exerciseProgress         ExerciseProgress[]
+  sentMessages             Message[]
+  spots                    Spot[]
+  workouts                 Workout[]
+  categories               WorkoutCategory[]
 }
 
 model WorkoutCategory {
-  id        String   @id @default(cuid())
-  name      String
-  color     String?
-  userId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workouts         Workout[]
+  id               String             @id @default(cuid())
+  name             String
+  color            String?
+  userId           String
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
   exerciseProgress ExerciseProgress[]
+  workouts         Workout[]
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, name])
 }
 
 model Workout {
-  id         String   @id @default(cuid())
+  id         String          @id @default(cuid())
   notes      String?
   categoryId String
   userId     String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  category  WorkoutCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exercises Exercise[]
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  exercises  Exercise[]
+  category   WorkoutCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([userId, categoryId])
@@ -67,14 +61,13 @@ model Workout {
 }
 
 model Exercise {
-  id        String  @id @default(cuid())
-  workoutId String
-  type      String
-  name      String
-  unit      String?
-  notes     String?
-  order     Int
-
+  id         String        @id @default(cuid())
+  workoutId  String
+  type       String
+  name       String
+  unit       String?
+  notes      String?
+  order      Int
   workout    Workout       @relation(fields: [workoutId], references: [id], onDelete: Cascade)
   setsDetail ExerciseSet[]
 
@@ -82,41 +75,33 @@ model Exercise {
 }
 
 model ExerciseSet {
-  id          String @id @default(cuid())
+  id          String   @id @default(cuid())
   exerciseId  String
   order       Int
-  value       Float  @default(0)
+  value       Float    @default(0)
   reps        Int?
   restMinutes Float?
-
-  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  exercise    Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
   @@unique([exerciseId, order])
 }
 
 model ExerciseProgress {
-  id             String  @id @default(cuid())
-  name           String // Display name (original casing)
-  normalizedName String // Lowercase for matching
-  type           String // Exercise type - not sure about this.. weight / time / ... not used right now TODO
-  unit           String? // Unit of measurement
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  categoryId String
-  category   WorkoutCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  // Aggregates for quick stats
-  totalVolume Float @default(0)
-  totalReps   Int   @default(0)
-  maxWeight   Float @default(0)
-
-  // Per-workout breakdown for charts: [{ date, volume, sets, reps, maxWeight }]
-  progress Json @default("[]")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String          @id @default(cuid())
+  name           String
+  normalizedName String
+  type           String
+  unit           String?
+  userId         String
+  categoryId     String
+  totalVolume    Float           @default(0)
+  totalReps      Int             @default(0)
+  maxWeight      Float           @default(0)
+  progress       Json            @default("[]")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  category       WorkoutCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, categoryId, normalizedName])
   @@index([userId])
@@ -124,10 +109,9 @@ model ExerciseProgress {
 }
 
 model Conversation {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id           String                    @id @default(cuid())
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
   participants ConversationParticipant[]
   messages     Message[]
 }
@@ -135,27 +119,25 @@ model Conversation {
 model ConversationParticipant {
   conversationId String
   userId         String
-  role           String   @default("member") // e.g., "member", "admin"
-  createdAt      DateTime @default(now())
-
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String       @default("member")
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([conversationId, userId])
   @@index([userId])
 }
 
 model Message {
-  id             String    @id @default(cuid())
+  id             String       @id @default(cuid())
   conversationId String
   senderId       String
   content        String
-  workoutData    Json? // Optional: structured workout data for importing
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime     @default(now())
   readAt         DateTime?
-
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  workoutData    Json?
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
   @@index([senderId])
@@ -164,13 +146,12 @@ model Message {
 model Layout {
   id                  String   @id @default(cuid())
   name                String
-  layoutImageUrl      String // Cloudinary URL for the layout image
-  layoutImagePublicId String // Cloudinary public ID for deletion
-  gradeSystem         String // Grading system: "V-Scale", "V-Scale Range", "French"
+  layoutImageUrl      String
+  layoutImagePublicId String
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
-
-  spots Spot[]
+  gradeSystem         String
+  spots               Spot[]
 
   @@index([createdAt])
 }
@@ -179,17 +160,16 @@ model Spot {
   id          String   @id @default(cuid())
   name        String
   description String?
-  color       String? // Optional. TODO not sure about this since we're supposed to derive this from the climbs
-  x           Float // X coordinate as percentage (0-100) of layout image width
-  y           Float // Y coordinate as percentage (0-100) of layout image height
+  color       String?
+  x           Float
+  y           Float
   layoutId    String
   userId      String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  layout Layout      @relation(fields: [layoutId], references: [id], onDelete: Cascade)
-  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  climbs Climb[]
+  climbs      Climb[]
+  layout      Layout   @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([layoutId])
   @@index([userId])
@@ -200,37 +180,35 @@ model ClimbVideo {
   id            String   @id @default(cuid())
   title         String?
   description   String?
-  videoUrl      String // Cloudinary URL for the video
-  videoPublicId String // Cloudinary public ID for deletion
-  thumbnailUrl  String? // Cloudinary URL for video thumbnail
-  fileSize      Int // File size in bytes
-  duration      Float? // Video duration in seconds (may be null if Cloudinary hasn't processed yet) // todo maybe force later on
+  videoUrl      String
+  videoPublicId String
+  thumbnailUrl  String?
+  fileSize      Int
+  duration      Float?
   climbId       String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
-  climb Climb @relation(fields: [climbId], references: [id], onDelete: Cascade)
+  climb         Climb    @relation(fields: [climbId], references: [id], onDelete: Cascade)
 
   @@index([climbId])
   @@index([climbId, createdAt])
 }
 
 model Climb {
-  id          String   @id @default(cuid())
+  id          String           @id @default(cuid())
   spotId      String
-  grade       String // Grade (e.g., "V4", "V4-6", "6a+", "7b") - format depends on layout's gradeSystem
-  gradeSystem String // "V-Scale", "V-Scale Range", "French" - must match layout's gradeSystem
-  color       String // Color of the route (hex code, e.g., "#FF5733")
-  length      Float? // Optional: Route length in meters (for lead climbing routes)
-  setterId    String? // Optional: User who set/suggested the grade (TODO for future use)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  spot     Spot             @relation(fields: [spotId], references: [id], onDelete: Cascade)
-  setter   User?            @relation(fields: [setterId], references: [id], onDelete: SetNull)
-  votes    ClimbGradeVote[] // Votes from users (always specific grades, no ranges)
-  comments ClimbComment[] // Comment section (one-level nesting only)
-  videos   ClimbVideo[] // Videos demonstrating this specific climb/route
+  grade       String
+  gradeSystem String
+  color       String
+  length      Float?
+  setterId    String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  setter      User?            @relation(fields: [setterId], references: [id])
+  spot        Spot             @relation(fields: [spotId], references: [id], onDelete: Cascade)
+  comments    ClimbComment[]
+  votes       ClimbGradeVote[]
+  videos      ClimbVideo[]
 
   @@index([spotId])
   @@index([setterId])
@@ -238,60 +216,55 @@ model Climb {
 }
 
 model ClimbGradeVote {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   climbId     String
   userId      String
-  grade       String   // What grade the user thinks it is - ALWAYS specific (no ranges, e.g., "V4", "6a+")
-  gradeSystem String   // "V-Scale", "V-Scale Range", "French" - must match climb's gradeSystem
-  height      Float?   // Optional: User's height in cm (auto-filled from user preferences if available)
-  descriptors String[] @default([]) // descriptors like "reachy", "crimpy", etc.
+  grade       String
+  gradeSystem String
+  height      Float?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  descriptors String[] @default([])
+  climb       Climb    @relation(fields: [climbId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  climb Climb @relation(fields: [climbId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([climbId, userId]) // One vote per user per climb (can update)
+  @@unique([climbId, userId])
   @@index([climbId])
   @@index([userId])
 }
 
 model ClimbComment {
-  id              String    @id @default(cuid())
+  id              String                 @id @default(cuid())
   climbId         String
   userId          String
-  parentCommentId String? // Optional: For replies - ONE LEVEL ONLY (no replies to replies)
-  content         String // Comment text
-  likes           Int       @default(0) // Count of likes
-  dislikes        Int       @default(0) // Count of dislikes
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  editedAt        DateTime? // Timestamp when comment was edited (if edited)
+  parentCommentId String?
+  content         String
+  likes           Int                    @default(0)
+  dislikes        Int                    @default(0)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  editedAt        DateTime?
+  climb           Climb                  @relation(fields: [climbId], references: [id], onDelete: Cascade)
+  parentComment   ClimbComment?          @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         ClimbComment[]         @relation("CommentReplies")
+  user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactions       ClimbCommentReaction[]
 
-  climb         Climb                  @relation(fields: [climbId], references: [id], onDelete: Cascade)
-  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parentComment ClimbComment?          @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
-  replies       ClimbComment[]         @relation("CommentReplies") // One-level nesting only
-  reactions     ClimbCommentReaction[] // Who liked/disliked (for preventing duplicates and counting)
-
-  @@index([climbId, createdAt]) // For ordering comments by date
+  @@index([climbId, createdAt])
   @@index([userId])
-  @@index([parentCommentId]) // For finding replies
+  @@index([parentCommentId])
 }
 
 model ClimbCommentReaction {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
   commentId String
   userId    String
-  reaction  String // "like" or "dislike" (can be changed or removed)
-  createdAt DateTime @default(now())
+  reaction  String
+  createdAt DateTime     @default(now())
+  comment   ClimbComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  comment ClimbComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([commentId, userId]) // One reaction per user per comment (can change like to dislike, or remove completely)
+  @@unique([commentId, userId])
   @@index([commentId])
   @@index([userId])
 }
-
-// TODO: Add flag/report system for climbs and comments - users should be able to report inappropriate content

@@ -583,10 +583,15 @@ export default function ClimbDetailScreen({ navigation, route }) {
       >
       <View style={styles.climbHeader}>
         <View style={[styles.climbColorIndicatorLarge, { backgroundColor: climbDetails.color }]}>
-          <Text style={[
-            styles.climbHeaderGrade,
-            { color: isLightColor(climbDetails.color) ? '#000' : '#fff' }
-          ]}>
+          <Text 
+            style={[
+              styles.climbHeaderGrade,
+              { color: isLightColor(climbDetails.color) ? '#000' : '#fff' }
+            ]}
+            numberOfLines={1}
+            adjustsFontSizeToFit={true}
+            minimumFontScale={0.5}
+          >
             {climbDetails.grade}
           </Text>
         </View>
@@ -1702,6 +1707,7 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 4,
   },
   climbHeaderInfo: {
     flex: 1,
@@ -1710,6 +1716,7 @@ const styles = StyleSheet.create({
   climbHeaderGrade: {
     fontSize: 28,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   climbHeaderLength: {
     fontSize: 16,
