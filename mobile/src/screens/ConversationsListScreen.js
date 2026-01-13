@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     bottom: Platform.OS === "android" ? 80 : 40,
     right: 20,
     backgroundColor: "#007AFF",
-    paddingHorizontal: 20,
+    paddingHorizontal: 100,
     paddingVertical: 12,
     borderRadius: 25,
     elevation: 5,
