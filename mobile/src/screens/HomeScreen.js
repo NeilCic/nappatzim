@@ -152,6 +152,11 @@ export default function HomeScreen({ navigation, onLogout }) {
             size="large"
             style={styles.newWorkoutButton}
           />
+          {categories.length === 0 && (
+            <Text style={styles.disabledHint}>
+              Create a category first to start a workout
+            </Text>
+          )}
         </View>
       </View>
 
@@ -211,8 +216,15 @@ const styles = StyleSheet.create({
   },
   newWorkoutButton: {
     borderRadius: 15,
-    marginBottom: 20,
+    marginBottom: 12,
     width: '100%',
+  },
+  disabledHint: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingHorizontal: 20,
   },
   previousWorkoutButton: {
     backgroundColor: "white",

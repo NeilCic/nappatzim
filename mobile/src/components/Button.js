@@ -88,10 +88,14 @@ export default function Button({
   };
 
   // Gradient button
-  if (variant === 'gradient' && !isDisabled) {
+  if (variant === 'gradient') {
+    const gradientColors = isDisabled 
+      ? ['#B0B0B0', '#D0D0D0', '#B0B0B0'] // Gray gradient when disabled
+      : ['#007AFF', '#5AC8FA', '#007AFF'];
+    
     return (
       <AnimatedTouchable
-        style={[buttonStyles, animatedStyle]}
+        style={[buttonStyles, animatedStyle, isDisabled && styles.gradientDisabled]}
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -99,13 +103,15 @@ export default function Button({
         activeOpacity={1}
       >
         <LinearGradient
-          colors={['#007AFF', '#5AC8FA', '#007AFF']}
+          colors={gradientColors}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
         >
           <LinearGradient
-            colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0)']}
+            colors={isDisabled 
+              ? ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0)'] 
+              : ['rgba(255,255,255,0.2)', 'rgba(255,255,255,0)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
             style={styles.gradientOverlay}
@@ -229,6 +235,9 @@ const styles = StyleSheet.create({
   // States
   buttonDisabled: {
     opacity: 0.5,
+  },
+  gradientDisabled: {
+    opacity: 0.8, // Less opacity reduction for gradient buttons
   },
   
   // Gradient styles
