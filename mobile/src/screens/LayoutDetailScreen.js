@@ -6,10 +6,12 @@ import {
   Image, 
   Dimensions, 
   ScrollView,
-  FlatList
+  FlatList,
+  Switch
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { VideoView, useVideoPlayer } from 'expo-video';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApi } from '../ApiProvider';
 import { showError } from '../utils/errorHandler';
 import StyledTextInput from '../components/StyledTextInput';
@@ -46,6 +48,20 @@ export default function LayoutDetailScreen({ navigation, route }) {
   const errorLoggedRef = useRef(false);
   const hasAutoPlayedRef = useRef(false);
   const { api } = useApi();
+  
+  // Filter state
+  const [filters, setFilters] = useState({
+    minProposedGrade: null,
+    maxProposedGrade: null,
+    minVoterGrade: null,
+    maxVoterGrade: null,
+    descriptors: [],
+    setterName: null,
+    hasVideo: null,
+  });
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [viewMode, setViewMode] = useState('map'); // 'map' or 'list'
+  const [matchingClimbCount, setMatchingClimbCount] = useState(0);
   
   const videoPlayer = useVideoPlayer(selectedVideo?.videoUrl || '');
   
@@ -202,6 +218,22 @@ export default function LayoutDetailScreen({ navigation, route }) {
     : calculatedImageDimensions;
   
 
+  const isInitialFilterSetRef = useRef(true);
+
+  useEffect(() => {
+    const loadFilters = async () => {
+      try {
+        const savedFilters = await AsyncStorage.getItem('routeFilters');
+        if (savedFilters) {
+          setFilters(JSON.parse(savedFilters));
+        }
+      } catch (error) {
+        // Ignore errors loading filters
+      }
+    };
+    loadFilters();
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       fetchLayout();
@@ -216,6 +248,23 @@ export default function LayoutDetailScreen({ navigation, route }) {
       };
     }, [layoutId])
   );
+
+  useEffect(() => {
+    if (!isInitialFilterSetRef.current) {
+      const saveFilters = async () => {
+        try {
+          await AsyncStorage.setItem('routeFilters', JSON.stringify(filters));
+        } catch (error) {
+          // Ignore errors saving filters
+        }
+      };
+      saveFilters();
+    } else {
+      isInitialFilterSetRef.current = false;
+    }
+    
+    fetchSpots();
+  }, [filters]);
 
   useEffect(() => {
     if (layout?.layoutImageUrl) {
@@ -243,8 +292,26 @@ export default function LayoutDetailScreen({ navigation, route }) {
 
   const fetchSpots = async () => {
     try {
-      const response = await api.get(`/layouts/${layoutId}/spots`);
-      setSpots(response.data.spots || []);
+      const params = new URLSearchParams();
+      if (filters.minProposedGrade) params.append('minProposedGrade', filters.minProposedGrade);
+      if (filters.maxProposedGrade) params.append('maxProposedGrade', filters.maxProposedGrade);
+      if (filters.minVoterGrade) params.append('minVoterGrade', filters.minVoterGrade);
+      if (filters.maxVoterGrade) params.append('maxVoterGrade', filters.maxVoterGrade);
+      if (filters.descriptors && filters.descriptors.length > 0) {
+        filters.descriptors.forEach(desc => params.append('descriptors[]', desc));
+      }
+      if (filters.setterName) params.append('setterName', filters.setterName);
+      if (filters.hasVideo !== null) params.append('hasVideo', filters.hasVideo.toString());
+      
+      const queryString = params.toString();
+      const url = `/layouts/${layoutId}/spots${queryString ? `?${queryString}` : ''}`;
+      const response = await api.get(url);
+      const spots = response.data.spots || [];
+      setSpots(spots);
+      
+      // Count matching climbs
+      const totalMatching = spots.reduce((sum, spot) => sum + (spot.climbs?.length || 0), 0);
+      setMatchingClimbCount(totalMatching);
     } catch (error) {
       showError(error, "Error", "Failed to load spots");
     } finally {
@@ -304,6 +371,33 @@ export default function LayoutDetailScreen({ navigation, route }) {
     navigation.navigate('Route', { climbId: climb.id });
   };
 
+  const handleClearFilters = () => {
+    setFilters({
+      minProposedGrade: null,
+      maxProposedGrade: null,
+      minVoterGrade: null,
+      maxVoterGrade: null,
+      descriptors: [],
+      setterName: null,
+      hasVideo: null,
+    });
+  };
+
+  const handleApplyFilters = () => {
+    setShowFilterModal(false);
+    // Filters will trigger fetchSpots via useFocusEffect dependency
+  };
+
+  const toggleDescriptor = (descriptor) => {
+    setFilters(prev => {
+      const current = prev.descriptors || [];
+      const updated = current.includes(descriptor)
+        ? current.filter(d => d !== descriptor)
+        : [...current, descriptor];
+      return { ...prev, descriptors: updated };
+    });
+  };
+
 
   const handleCreateClimb = async () => {
     if (!selectedSpot || !layout) return;
@@ -345,6 +439,21 @@ export default function LayoutDetailScreen({ navigation, route }) {
     }
   };
 
+  // Prepare list view data - MUST be before any early returns to avoid hooks order issues
+  const listViewData = useMemo(() => {
+    if (viewMode !== 'list') return [];
+    const climbs = [];
+    spots.forEach(spot => {
+      (spot.climbs || []).forEach(climb => {
+        climbs.push({
+          ...climb,
+          spotName: spot.name,
+          spotId: spot.id,
+        });
+      });
+    });
+    return climbs;
+  }, [spots, viewMode]);
 
   if (loading || !layout) {
     return <LoadingScreen />;
@@ -352,23 +461,24 @@ export default function LayoutDetailScreen({ navigation, route }) {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.imageContainer}>
-        <Pressable 
-          onPress={handleImagePress}
-          style={styles.imageTouchable}
-        >
-          <Image
-            source={{ uri: layout.layoutImageUrl }}
-            style={[
-              styles.layoutImage,
-              calculatedImageDimensions,
-            ]}
-            resizeMode="contain"
-            onLayout={handleImageLayout}
-          />
-          
-          {/* Render spots as overlays */}
-          {spots.map((spot) => {
+      {viewMode === 'map' ? (
+        <View style={styles.imageContainer}>
+          <Pressable 
+            onPress={handleImagePress}
+            style={styles.imageTouchable}
+          >
+            <Image
+              source={{ uri: layout.layoutImageUrl }}
+              style={[
+                styles.layoutImage,
+                calculatedImageDimensions,
+              ]}
+              resizeMode="contain"
+              onLayout={handleImageLayout}
+            />
+            
+            {/* Render spots as overlays */}
+            {spots.map((spot) => {
             const imageLeft = (spot.x / 100) * effectiveImageDimensions.width;
             const imageTop = (spot.y / 100) * effectiveImageDimensions.height;
             
@@ -379,10 +489,16 @@ export default function LayoutDetailScreen({ navigation, route }) {
             const left = offsetX + imageLeft - (markerSize / 2);
             const top = offsetY + imageTop - (markerSize / 2);
             
-            // Extract climb colors (up to 4)
+            // Extract climb colors (up to 4) - filtered climbs are already filtered by backend
             const climbs = spot.climbs || [];
             const climbColors = climbs.slice(0, 4).map(climb => climb.color);
             const remainingCount = Math.max(0, climbs.length - 4);
+            
+            // Check if we have active filters
+            const hasActiveFilters = filters.minProposedGrade || filters.maxProposedGrade || 
+              filters.minVoterGrade || filters.maxVoterGrade || 
+              (filters.descriptors && filters.descriptors.length > 0) || 
+              filters.setterName || filters.hasVideo !== null;
             
             return (
               <Pressable
@@ -425,6 +541,17 @@ export default function LayoutDetailScreen({ navigation, route }) {
                       </View>
                     )}
                   </View>
+                ) : hasActiveFilters ? (
+                  // Show no-match icon/color when filters are active and no climbs match
+                  layout?.noMatchColor ? (
+                    <View style={[styles.climbColorSingle, { backgroundColor: layout.noMatchColor }]} />
+                  ) : (
+                    <Image 
+                      source={require('../../assets/not-found.png')} 
+                      style={styles.noMatchIcon}
+                      resizeMode="contain"
+                    />
+                  )
                 ) : (
                   <View style={[styles.climbColorSingle, styles.noClimbsMarker]} />
                 )}
@@ -433,6 +560,43 @@ export default function LayoutDetailScreen({ navigation, route }) {
           })}
         </Pressable>
       </View>
+      ) : (
+        <View style={styles.listContainer}>
+          {listViewData.length > 0 ? (
+            <FlatList
+              data={listViewData}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={styles.listClimbItem}
+                  onPress={() => handleClimbPress(item)}
+                >
+                  <View style={[styles.listClimbColorIndicator, { backgroundColor: item.color }]} />
+                  <View style={styles.listClimbInfo}>
+                    <Text style={styles.listClimbGrade}>{item.grade}</Text>
+                    <Text style={styles.listClimbSpot}>{item.spotName}</Text>
+                    {item.length && (
+                      <Text style={styles.listClimbLength}>{item.length}m</Text>
+                    )}
+                  </View>
+                </Pressable>
+              )}
+              scrollEnabled={false}
+            />
+          ) : (
+            <View style={styles.emptyListContainer}>
+              <Text style={styles.emptyListText}>No climbs match your filters</Text>
+              <Button
+                title="Clear Filters"
+                onPress={handleClearFilters}
+                variant="secondary"
+                size="medium"
+                style={styles.emptyListButton}
+              />
+            </View>
+          )}
+        </View>
+      )}
 
       <View style={styles.infoContainer}>
         <Text style={styles.layoutName}>{layout.name}</Text>
@@ -441,6 +605,57 @@ export default function LayoutDetailScreen({ navigation, route }) {
           <Text style={styles.gradeSystem}>Grade System: {layout.gradeSystem || 'V-Scale'}</Text>
         </View>
         <Text style={styles.instruction}>Tap on the map to add a new spot</Text>
+        
+        {/* Filter section */}
+        <View style={styles.filterSection}>
+          <Pressable 
+            style={styles.filterButton}
+            onPress={() => setShowFilterModal(true)}
+          >
+            <Text style={styles.filterButtonText}>🔍 Filter Routes</Text>
+          </Pressable>
+          
+          {/* Active filters indicator */}
+          {(() => {
+            const activeFilterCount = [
+              filters.minProposedGrade || filters.maxProposedGrade,
+              filters.minVoterGrade || filters.maxVoterGrade,
+              filters.descriptors?.length > 0,
+              filters.setterName,
+              filters.hasVideo !== null,
+            ].filter(Boolean).length;
+            
+            return activeFilterCount > 0 ? (
+              <View style={styles.activeFiltersContainer}>
+                <Text style={styles.activeFiltersText}>
+                  {matchingClimbCount} climb{matchingClimbCount !== 1 ? 's' : ''} match
+                </Text>
+                <Pressable
+                  style={styles.clearFiltersButton}
+                  onPress={handleClearFilters}
+                >
+                  <Text style={styles.clearFiltersText}>Clear all</Text>
+                </Pressable>
+              </View>
+            ) : null;
+          })()}
+          
+          {/* View mode toggle */}
+          <View style={styles.viewModeToggle}>
+            <Pressable
+              style={[styles.viewModeButton, viewMode === 'map' && styles.viewModeButtonActive]}
+              onPress={() => setViewMode('map')}
+            >
+              <Text style={[styles.viewModeText, viewMode === 'map' && styles.viewModeTextActive]}>🗺️ Map</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.viewModeButton, viewMode === 'list' && styles.viewModeButtonActive]}
+              onPress={() => setViewMode('list')}
+            >
+              <Text style={[styles.viewModeText, viewMode === 'list' && styles.viewModeTextActive]}>📋 List</Text>
+            </Pressable>
+          </View>
+        </View>
       </View>
 
       <AppModal
@@ -670,6 +885,126 @@ export default function LayoutDetailScreen({ navigation, route }) {
                 </View>
               </>
             )}
+      </AppModal>
+
+      {/* Filter Modal */}
+      <AppModal
+        visible={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        title="Filter Routes"
+        style={[styles.modalContent, styles.filterModalContent]}
+      >
+        <ScrollView style={styles.filterModalScroll} showsVerticalScrollIndicator={true}>
+          {/* Proposed Grade Range */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>Proposed Grade Range</Text>
+            <View style={styles.gradeRangeContainer}>
+              <StyledTextInput
+                style={styles.gradeInput}
+                placeholder="Min (e.g., V4)"
+                value={filters.minProposedGrade || ''}
+                onChangeText={(text) => setFilters(prev => ({ ...prev, minProposedGrade: text || null }))}
+                autoCapitalize="characters"
+              />
+              <Text style={styles.rangeSeparator}>to</Text>
+              <StyledTextInput
+                style={styles.gradeInput}
+                placeholder="Max (e.g., V6)"
+                value={filters.maxProposedGrade || ''}
+                onChangeText={(text) => setFilters(prev => ({ ...prev, maxProposedGrade: text || null }))}
+                autoCapitalize="characters"
+              />
+            </View>
+          </View>
+
+          {/* Voter Grade Range */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>Voter Grade Range (Average)</Text>
+            <View style={styles.gradeRangeContainer}>
+              <StyledTextInput
+                style={styles.gradeInput}
+                placeholder="Min (e.g., V4)"
+                value={filters.minVoterGrade || ''}
+                onChangeText={(text) => setFilters(prev => ({ ...prev, minVoterGrade: text || null }))}
+                autoCapitalize="characters"
+              />
+              <Text style={styles.rangeSeparator}>to</Text>
+              <StyledTextInput
+                style={styles.gradeInput}
+                placeholder="Max (e.g., V6)"
+                value={filters.maxVoterGrade || ''}
+                onChangeText={(text) => setFilters(prev => ({ ...prev, maxVoterGrade: text || null }))}
+                autoCapitalize="characters"
+              />
+            </View>
+          </View>
+
+          {/* Descriptors */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>Descriptors (All must match)</Text>
+            <View style={styles.descriptorsContainer}>
+              {['reachy', 'balance', 'slopey', 'crimpy', 'slippery', 'static', 'dyno', 'coordination', 'explosive', 'endurance', 'powerful', 'must-try', 'dangerous', 'pockety', 'dual-tex', 'compression', 'campusy', 'shouldery'].map(descriptor => (
+                <Pressable
+                  key={descriptor}
+                  style={[
+                    styles.descriptorChip,
+                    filters.descriptors?.includes(descriptor) && styles.descriptorChipActive
+                  ]}
+                  onPress={() => toggleDescriptor(descriptor)}
+                >
+                  <Text style={[
+                    styles.descriptorChipText,
+                    filters.descriptors?.includes(descriptor) && styles.descriptorChipTextActive
+                  ]}>
+                    {descriptor}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          {/* Setter Name */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterLabel}>Setter Name</Text>
+            <StyledTextInput
+              style={styles.input}
+              placeholder="Search by setter name..."
+              value={filters.setterName || ''}
+              onChangeText={(text) => setFilters(prev => ({ ...prev, setterName: text || null }))}
+            />
+          </View>
+
+          {/* Has Video */}
+          <View style={styles.filterSection}>
+            <View style={styles.switchContainer}>
+              <Text style={styles.filterLabel}>Has Video</Text>
+              <Switch
+                value={filters.hasVideo === true}
+                onValueChange={(value) => setFilters(prev => ({ ...prev, hasVideo: value ? true : null }))}
+                trackColor={{ false: '#ddd', true: '#007AFF' }}
+                thumbColor={filters.hasVideo === true ? '#fff' : '#f4f3f4'}
+              />
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.filterActions}>
+            <Button
+              title="Clear All"
+              onPress={handleClearFilters}
+              variant="secondary"
+              size="medium"
+              style={styles.filterActionButton}
+            />
+            <Button
+              title="Apply Filters"
+              onPress={handleApplyFilters}
+              variant="primary"
+              size="medium"
+              style={styles.filterActionButton}
+            />
+          </View>
+        </ScrollView>
       </AppModal>
 
     </ScrollView>
@@ -1497,6 +1832,198 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  
+  filterSection: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  filterButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  filterButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  activeFiltersContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingVertical: 8,
+  },
+  activeFiltersText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  clearFiltersButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  clearFiltersText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  viewModeToggle: {
+    flexDirection: 'row',
+    marginTop: 12,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    padding: 4,
+  },
+  viewModeButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  viewModeButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  viewModeText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  viewModeTextActive: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  filterModalContent: {
+    maxHeight: '70%',
+  },
+  filterModalScroll: {
+    maxHeight: 500,
+  },
+  filterLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  gradeRangeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  gradeInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+  },
+  rangeSeparator: {
+    fontSize: 16,
+    color: '#666',
+    marginHorizontal: 4,
+  },
+  descriptorsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  descriptorChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  descriptorChipActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  descriptorChipText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  descriptorChipTextActive: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  filterActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  filterActionButton: {
+    flex: 1,
+    minWidth: 120,
+  },
+  noMatchIcon: {
+    width: '100%',
+    height: '100%',
+  },
+  
+  listContainer: {
+    padding: 16,
+    minHeight: 300,
+  },
+  listClimbItem: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    padding: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  listClimbColorIndicator: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#ddd',
+  },
+  listClimbInfo: {
+    flex: 1,
+  },
+  listClimbGrade: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  listClimbSpot: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+  },
+  listClimbLength: {
+    fontSize: 12,
+    color: '#999',
+  },
+  emptyListContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyListText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  emptyListButton: {
+    minWidth: 150,
   },
 });
 

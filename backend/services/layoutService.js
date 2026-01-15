@@ -16,6 +16,7 @@ class LayoutService extends PrismaCrudService {
         name: true,
         layoutImageUrl: true,
         gradeSystem: true,
+        noMatchColor: true,
       },
     });
   }
@@ -46,7 +47,7 @@ class LayoutService extends PrismaCrudService {
     );
   }
 
-  async createLayout(name, gradeSystem, imageFile) {
+  async createLayout(name, gradeSystem, imageFile, noMatchColor) {
     const uploadResult = await uploadToCloudinary(
       imageFile,
       `${getCloudinaryFolderPrefix()}/layouts`
@@ -58,6 +59,7 @@ class LayoutService extends PrismaCrudService {
         gradeSystem,
         layoutImageUrl: uploadResult.url,
         layoutImagePublicId: uploadResult.publicId,
+        ...(noMatchColor ? { noMatchColor } : {}),
       });
     } catch (dbError) {
       // If database save fails, rollback by deleting from Cloudinary
@@ -71,7 +73,7 @@ class LayoutService extends PrismaCrudService {
     }
   }
 
-  async updateLayout(layoutId, name, gradeSystem, imageFile, oldPublicId) {
+  async updateLayout(layoutId, name, gradeSystem, imageFile, oldPublicId, noMatchColor) {
     const updateData = {};
     let uploadResult = null;
     
@@ -81,6 +83,10 @@ class LayoutService extends PrismaCrudService {
     
     if (gradeSystem) {
       updateData.gradeSystem = gradeSystem;
+    }
+
+    if (noMatchColor !== undefined) {
+      updateData.noMatchColor = noMatchColor;
     }
     
     if (imageFile) {

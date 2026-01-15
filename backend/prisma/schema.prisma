@@ -151,6 +151,7 @@ model Layout {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   gradeSystem         String
+  noMatchColor        String?
   spots               Spot[]
 
   @@index([createdAt])

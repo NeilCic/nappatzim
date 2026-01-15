@@ -20,6 +20,10 @@ const createLayoutSchema = z.object({
   gradeSystem: z.enum(["V-Scale", "V-Scale Range", "French"], {
     errorMap: () => ({ message: "Grade system must be 'V-Scale', 'V-Scale Range', or 'French'" }),
   }),
+  noMatchColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Color must be a valid hex code")
+    .optional(),
 });
 
 // Schema for creating video (without video URLs - they come from Cloudinary)
@@ -39,9 +43,17 @@ const spotSchema = z.object({
 
 const updateLayoutSchema = z.object({
   name: z.string().min(1, "Name is required").optional(),
-  gradeSystem: z.enum(["V-Scale", "V-Scale Range", "French"], {
-    errorMap: () => ({ message: "Grade system must be 'V-Scale', 'V-Scale Range', or 'French'" }),
-  }).optional(),
+  gradeSystem: z
+    .enum(["V-Scale", "V-Scale Range", "French"], {
+      errorMap: () => ({
+        message: "Grade system must be 'V-Scale', 'V-Scale Range', or 'French'",
+      }),
+    })
+    .optional(),
+  noMatchColor: z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/, "Color must be a valid hex code")
+    .optional(),
 });
 
 const climbVideoSchema = z.object({
@@ -102,7 +114,8 @@ export const createLayoutController = async (req, res) => {
     const layout = await layoutService.createLayout(
       nameValidation.data.name,
       nameValidation.data.gradeSystem,
-      req.file.buffer
+      req.file.buffer,
+      nameValidation.data.noMatchColor
     );
 
     res.status(201).json({ layout });
@@ -135,7 +148,8 @@ export const updateLayoutController = async (req, res) => {
       validation.data.name || null,
       validation.data.gradeSystem || null,
       req.file?.buffer || null,
-      existingLayout.layoutImagePublicId
+      existingLayout.layoutImagePublicId,
+      validation.data.noMatchColor
     );
     
     res.json({ layout });
@@ -166,7 +180,58 @@ export const deleteLayoutController = async (req, res) => {
 export const getSpotsByLayoutController = async (req, res) => {
   try {
     const { layoutId } = req.params;
-    const spots = await spotService.getSpotsByLayout(layoutId);
+
+    const {
+      minProposedGrade,
+      maxProposedGrade,
+      minVoterGrade,
+      maxVoterGrade,
+      setterName,
+      hasVideo,
+    } = req.query;
+
+    // Handle descriptors - can come as 'descriptors[]' or 'descriptors' depending on how Express parses it
+    let descriptors = req.query.descriptors || req.query['descriptors[]'];
+    const descriptorFilters = Array.isArray(descriptors)
+      ? descriptors
+      : typeof descriptors === "string" && descriptors.length > 0
+      ? descriptors.split(",")
+      : [];
+
+    const hasVideoBool =
+      typeof hasVideo === "string"
+        ? hasVideo.toLowerCase() === "true"
+          ? true
+          : hasVideo.toLowerCase() === "false"
+          ? false
+          : undefined
+        : undefined;
+
+    const spots = await spotService.getSpotsByLayout(
+      layoutId,
+      {
+        minProposedGrade: typeof minProposedGrade === "string" ? minProposedGrade : undefined,
+        maxProposedGrade: typeof maxProposedGrade === "string" ? maxProposedGrade : undefined,
+        minVoterGrade: typeof minVoterGrade === "string" ? minVoterGrade : undefined,
+        maxVoterGrade: typeof maxVoterGrade === "string" ? maxVoterGrade : undefined,
+        descriptors: descriptorFilters,
+        setterName: typeof setterName === "string" ? setterName : undefined,
+        hasVideo: hasVideoBool,
+      }
+    );
+
+    // Validate layout exists (if no spots, check layout; if spots exist, layout is included in relation)
+    if (spots.length === 0) {
+      const layout = await layoutService.getOne(
+        { id: layoutId },
+        undefined,
+        { id: true }
+      );
+      if (!layout) {
+        return res.status(404).json({ error: "Layout not found" });
+      }
+    }
+
     res.json({ spots });
   } catch (error) {
     logger.error({ error, layoutId: req.params.layoutId }, "Error fetching spots");
