@@ -23,6 +23,8 @@ import Pressable from '../components/Pressable';
 import Spinner from '../components/Spinner';
 import ColorPicker from '../components/ColorPicker';
 
+const DESCRIPTORS = ['reachy', 'balance', 'slopey', 'crimpy', 'slippery', 'static', 'dyno', 'coordination', 'explosive', 'endurance', 'powerful', 'must-try', 'dangerous', 'pockety', 'dual-tex', 'compression', 'campusy', 'shouldery'];
+
 export default function LayoutDetailScreen({ navigation, route }) {
   const { layoutId } = route.params;
   const [layout, setLayout] = useState(null);
@@ -213,6 +215,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
     
     return { width, height };
   }, [screenDimensions.width, screenDimensions.height, imageAspectRatio]);
+  
   const effectiveImageDimensions = imageDimensions.width && imageDimensions.height
     ? imageDimensions
     : calculatedImageDimensions;
@@ -455,6 +458,23 @@ export default function LayoutDetailScreen({ navigation, route }) {
     return climbs;
   }, [spots, viewMode]);
 
+  const hasActiveFilters = useMemo(() => {
+    return filters.minProposedGrade || filters.maxProposedGrade || 
+      filters.minVoterGrade || filters.maxVoterGrade || 
+      (filters.descriptors && filters.descriptors.length > 0) || 
+      filters.setterName || filters.hasVideo !== null;
+  }, [filters.minProposedGrade, filters.maxProposedGrade, filters.minVoterGrade, filters.maxVoterGrade, filters.descriptors, filters.setterName, filters.hasVideo]);
+
+  const activeFilterCount = useMemo(() => {
+    return [
+      filters.minProposedGrade || filters.maxProposedGrade,
+      filters.minVoterGrade || filters.maxVoterGrade,
+      filters.descriptors?.length > 0,
+      filters.setterName,
+      filters.hasVideo !== null,
+    ].filter(Boolean).length;
+  }, [filters.minProposedGrade, filters.maxProposedGrade, filters.minVoterGrade, filters.maxVoterGrade, filters.descriptors, filters.setterName, filters.hasVideo]);
+
   if (loading || !layout) {
     return <LoadingScreen />;
   }
@@ -493,12 +513,6 @@ export default function LayoutDetailScreen({ navigation, route }) {
             const climbs = spot.climbs || [];
             const climbColors = climbs.slice(0, 4).map(climb => climb.color);
             const remainingCount = Math.max(0, climbs.length - 4);
-            
-            // Check if we have active filters
-            const hasActiveFilters = filters.minProposedGrade || filters.maxProposedGrade || 
-              filters.minVoterGrade || filters.maxVoterGrade || 
-              (filters.descriptors && filters.descriptors.length > 0) || 
-              filters.setterName || filters.hasVideo !== null;
             
             return (
               <Pressable
@@ -616,29 +630,19 @@ export default function LayoutDetailScreen({ navigation, route }) {
           </Pressable>
           
           {/* Active filters indicator */}
-          {(() => {
-            const activeFilterCount = [
-              filters.minProposedGrade || filters.maxProposedGrade,
-              filters.minVoterGrade || filters.maxVoterGrade,
-              filters.descriptors?.length > 0,
-              filters.setterName,
-              filters.hasVideo !== null,
-            ].filter(Boolean).length;
-            
-            return activeFilterCount > 0 ? (
-              <View style={styles.activeFiltersContainer}>
-                <Text style={styles.activeFiltersText}>
-                  {matchingClimbCount} climb{matchingClimbCount !== 1 ? 's' : ''} match
-                </Text>
-                <Pressable
-                  style={styles.clearFiltersButton}
-                  onPress={handleClearFilters}
-                >
-                  <Text style={styles.clearFiltersText}>Clear all</Text>
-                </Pressable>
-              </View>
-            ) : null;
-          })()}
+          {activeFilterCount > 0 ? (
+            <View style={styles.activeFiltersContainer}>
+              <Text style={styles.activeFiltersText}>
+                {matchingClimbCount} climb{matchingClimbCount !== 1 ? 's' : ''} match
+              </Text>
+              <Pressable
+                style={styles.clearFiltersButton}
+                onPress={handleClearFilters}
+              >
+                <Text style={styles.clearFiltersText}>Clear all</Text>
+              </Pressable>
+            </View>
+          ) : null}
           
           {/* View mode toggle */}
           <View style={styles.viewModeToggle}>
@@ -943,7 +947,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
           <View style={styles.filterSection}>
             <Text style={styles.filterLabel}>Descriptors (All must match)</Text>
             <View style={styles.descriptorsContainer}>
-              {['reachy', 'balance', 'slopey', 'crimpy', 'slippery', 'static', 'dyno', 'coordination', 'explosive', 'endurance', 'powerful', 'must-try', 'dangerous', 'pockety', 'dual-tex', 'compression', 'campusy', 'shouldery'].map(descriptor => (
+              {DESCRIPTORS.map(descriptor => (
                 <Pressable
                   key={descriptor}
                   style={[
