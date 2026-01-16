@@ -7,7 +7,8 @@ import {
   Dimensions, 
   ScrollView,
   FlatList,
-  Switch
+  Switch,
+  Alert
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -50,6 +51,15 @@ export default function LayoutDetailScreen({ navigation, route }) {
   const errorLoggedRef = useRef(false);
   const hasAutoPlayedRef = useRef(false);
   const { api } = useApi();
+  
+  // Session state
+  const [activeSession, setActiveSession] = useState(null);
+  const [sessionRouteAttempts, setSessionRouteAttempts] = useState([]);
+  const [showQuickAddModal, setShowQuickAddModal] = useState(false);
+  const [selectedClimbForSession, setSelectedClimbForSession] = useState(null);
+  const [quickAddStatus, setQuickAddStatus] = useState(true);
+  const [quickAddAttempts, setQuickAddAttempts] = useState(1);
+  const [addingRouteToSession, setAddingRouteToSession] = useState(false);
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -284,6 +294,133 @@ export default function LayoutDetailScreen({ navigation, route }) {
     }
   }, [layout]);
 
+  // Session management
+  useFocusEffect(() => {
+    const loadActiveSession = async () => {
+      try {
+        const savedSession = await AsyncStorage.getItem('activeSession');
+        
+        if (savedSession) {
+          const sessionData = JSON.parse(savedSession);
+          setActiveSession(sessionData.session);
+          setSessionRouteAttempts(sessionData.attempts || []);
+        } else {
+          setActiveSession(null);
+          setSessionRouteAttempts([]);
+        }
+      } catch (error) {
+        // Ignore errors loading session
+      }
+    };
+    
+    loadActiveSession();
+  });
+
+  const saveActiveSession = async (session, attempts) => {
+    try {
+      await AsyncStorage.setItem('activeSession', JSON.stringify({
+        session,
+        attempts: attempts || sessionRouteAttempts,
+      }));
+    } catch (error) {
+      // Ignore errors saving session
+    }
+  };
+
+  const clearActiveSession = async () => {
+    try {
+      await AsyncStorage.removeItem('activeSession');
+    } catch (error) {
+      // Ignore errors clearing session
+    }
+  };
+
+  const startSession = async () => {
+    try {
+      const response = await api.post('/sessions', {
+        startTime: new Date().toISOString(),
+      });
+      const session = response.data;
+      setActiveSession(session);
+      setSessionRouteAttempts([]);
+      await saveActiveSession(session, []);
+      showSuccessAlert('Session started!');
+    } catch (error) {
+      showError(error, 'Failed to start session');
+    }
+  };
+
+  const endSession = async () => {
+    if (!activeSession) return;
+
+    const confirmed = await new Promise((resolve) => {
+      Alert.alert(
+        'End Session?',
+        'This will save your logged routes.',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'End Session', style: 'destructive', onPress: () => resolve(true) },
+        ]
+      );
+    });
+
+    if (!confirmed) return;
+
+    try {
+      const endTime = new Date().toISOString();
+      await api.put(`/sessions/${activeSession.id}/end`, {
+        endTime,
+      });
+      await clearActiveSession();
+      setActiveSession(null);
+      setSessionRouteAttempts([]);
+      showSuccessAlert('Session saved!');
+    } catch (error) {
+      showError(error, 'Failed to end session');
+    }
+  };
+
+  const addRouteToSession = async () => {
+    if (!activeSession || !selectedClimbForSession) return;
+
+    const isDuplicate = sessionRouteAttempts.some(
+      attempt => attempt.climbId === selectedClimbForSession.id
+    );
+
+    if (isDuplicate) {
+      showErrorAlert('This route is already in your session. You can update attempts/status in the session panel.');
+      return;
+    }
+
+    setAddingRouteToSession(true);
+    try {
+      const response = await api.post(`/sessions/${activeSession.id}/attempts`, {
+        climbId: selectedClimbForSession.id,
+        isSuccess: quickAddStatus,
+        attempts: quickAddAttempts,
+      });
+      
+      const newAttempt = response.data;
+      const updatedAttempts = [...sessionRouteAttempts, newAttempt];
+      setSessionRouteAttempts(updatedAttempts);
+      await saveActiveSession(activeSession, updatedAttempts);
+      
+      setShowQuickAddModal(false);
+      setSelectedClimbForSession(null);
+      setQuickAddStatus(true);
+      setQuickAddAttempts(1);
+      showSuccessAlert('Route added to session!');
+    } catch (error) {
+      if (error.response?.status === 409) {
+        showErrorAlert('This route is already in your session. You can update attempts/status in the session panel.');
+      } else {
+        showError(error, 'Failed to add route to session');
+      }
+    } finally {
+      setAddingRouteToSession(false);
+    }
+  };
+
   const fetchLayout = async () => {
     try {
       const response = await api.get(`/layouts/${layoutId}`);
@@ -371,7 +508,12 @@ export default function LayoutDetailScreen({ navigation, route }) {
   };
 
   const handleClimbPress = (climb) => {
-    navigation.navigate('Route', { climbId: climb.id });
+    if (activeSession) {
+      setSelectedClimbForSession(climb);
+      setShowQuickAddModal(true);
+    } else {
+      navigation.navigate('Route', { climbId: climb.id });
+    }
   };
 
   const handleClearFilters = () => {
@@ -658,6 +800,33 @@ export default function LayoutDetailScreen({ navigation, route }) {
             >
               <Text style={[styles.viewModeText, viewMode === 'list' && styles.viewModeTextActive]}>📋 List</Text>
             </Pressable>
+          </View>
+          
+          {/* Start/End Session button */}
+          <View style={styles.sessionButtonContainer}>
+            <Pressable
+              style={[
+                styles.filterButton,
+                activeSession && styles.endSessionButton
+              ]}
+              onPress={activeSession ? endSession : startSession}
+            >
+              <Text style={[
+                styles.filterButtonText,
+                activeSession && styles.endSessionButtonText
+              ]}>
+                {activeSession ? '⏹️ End Session' : '▶️ Start Session'}
+              </Text>
+            </Pressable>
+            
+            {/* Session active indicator */}
+            {activeSession && (
+              <View style={styles.sessionActiveContainer}>
+                <Text style={styles.sessionActiveText}>
+                  Session Active - {sessionRouteAttempts.length} route{sessionRouteAttempts.length !== 1 ? 's' : ''} logged
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -1009,6 +1178,104 @@ export default function LayoutDetailScreen({ navigation, route }) {
             />
           </View>
         </ScrollView>
+      </AppModal>
+
+      {/* Quick-Add Route to Session Modal */}
+      <AppModal
+        visible={showQuickAddModal}
+        onClose={() => {
+          setShowQuickAddModal(false);
+          setSelectedClimbForSession(null);
+          setQuickAddStatus(true);
+          setQuickAddAttempts(1);
+        }}
+        title="Add Route to Session"
+        style={[styles.modalContent, styles.quickAddModalContent]}
+      >
+        {selectedClimbForSession && (
+          <>
+            <View style={styles.quickAddRouteInfo}>
+              <Text style={styles.quickAddRouteGrade}>
+                Route: {selectedClimbForSession.grade}
+              </Text>
+              <Text style={styles.quickAddRouteNote}>
+                Voter grade and descriptors will be calculated from current votes
+              </Text>
+            </View>
+
+            <View style={styles.quickAddSection}>
+              <Text style={styles.quickAddLabel}>Status</Text>
+              <View style={styles.statusToggleContainer}>
+                <Pressable
+                  style={[
+                    styles.statusButton,
+                    quickAddStatus && styles.statusButtonActive
+                  ]}
+                  onPress={() => setQuickAddStatus(true)}
+                >
+                  <Text style={[
+                    styles.statusButtonText,
+                    quickAddStatus && styles.statusButtonTextActive
+                  ]}>✓ Success</Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.statusButton,
+                    !quickAddStatus && styles.statusButtonActive
+                  ]}
+                  onPress={() => setQuickAddStatus(false)}
+                >
+                  <Text style={[
+                    styles.statusButtonText,
+                    !quickAddStatus && styles.statusButtonTextActive
+                  ]}>✗ Failure</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <View style={styles.quickAddSection}>
+              <Text style={styles.quickAddLabel}>Attempts</Text>
+              <View style={styles.attemptsContainer}>
+                <Pressable
+                  style={styles.attemptsButton}
+                  onPress={() => setQuickAddAttempts(Math.max(1, quickAddAttempts - 1))}
+                >
+                  <Text style={styles.attemptsButtonText}>−</Text>
+                </Pressable>
+                <Text style={styles.attemptsCount}>{quickAddAttempts}</Text>
+                <Pressable
+                  style={styles.attemptsButton}
+                  onPress={() => setQuickAddAttempts(quickAddAttempts + 1)}
+                >
+                  <Text style={styles.attemptsButtonText}>+</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <View style={styles.buttonRow}>
+              <Button
+                title="Cancel"
+                onPress={() => {
+                  setShowQuickAddModal(false);
+                  setSelectedClimbForSession(null);
+                  setQuickAddStatus(true);
+                  setQuickAddAttempts(1);
+                }}
+                variant="secondary"
+                size="medium"
+                style={[styles.button, styles.cancelButton]}
+              />
+              <Button
+                title={addingRouteToSession ? "Adding..." : "Add to Session"}
+                onPress={addRouteToSession}
+                variant="primary"
+                size="medium"
+                style={styles.button}
+                disabled={addingRouteToSession}
+              />
+            </View>
+          </>
+        )}
       </AppModal>
 
     </ScrollView>
@@ -1855,6 +2122,106 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  endSessionButton: {
+    backgroundColor: '#FF3B30',
+  },
+  endSessionButtonText: {
+    color: '#fff',
+  },
+  sessionActiveContainer: {
+    backgroundColor: '#E8F5E9',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  sessionActiveText: {
+    fontSize: 14,
+    color: '#2E7D32',
+    fontWeight: '500',
+  },
+  quickAddModalContent: {
+    maxHeight: '80%',
+  },
+  quickAddRouteInfo: {
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  quickAddRouteGrade: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  quickAddRouteNote: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  quickAddSection: {
+    marginBottom: 20,
+  },
+  quickAddLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 12,
+  },
+  statusToggleContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  statusButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    alignItems: 'center',
+  },
+  statusButtonActive: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#4CAF50',
+  },
+  statusButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#666',
+  },
+  statusButtonTextActive: {
+    color: '#2E7D32',
+    fontWeight: '600',
+  },
+  attemptsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20,
+  },
+  attemptsButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attemptsButtonText: {
+    fontSize: 24,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  attemptsCount: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    minWidth: 40,
+    textAlign: 'center',
+  },
   activeFiltersContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1901,6 +2268,9 @@ const styles = StyleSheet.create({
   viewModeTextActive: {
     color: '#fff',
     fontWeight: '600',
+  },
+  sessionButtonContainer: {
+    marginTop: 16,
   },
   filterModalContent: {
     maxHeight: '70%',

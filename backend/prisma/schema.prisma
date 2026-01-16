@@ -27,6 +27,7 @@ model User {
   spots                    Spot[]
   workouts                 Workout[]
   categories               WorkoutCategory[]
+  climbingSessions         ClimbingSession[]
 }
 
 model WorkoutCategory {
@@ -268,4 +269,37 @@ model ClimbCommentReaction {
   @@unique([commentId, userId])
   @@index([commentId])
   @@index([userId])
+}
+
+model ClimbingSession {
+  id        String                @id @default(cuid())
+  userId    String
+  startTime DateTime
+  endTime   DateTime?
+  notes     String?               @db.Text
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attempts  SessionRoute[]
+
+  @@index([userId, createdAt])
+  @@index([userId])
+}
+
+model SessionRoute {
+  id            String          @id @default(cuid())
+  sessionId     String
+  climbId       String?
+  proposedGrade String
+  gradeSystem   String
+  voterGrade    String?
+  descriptors   String[]        @default([])
+  status        String // 'success' | 'failure'
+  attempts      Int
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  session       ClimbingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([climbId])
 }

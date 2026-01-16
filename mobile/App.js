@@ -16,7 +16,9 @@ import TimerScreen from "./src/screens/TimerScreen";
 import WorkoutExecutionScreen from "./src/screens/WorkoutExecutionScreen";
 import ConversationsListScreen from "./src/screens/ConversationsListScreen";
 import ConversationScreen from "./src/screens/ConversationScreen";
-import SettingsScreen from "./src/screens/SettingsScreen";
+import ProfileScreen from "./src/screens/ProfileScreen";
+import SessionHistoryScreen from "./src/screens/SessionHistoryScreen";
+import SessionDetailScreen from "./src/screens/SessionDetailScreen";
 import LayoutSelectionScreen from "./src/screens/LayoutSelectionScreen";
 import LayoutDetailScreen from "./src/screens/LayoutDetailScreen";
 import ClimbDetailScreen from "./src/screens/ClimbDetailScreen";
@@ -38,7 +40,9 @@ const routeTitleMap = {
   "Workout Execution": "Workout Execution",
   "Conversations": "Messages",
   "Conversation": "Chat",
-  "Settings": "Settings",
+  "Profile": "Profile",
+  "Sessions": "Sessions",
+  "Session Details": "Session Details",
   "Layout Selection": "Gyms",
   "Layout": "Layout",
   "Route": "Route",
@@ -136,8 +140,16 @@ const NavigationWrapper = ({ isAuthed, HeaderRightButtons, handleLogout, Stack, 
               component={ConversationScreen}
             />
             <Stack.Screen
-              name="Settings"
-              component={SettingsScreen}
+              name="Profile"
+              component={ProfileScreen}
+            />
+            <Stack.Screen
+              name="Sessions"
+              component={SessionHistoryScreen}
+            />
+            <Stack.Screen
+              name="Session Details"
+              component={SessionDetailScreen}
             />
             <Stack.Screen
               name="Layout Selection"
@@ -295,10 +307,10 @@ export default function App() {
     );
   }
 
-  const SettingsButton = ({ navigation }) => (
+  const ProfileButton = ({ navigation }) => (
     <TouchableOpacity
       style={styles.preferencesButton}
-      onPress={() => navigation.navigate("Settings")}
+      onPress={() => navigation.navigate("Profile")}
     >
       <Text style={styles.preferencesIcon}>⚙️</Text>
     </TouchableOpacity>
@@ -306,7 +318,7 @@ export default function App() {
 
   const HeaderRightButtons = ({ navigation }) => (
     <View style={styles.headerRightContainer}>
-      <SettingsButton navigation={navigation} />
+      <ProfileButton navigation={navigation} />
       <TouchableOpacity
         style={styles.chatButton}
         onPress={() => navigation.navigate("Conversations")}

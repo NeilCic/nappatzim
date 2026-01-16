@@ -1,12 +1,14 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   Dimensions,
+  Alert,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApi } from '../ApiProvider';
 import axios from 'axios';
 import Button from '../components/Button';
@@ -18,6 +20,7 @@ import Animated, {
   useSharedValue, 
   withSpring 
 } from 'react-native-reanimated';
+import { showSuccessAlert } from '../utils/alert';
 
 import { isLightColor } from '../utils/colorUtils';
 
@@ -27,6 +30,46 @@ export default function HomeScreen({ navigation, onLogout }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const { api } = useApi();
+
+  // Check for active session once when app opens (only run on mount)
+  useEffect(() => {
+    const checkActiveSession = async () => {
+      try {
+        const savedSession = await AsyncStorage.getItem('activeSession');
+        
+        if (savedSession) {
+          const sessionData = JSON.parse(savedSession);
+          
+          Alert.alert(
+            'Resume Session?',
+            `You have an active session from ${new Date(sessionData.session.startTime).toLocaleTimeString()} with ${sessionData.attempts?.length || 0} route${(sessionData.attempts?.length || 0) !== 1 ? 's' : ''} logged. Would you like to resume it?`,
+            [
+                {
+                  text: 'Discard',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await AsyncStorage.removeItem('activeSession');
+                    await AsyncStorage.removeItem('sessionRouteAttempts');
+                  },
+                },
+                {
+                  text: 'Resume',
+                  style: 'default',
+                  onPress: () => {
+                    navigation.navigate('Layout Selection');
+                    showSuccessAlert('Session resumed - select a gym to continue');
+                  },
+                },
+            ]
+          );
+        }
+      } catch (error) {
+        // Ignore errors loading session
+      }
+    };
+    
+    checkActiveSession();
+  }, []);
 
   const fetchCategories = async () => {
     try {

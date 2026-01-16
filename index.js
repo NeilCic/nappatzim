@@ -8,6 +8,7 @@ import layoutRouter from './backend/routes/layouts.js';
 import spotRouter from './backend/routes/spots.js';
 import climbRouter from './backend/routes/climbs.js';
 import videoRouter from './backend/routes/videos.js';
+import sessionRouter from './backend/routes/sessions.js';
 import cors from 'cors';
 import compression from 'compression';
 
@@ -24,6 +25,7 @@ app.use('/layouts', layoutRouter);
 app.use('/spots', spotRouter);
 app.use('/climbs', climbRouter);
 app.use('/videos', videoRouter);
+app.use('/sessions', sessionRouter);
 
 const PORT = process.env.PORT || 3000;
 const IP = '0.0.0.0';

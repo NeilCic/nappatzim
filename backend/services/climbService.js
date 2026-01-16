@@ -1,5 +1,6 @@
 import PrismaCrudService from "./prismaCrudService.js";
 import { CLIMB_MODEL } from "../lib/dbModels.js";
+import sessionService from "./sessionService.js";
 
 class ClimbService extends PrismaCrudService {
   constructor() {
@@ -121,6 +122,31 @@ class ClimbService extends PrismaCrudService {
 
   async deleteClimb(climbId, userId) {
     // TODO: Add ownership check (spot owner or admin)
+    
+    try {
+      const climb = await this.getOne(
+        { id: climbId },
+        undefined,
+        {
+          grade: true,
+          gradeSystem: true,
+          votes: {
+            select: {
+              grade: true,
+              gradeSystem: true,
+              descriptors: true,
+            },
+          },
+        }
+      );
+      
+      if (climb) {
+        await sessionService.updateAttemptsOnClimbDeletion(climbId, climb);
+      }
+    } catch (error) {
+      console.error("Error fetching climb data or updating session routes before deletion:", error);
+    }
+    
     return await this.delete({ id: climbId });
   }
 }
