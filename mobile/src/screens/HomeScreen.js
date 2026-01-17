@@ -48,14 +48,26 @@ export default function HomeScreen({ navigation, onLogout }) {
                   text: 'Discard',
                   style: 'destructive',
                   onPress: async () => {
+                    // Always clear local storage first, regardless of API call success
+                    // This ensures the user can always get unstuck even if API fails
+                    try {
+                      await AsyncStorage.multiRemove(['activeSession', 'sessionRouteAttempts']);
+                    } catch (storageError) {
+                      // If multiRemove fails, try individual removes
+                      try {
+                        await AsyncStorage.removeItem('activeSession');
+                        await AsyncStorage.removeItem('sessionRouteAttempts');
+                      } catch (e) {
+                        // Ignore - best effort
+                      }
+                    }
+                    
+                    // Try to delete from API, but don't block on it
                     try {
                       await api.delete(`/sessions/${sessionData.session.id}`);
-                      await AsyncStorage.removeItem('activeSession');
-                      await AsyncStorage.removeItem('sessionRouteAttempts');
-                    } catch (error) {
-                      // If API call fails, keep session in storage so user will
-                      // see the prompt again and be aware the session still exists
-                      // TODO Could show an error alert here if needed
+                    } catch (apiError) {
+                      // API delete failed, but we already cleared local storage
+                      // User will be able to proceed without the stuck session
                     }
                   },
                 },
