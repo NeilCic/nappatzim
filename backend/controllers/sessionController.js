@@ -182,6 +182,19 @@ export const addRouteController = async (req, res) => {
   }
 };
 
+const sessionsQuerySchema = z.object({
+  limit: z.string().optional().transform((val) => (val ? parseInt(val, 10) : undefined)),
+  cursor: z.string().optional(),
+  startDate: z.string().datetime().optional().transform((val) => (val ? new Date(val) : undefined)),
+  endDate: z.string().datetime().optional().transform((val) => (val ? new Date(val) : undefined)),
+  minDuration: z.string().optional().transform((val) => (val ? parseInt(val, 10) : undefined)),
+  maxDuration: z.string().optional().transform((val) => (val ? parseInt(val, 10) : undefined)),
+  minAvgProposedGrade: z.string().optional(),
+  maxAvgProposedGrade: z.string().optional(),
+  minAvgVoterGrade: z.string().optional(),
+  maxAvgVoterGrade: z.string().optional(),
+});
+
 export const getSessionsController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
@@ -190,15 +203,22 @@ export const getSessionsController = async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const limit = req.query.limit ? parseInt(req.query.limit, 10) : 20;
-    const cursor = req.query.cursor;
+    const validatedQuery = sessionsQuerySchema.parse(req.query);
 
-    logger.info({ requestId, userId }, "Fetching sessions");
+    logger.info({ requestId, userId, filters: validatedQuery }, "Fetching sessions");
 
     const result = await sessionService.getSessionsByUser(userId, {
-      limit,
-      cursor,
+      limit: validatedQuery.limit || 20,
+      cursor: validatedQuery.cursor,
       includeStatistics: true,
+      startDate: validatedQuery.startDate,
+      endDate: validatedQuery.endDate,
+      minDuration: validatedQuery.minDuration,
+      maxDuration: validatedQuery.maxDuration,
+      minAvgProposedGrade: validatedQuery.minAvgProposedGrade,
+      maxAvgProposedGrade: validatedQuery.maxAvgProposedGrade,
+      minAvgVoterGrade: validatedQuery.minAvgVoterGrade,
+      maxAvgVoterGrade: validatedQuery.maxAvgVoterGrade,
     });
 
     res.json({
@@ -207,16 +227,29 @@ export const getSessionsController = async (req, res) => {
       hasMore: result.hasMore,
     });
   } catch (error) {
-    logger.error(
-      {
-        requestId,
-        userId: req.user?.userId,
-        error: error.message,
-        stack: error.stack,
-      },
-      "Failed to fetch sessions"
-    );
-    res.status(500).json({ error: "Failed to fetch sessions" });
+    if (error.name === "ZodError") {
+      logger.warn(
+        {
+          requestId,
+          userId: req.user?.userId,
+          validationError: error,
+        },
+        "Session query validation failed"
+      );
+      const formattedError = formatZodError(error);
+      res.status(400).json({ error: formattedError });
+    } else {
+      logger.error(
+        {
+          requestId,
+          userId: req.user?.userId,
+          error: error.message,
+          stack: error.stack,
+        },
+        "Failed to fetch sessions"
+      );
+      res.status(500).json({ error: "Failed to fetch sessions" });
+    }
   }
 };
 

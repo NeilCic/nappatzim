@@ -1,6 +1,6 @@
 import PrismaCrudService from "./prismaCrudService.js";
 import prisma from "../lib/prisma.js";
-import { calculateAverageGrade } from "../lib/gradeUtils.js";
+import { calculateAverageGrade, gradeToNumber } from "../lib/gradeUtils.js";
 import climbService from "./climbService.js";
 
 function calculateVoterGradeAndDescriptors(votes, gradeSystem) {
@@ -140,12 +140,34 @@ class SessionService extends PrismaCrudService {
   }
 
   async getSessionsByUser(userId, options = {}) {
-    const { limit = 20, cursor, includeStatistics = false } = options;
+    const { 
+      limit = 20, 
+      cursor, 
+      includeStatistics = false, 
+      startDate, 
+      endDate, 
+      minDuration, 
+      maxDuration,
+      minAvgProposedGrade,
+      maxAvgProposedGrade,
+      minAvgVoterGrade,
+      maxAvgVoterGrade,
+    } = options;
 
     const where = { userId };
 
     if (cursor) {
       where.createdAt = { lt: new Date(cursor) };
+    }
+
+    if (startDate) {
+      where.startTime = { ...where.startTime, gte: new Date(startDate) };
+    }
+
+    if (endDate) {
+      const endDateTime = new Date(endDate);
+      endDateTime.setHours(23, 59, 59, 999);
+      where.startTime = { ...where.startTime, lte: endDateTime };
     }
 
     const sessions = await prisma.climbingSession.findMany({
@@ -159,9 +181,24 @@ class SessionService extends PrismaCrudService {
       take: limit + 1,
     });
 
-    const hasMore = sessions.length > limit;
-    const results = hasMore ? sessions.slice(0, limit) : sessions;
-    const nextCursor = hasMore ? results[results.length - 1].createdAt.toISOString() : null;
+    // Filter by duration if specified (duration = endTime - startTime in minutes)
+    let filteredSessions = sessions;
+    if (minDuration !== undefined || maxDuration !== undefined) {
+      filteredSessions = sessions.filter((session) => {
+        if (!session.endTime) return false; // Exclude ongoing sessions
+        
+        const durationMs = new Date(session.endTime) - new Date(session.startTime);
+        const durationMins = Math.floor(durationMs / (1000 * 60));
+
+        if (minDuration !== undefined && durationMins < minDuration) return false;
+        if (maxDuration !== undefined && durationMins > maxDuration) return false;
+        return true;
+      });
+    }
+
+    let hasMore = filteredSessions.length > limit;
+    const results = hasMore ? filteredSessions.slice(0, limit) : filteredSessions;
+    let nextCursor = hasMore ? results[results.length - 1].createdAt.toISOString() : null;
 
     let sessionsToReturn = results;
     if (includeStatistics) {
@@ -169,6 +206,55 @@ class SessionService extends PrismaCrudService {
         ...session,
         statistics: calculateSessionStatistics(session.attempts || []),
       }));
+    }
+
+    // Filter by average grades if specified
+    const hasGradeFilters = minAvgProposedGrade !== undefined || maxAvgProposedGrade !== undefined || 
+                            minAvgVoterGrade !== undefined || maxAvgVoterGrade !== undefined;
+    
+    if (hasGradeFilters && includeStatistics) {
+      sessionsToReturn = sessionsToReturn.filter((session) => {
+        const stats = session.statistics || {};
+        const gradeSystem = session.attempts?.[0]?.gradeSystem || null;
+        
+        if (!gradeSystem) return false; // Can't filter if no grade system
+
+        // Filter by proposed grade
+        if (minAvgProposedGrade !== undefined || maxAvgProposedGrade !== undefined) {
+          const avgProposedGrade = stats.averageProposedGrade;
+          if (!avgProposedGrade) return false;
+
+          const proposedNumeric = gradeToNumber(avgProposedGrade, gradeSystem);
+          const minProposedNumeric = minAvgProposedGrade !== undefined ? gradeToNumber(minAvgProposedGrade, gradeSystem) : null;
+          const maxProposedNumeric = maxAvgProposedGrade !== undefined ? gradeToNumber(maxAvgProposedGrade, gradeSystem) : null;
+
+          if (proposedNumeric === null) return false;
+          if (minProposedNumeric !== null && proposedNumeric < minProposedNumeric) return false;
+          if (maxProposedNumeric !== null && proposedNumeric > maxProposedNumeric) return false;
+        }
+
+        // Filter by voter grade
+        if (minAvgVoterGrade !== undefined || maxAvgVoterGrade !== undefined) {
+          const avgVoterGrade = stats.averageVoterGrade;
+          if (!avgVoterGrade) return false;
+
+          const voterNumeric = gradeToNumber(avgVoterGrade, gradeSystem);
+          const minVoterNumeric = minAvgVoterGrade !== undefined ? gradeToNumber(minAvgVoterGrade, gradeSystem) : null;
+          const maxVoterNumeric = maxAvgVoterGrade !== undefined ? gradeToNumber(maxAvgVoterGrade, gradeSystem) : null;
+
+          if (voterNumeric === null) return false;
+          if (minVoterNumeric !== null && voterNumeric < minVoterNumeric) return false;
+          if (maxVoterNumeric !== null && voterNumeric > maxVoterNumeric) return false;
+        }
+
+        return true;
+      });
+
+      // Recalculate pagination after grade filtering
+      const hasMoreAfterGradeFilter = sessionsToReturn.length > limit;
+      sessionsToReturn = hasMoreAfterGradeFilter ? sessionsToReturn.slice(0, limit) : sessionsToReturn;
+      nextCursor = hasMoreAfterGradeFilter ? sessionsToReturn[sessionsToReturn.length - 1].createdAt.toISOString() : null;
+      hasMore = hasMoreAfterGradeFilter;
     }
 
     return {
