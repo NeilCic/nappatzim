@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { NavigationContainer, useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { TouchableOpacity, StyleSheet, Image, Text, View, ActivityIndicator, Platform, StatusBar } from "react-native";
 import axios from "axios";
@@ -364,19 +365,21 @@ export default function App() {
   };
 
   return (
-    <ApiProvider value={{ api, setAuthToken }}>
-      <NavigationContainer ref={navigationRef} onStateChange={handleStateChange}>
-        <NavigationWrapper 
-          isAuthed={isAuthed} 
-          HeaderRightButtons={HeaderRightButtons} 
-          handleLogout={handleLogout}
-          Stack={Stack}
-          onLoggedIn={() => setIsAuthed(true)}
-          navigationRef={navigationRef}
-          currentRoute={currentRoute}
-        />
-      </NavigationContainer>
-    </ApiProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ApiProvider value={{ api, setAuthToken }}>
+        <NavigationContainer ref={navigationRef} onStateChange={handleStateChange}>
+          <NavigationWrapper 
+            isAuthed={isAuthed} 
+            HeaderRightButtons={HeaderRightButtons} 
+            handleLogout={handleLogout}
+            Stack={Stack}
+            onLoggedIn={() => setIsAuthed(true)}
+            navigationRef={navigationRef}
+            currentRoute={currentRoute}
+          />
+        </NavigationContainer>
+      </ApiProvider>
+    </GestureHandlerRootView>
   );
 }
 

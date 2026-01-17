@@ -13,6 +13,15 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { 
+  useAnimatedStyle, 
+  useSharedValue, 
+  withSpring, 
+  runOnJS,
+  interpolate,
+  Extrapolation
+} from 'react-native-reanimated';
 import { useApi } from '../ApiProvider';
 import { showError } from '../utils/errorHandler';
 import StyledTextInput from '../components/StyledTextInput';
@@ -25,6 +34,139 @@ import Spinner from '../components/Spinner';
 import ColorPicker from '../components/ColorPicker';
 
 const DESCRIPTORS = ['reachy', 'balance', 'slopey', 'crimpy', 'slippery', 'static', 'dyno', 'coordination', 'explosive', 'endurance', 'powerful', 'must-try', 'dangerous', 'pockety', 'dual-tex', 'compression', 'campusy', 'shouldery'];
+
+// Swipeable route item component for quick adding during active sessions
+const SwipeableRouteItem = ({ item, onPress, onSwipeSuccess, onSwipeFailure, loggedClimbIds }) => {
+  const translateX = useSharedValue(0);
+  const SWIPE_THRESHOLD = 80; // Minimum distance to trigger action
+  const MAX_SWIPE = 120; // Maximum swipe distance
+
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([-10, 10]) // Only activate on horizontal movement
+    .failOffsetY([-5, 5]) // Fail if vertical movement exceeds this
+    .onUpdate((event) => {
+      const swipeDistance = event.translationX;
+      // Clamp swipe distance - only use X translation
+      if (swipeDistance > 0) {
+        // Swipe right (success)
+        translateX.value = Math.min(swipeDistance, MAX_SWIPE);
+      } else {
+        // Swipe left (failure)
+        translateX.value = Math.max(swipeDistance, -MAX_SWIPE);
+      }
+    })
+    .onEnd((event) => {
+      const swipeDistance = event.translationX;
+      
+      if (Math.abs(swipeDistance) > SWIPE_THRESHOLD) {
+        if (swipeDistance > 0) {
+          // Swipe right - success
+          runOnJS(onSwipeSuccess)();
+        } else {
+          // Swipe left - failure
+          runOnJS(onSwipeFailure)();
+        }
+        // Show success briefly then reset
+        setTimeout(() => {
+          translateX.value = withSpring(0);
+        }, 300);
+      } else {
+        // Not enough swipe, spring back
+        translateX.value = withSpring(0);
+      }
+    });
+
+  const backgroundRightStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      translateX.value,
+      [0, SWIPE_THRESHOLD, MAX_SWIPE],
+      [0, 0.7, 1],
+      Extrapolation.CLAMP
+    );
+    
+    return {
+      opacity: translateX.value > 0 ? opacity : 0,
+      backgroundColor: '#4CAF50',
+    };
+  });
+
+  const backgroundLeftStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      Math.abs(translateX.value),
+      [0, SWIPE_THRESHOLD, MAX_SWIPE],
+      [0, 0.7, 1],
+      Extrapolation.CLAMP
+    );
+    
+    return {
+      opacity: translateX.value < 0 ? opacity : 0,
+      backgroundColor: '#F44336',
+    };
+  });
+
+  const itemStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: translateX.value }],
+    };
+  });
+
+  const buttonBackgroundOpacity = useAnimatedStyle(() => {
+    // Fade out gray background when swiping
+    const opacity = interpolate(
+      Math.abs(translateX.value),
+      [0, SWIPE_THRESHOLD / 2, SWIPE_THRESHOLD],
+      [1, 0.5, 0],
+      Extrapolation.CLAMP
+    );
+    
+    return {
+      opacity: opacity,
+    };
+  });
+
+  return (
+    <View style={styles.swipeableContainer}>
+      {/* Main item */}
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={[itemStyle, { position: 'relative' }]}>
+          <Animated.View style={[styles.listClimbItem, { position: 'relative', overflow: 'hidden' }]}>
+            {/* Gray background layer that fades when swiping */}
+            <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#f5f5f5', borderRadius: 8 }, buttonBackgroundOpacity]} />
+            
+            {/* Background indicators */}
+            <Animated.View style={[styles.swipeableBackground, styles.swipeableBackgroundRight, backgroundRightStyle]}>
+              <Text style={styles.swipeableLabel}>✓ Success</Text>
+            </Animated.View>
+            <Animated.View style={[styles.swipeableBackground, styles.swipeableBackgroundLeft, backgroundLeftStyle]}>
+              <Text style={styles.swipeableLabel}>✗ Failure</Text>
+            </Animated.View>
+            
+            <Pressable
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+              onPress={onPress}
+            >
+              <View style={[styles.listClimbColorIndicator, { backgroundColor: item.color }]} />
+              <View style={styles.listClimbInfo}>
+                <Text style={styles.listClimbGrade}>{item.grade}</Text>
+                <Text style={styles.listClimbSpot}>{item.spotName}</Text>
+                {item.length && (
+                  <Text style={styles.listClimbLength}>{item.length}m</Text>
+                )}
+              </View>
+              {loggedClimbIds.has(item.id) && (
+                <Image 
+                  source={require('../../assets/logbook.png')} 
+                  style={styles.logbookIcon}
+                  resizeMode="contain"
+                />
+              )}
+            </Pressable>
+          </Animated.View>
+        </Animated.View>
+      </GestureDetector>
+    </View>
+  );
+};
 
 export default function LayoutDetailScreen({ navigation, route }) {
   const { layoutId } = route.params;
@@ -422,6 +564,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
     // Try to delete from API, but don't block on it
     try {
       await api.delete(`/sessions/${activeSession.id}`);
+      await fetchLoggedClimbIds();
     } catch (apiError) {
       // API delete failed, but we already cleared local storage
       // User will be able to proceed without the stuck session
@@ -485,24 +628,25 @@ export default function LayoutDetailScreen({ navigation, route }) {
     ));
   };
 
-  const addRouteToSession = async () => {
-    if (!activeSession || !selectedClimbForSession) return;
+  const addRouteToSessionHelper = async (climb, isSuccess, attempts = 1, showSuccess = false) => {
+    if (!activeSession || !climb) return false;
 
     const isDuplicate = sessionRoutes.some(
-      route => route.climbId === selectedClimbForSession.id
+      route => route.climbId === climb.id
     );
 
     if (isDuplicate) {
-      showErrorAlert('This route is already in your session. You can update attempts/status in the session panel.');
-      return;
+      if (showSuccess) {
+        showErrorAlert('This route is already in your session.');
+      }
+      return false; // Return false to indicate it's a duplicate
     }
 
-    setAddingRouteToSession(true);
     try {
       const response = await api.post(`/sessions/${activeSession.id}/routes`, {
-        climbId: selectedClimbForSession.id,
-        isSuccess: quickAddStatus,
-        attempts: quickAddAttempts,
+        climbId: climb.id,
+        isSuccess,
+        attempts,
       });
       
       const newRoute = response.data;
@@ -514,20 +658,43 @@ export default function LayoutDetailScreen({ navigation, route }) {
         setLoggedClimbIds(prev => new Set([...prev, newRoute.climbId]));
       }
       
+      if (showSuccess) {
+        showSuccessAlert('Route added to session!');
+      }
+      
+      return true;
+    } catch (error) {
+      if (error.response?.status === 409) {
+        if (showSuccess) {
+          showErrorAlert('This route is already in your session.');
+        }
+        return false; // Duplicate
+      } else {
+        showError(error, 'Failed to add route to session');
+        return false;
+      }
+    }
+  };
+
+  const addRouteToSession = async () => {
+    if (!activeSession || !selectedClimbForSession) return;
+
+    setAddingRouteToSession(true);
+    const success = await addRouteToSessionHelper(
+      selectedClimbForSession,
+      quickAddStatus,
+      quickAddAttempts,
+      true
+    );
+
+    if (success) {
       setShowQuickAddModal(false);
       setSelectedClimbForSession(null);
       setQuickAddStatus(true);
       setQuickAddAttempts(1);
-      showSuccessAlert('Route added to session!');
-    } catch (error) {
-      if (error.response?.status === 409) {
-        showErrorAlert('This route is already in your session. You can update attempts/status in the session panel.');
-      } else {
-        showError(error, 'Failed to add route to session');
-      }
-    } finally {
-      setAddingRouteToSession(false);
     }
+    
+    setAddingRouteToSession(false);
   };
 
   const fetchLayout = async () => {
@@ -831,28 +998,42 @@ export default function LayoutDetailScreen({ navigation, route }) {
             <FlatList
               data={listViewData}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={styles.listClimbItem}
+              renderItem={({ item }) => {
+                // Only enable swipe when session is active and route isn't already logged
+                if (!activeSession || loggedClimbIds.has(item.id)) {
+                  return (
+                    <Pressable
+                      style={styles.listClimbItem}
+                      onPress={() => handleClimbPress(item)}
+                    >
+                      <View style={[styles.listClimbColorIndicator, { backgroundColor: item.color }]} />
+                      <View style={styles.listClimbInfo}>
+                        <Text style={styles.listClimbGrade}>{item.grade}</Text>
+                        <Text style={styles.listClimbSpot}>{item.spotName}</Text>
+                        {item.length && (
+                          <Text style={styles.listClimbLength}>{item.length}m</Text>
+                        )}
+                      </View>
+                      {loggedClimbIds.has(item.id) && (
+                        <Image 
+                          source={require('../../assets/logbook.png')} 
+                          style={styles.logbookIcon}
+                          resizeMode="contain"
+                        />
+                      )}
+                    </Pressable>
+                  );
+                }
+
+                // Swipeable component for active session
+                return <SwipeableRouteItem 
+                  item={item} 
                   onPress={() => handleClimbPress(item)}
-                >
-                  <View style={[styles.listClimbColorIndicator, { backgroundColor: item.color }]} />
-                  <View style={styles.listClimbInfo}>
-                    <Text style={styles.listClimbGrade}>{item.grade}</Text>
-                    <Text style={styles.listClimbSpot}>{item.spotName}</Text>
-                    {item.length && (
-                      <Text style={styles.listClimbLength}>{item.length}m</Text>
-                    )}
-                  </View>
-                  {loggedClimbIds.has(item.id) && (
-                    <Image 
-                      source={require('../../assets/logbook.png')} 
-                      style={styles.logbookIcon}
-                      resizeMode="contain"
-                    />
-                  )}
-                </Pressable>
-              )}
+                  onSwipeSuccess={() => addRouteToSessionHelper(item, true, 1, true)}
+                  onSwipeFailure={() => addRouteToSessionHelper(item, false, 1, true)}
+                  loggedClimbIds={loggedClimbIds}
+                />;
+              }}
               scrollEnabled={false}
             />
           ) : (
@@ -2769,6 +2950,31 @@ const styles = StyleSheet.create({
   },
   emptyListButton: {
     minWidth: 150,
+  },
+  swipeableContainer: {
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  swipeableBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  swipeableBackgroundRight: {
+    left: 0,
+  },
+  swipeableBackgroundLeft: {
+    right: 0,
+  },
+  swipeableLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
 
