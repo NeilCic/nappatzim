@@ -54,7 +54,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
   
   // Session state
   const [activeSession, setActiveSession] = useState(null);
-  const [sessionRouteAttempts, setSessionRouteAttempts] = useState([]);
+  const [sessionRoutes, setSessionRoutes] = useState([]);
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [selectedClimbForSession, setSelectedClimbForSession] = useState(null);
   const [quickAddStatus, setQuickAddStatus] = useState(true);
@@ -64,6 +64,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
   const [sessionNotes, setSessionNotes] = useState('');
   const [editingRoutes, setEditingRoutes] = useState([]);
   const [savingSession, setSavingSession] = useState(false);
+  const [loggedClimbIds, setLoggedClimbIds] = useState(new Set());
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -255,6 +256,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
     useCallback(() => {
       fetchLayout();
       fetchSpots();
+      fetchLoggedClimbIds();
       return () => {
         setSelectedSpot(null);
         setShowSpotDetailModal(false);
@@ -265,6 +267,15 @@ export default function LayoutDetailScreen({ navigation, route }) {
       };
     }, [layoutId])
   );
+
+  const fetchLoggedClimbIds = async () => {
+    try {
+      const response = await api.get('/sessions/logged-climbs');
+      setLoggedClimbIds(new Set(response.data.climbIds || []));
+    } catch (error) {
+      // Ignore errors loading logged climbs
+    }
+  };
 
   useEffect(() => {
     if (!isInitialFilterSetRef.current) {
@@ -307,10 +318,10 @@ export default function LayoutDetailScreen({ navigation, route }) {
         if (savedSession) {
           const sessionData = JSON.parse(savedSession);
           setActiveSession(sessionData.session);
-          setSessionRouteAttempts(sessionData.attempts || []);
+          setSessionRoutes(sessionData.routes || sessionData.attempts || []);
         } else {
           setActiveSession(null);
-          setSessionRouteAttempts([]);
+          setSessionRoutes([]);
         }
       } catch (error) {
         // Ignore errors loading session
@@ -320,11 +331,11 @@ export default function LayoutDetailScreen({ navigation, route }) {
     loadActiveSession();
   });
 
-  const saveActiveSession = async (session, attempts) => {
+  const saveActiveSession = async (session, routes) => {
     try {
       await AsyncStorage.setItem('activeSession', JSON.stringify({
         session,
-        attempts: attempts || sessionRouteAttempts,
+        routes: routes || sessionRoutes,
       }));
     } catch (error) {
       // Ignore errors saving session
@@ -370,8 +381,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
 
     if (!confirmed) return;
 
-    // Open review modal with current routes and empty notes
-    setEditingRoutes(sessionRouteAttempts.map(route => ({
+    setEditingRoutes(sessionRoutes.map(route => ({
       ...route,
       isSuccess: route.status === 'success',
     })));
@@ -386,7 +396,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
     try {
       // Update any routes that were edited
       const updatePromises = editingRoutes.map(async (route) => {
-        const originalRoute = sessionRouteAttempts.find(r => r.id === route.id);
+        const originalRoute = sessionRoutes.find(r => r.id === route.id);
         if (!originalRoute) return;
 
         const needsUpdate = 
@@ -434,8 +444,8 @@ export default function LayoutDetailScreen({ navigation, route }) {
   const addRouteToSession = async () => {
     if (!activeSession || !selectedClimbForSession) return;
 
-    const isDuplicate = sessionRouteAttempts.some(
-      attempt => attempt.climbId === selectedClimbForSession.id
+    const isDuplicate = sessionRoutes.some(
+      route => route.climbId === selectedClimbForSession.id
     );
 
     if (isDuplicate) {
@@ -451,10 +461,14 @@ export default function LayoutDetailScreen({ navigation, route }) {
         attempts: quickAddAttempts,
       });
       
-      const newAttempt = response.data;
-      const updatedAttempts = [...sessionRouteAttempts, newAttempt];
-      setSessionRouteAttempts(updatedAttempts);
-      await saveActiveSession(activeSession, updatedAttempts);
+      const newRoute = response.data;
+      const updatedRoutes = [...sessionRoutes, newRoute];
+      setSessionRoutes(updatedRoutes);
+      await saveActiveSession(activeSession, updatedRoutes);
+      
+      if (newRoute.climbId) {
+        setLoggedClimbIds(prev => new Set([...prev, newRoute.climbId]));
+      }
       
       setShowQuickAddModal(false);
       setSelectedClimbForSession(null);
@@ -786,6 +800,13 @@ export default function LayoutDetailScreen({ navigation, route }) {
                       <Text style={styles.listClimbLength}>{item.length}m</Text>
                     )}
                   </View>
+                  {loggedClimbIds.has(item.id) && (
+                    <Image 
+                      source={require('../../assets/logbook.png')} 
+                      style={styles.logbookIcon}
+                      resizeMode="contain"
+                    />
+                  )}
                 </Pressable>
               )}
               scrollEnabled={false}
@@ -874,7 +895,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
             {activeSession && (
               <View style={styles.sessionActiveContainer}>
                 <Text style={styles.sessionActiveText}>
-                  Session Active - {sessionRouteAttempts.length} route{sessionRouteAttempts.length !== 1 ? 's' : ''} logged
+                  Session Active - {sessionRoutes.length} route{sessionRoutes.length !== 1 ? 's' : ''} logged
                 </Text>
               </View>
             )}
@@ -966,6 +987,13 @@ export default function LayoutDetailScreen({ navigation, route }) {
                             <Text style={styles.climbLength}>{item.length}m</Text>
                           )}
                         </View>
+                        {loggedClimbIds.has(item.id) && (
+                          <Image 
+                            source={require('../../assets/logbook.png')} 
+                            style={styles.logbookIcon}
+                            resizeMode="contain"
+                          />
+                        )}
                       </Pressable>
                     )}
                     scrollEnabled={false}
@@ -1712,6 +1740,11 @@ const styles = StyleSheet.create({
   climbLength: {
     fontSize: 14,
     color: '#666',
+  },
+  logbookIcon: {
+    width: 24,
+    height: 24,
+    marginLeft: 8,
   },
   thumbnailContainer: {
     position: 'relative',

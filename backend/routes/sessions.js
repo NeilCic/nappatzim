@@ -5,6 +5,7 @@ import {
   addRouteAttemptController,
   getSessionsController,
   getSessionByIdController,
+  getLoggedClimbIdsController,
   updateRouteController,
   updateRouteMetadataController,
   deleteSessionController,
@@ -17,6 +18,7 @@ router.use(verifyToken);
 
 router.post('/', createSessionController);
 router.get('/', getSessionsController);
+router.get('/logged-climbs', getLoggedClimbIdsController);
 router.get('/:sessionId', getSessionByIdController);
 router.put('/:sessionId/end', endSessionController);
 router.post('/:sessionId/attempts', addRouteAttemptController);

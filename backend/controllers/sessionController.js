@@ -338,6 +338,33 @@ export const updateRouteMetadataController = async (req, res) => {
   }
 };
 
+export const getLoggedClimbIdsController = async (req, res) => {
+  const requestId = Date.now().toString();
+  try {
+    const userId = req.user?.userId;
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    logger.info({ requestId, userId }, "Fetching logged climb IDs");
+
+    const climbIds = await sessionService.getLoggedClimbIds(userId);
+
+    res.json({ climbIds });
+  } catch (error) {
+    logger.error(
+      {
+        requestId,
+        userId: req.user?.userId,
+        error: error.message,
+        stack: error.stack,
+      },
+      "Failed to fetch logged climb IDs"
+    );
+    res.status(500).json({ error: "Failed to fetch logged climb IDs" });
+  }
+};
+
 export const deleteSessionController = async (req, res) => {
   const requestId = Date.now().toString();
   try {

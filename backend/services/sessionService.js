@@ -307,6 +307,25 @@ class SessionService extends PrismaCrudService {
     });
   }
 
+  async getLoggedClimbIds(userId) {
+    const routes = await prisma.sessionRoute.findMany({
+      where: {
+        session: {
+          userId,
+        },
+        climbId: {
+          not: null,
+        },
+      },
+      select: {
+        climbId: true,
+      },
+      distinct: ['climbId'],
+    });
+
+    return routes.map(route => route.climbId).filter(Boolean);
+  }
+
   async deleteSession(sessionId, userId) {
     const session = await prisma.climbingSession.findFirst({
       where: {
