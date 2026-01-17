@@ -357,7 +357,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
       });
       const session = response.data;
       setActiveSession(session);
-      setSessionRouteAttempts([]);
+      setSessionRoutes([]);
       await saveActiveSession(session, []);
       showSuccessAlert('Session started!');
     } catch (error) {
@@ -423,7 +423,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
 
       await clearActiveSession();
       setActiveSession(null);
-      setSessionRouteAttempts([]);
+      setSessionRoutes([]);
       setShowReviewModal(false);
       setSessionNotes('');
       setEditingRoutes([]);
