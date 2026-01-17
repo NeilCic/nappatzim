@@ -389,6 +389,50 @@ export default function LayoutDetailScreen({ navigation, route }) {
     setShowReviewModal(true);
   };
 
+  const discardSession = async () => {
+    if (!activeSession) return;
+
+    const confirmed = await new Promise((resolve) => {
+      Alert.alert(
+        'Discard Session?',
+        'This will permanently delete your session and all logged routes. This action cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Discard', style: 'destructive', onPress: () => resolve(true) },
+        ]
+      );
+    });
+
+    if (!confirmed) return;
+
+    // Always clear local storage first, regardless of API call success
+    // This ensures the user can always get unstuck even if API fails
+    try {
+      await AsyncStorage.multiRemove(['activeSession', 'sessionRouteAttempts']);
+    } catch (storageError) {
+      // If multiRemove fails, try individual removes
+      try {
+        await AsyncStorage.removeItem('activeSession');
+        await AsyncStorage.removeItem('sessionRouteAttempts');
+      } catch (e) {
+        // Ignore - best effort
+      }
+    }
+
+    // Try to delete from API, but don't block on it
+    try {
+      await api.delete(`/sessions/${activeSession.id}`);
+    } catch (apiError) {
+      // API delete failed, but we already cleared local storage
+      // User will be able to proceed without the stuck session
+    }
+
+    // Clear state
+    setActiveSession(null);
+    setSessionRoutes([]);
+    showSuccessAlert('Session discarded');
+  };
+
   const handleSaveSession = async () => {
     if (!activeSession) return;
 
@@ -890,6 +934,18 @@ export default function LayoutDetailScreen({ navigation, route }) {
                 {activeSession ? '⏹️ End Session' : '▶️ Start Session'}
               </Text>
             </Pressable>
+            
+            {/* Discard Session button - only shown when session is active */}
+            {activeSession && (
+              <Pressable
+                style={styles.discardSessionButton}
+                onPress={discardSession}
+              >
+                <Text style={styles.discardSessionButtonText}>
+                  🗑️ Discard Session
+                </Text>
+              </Pressable>
+            )}
             
             {/* Session active indicator */}
             {activeSession && (
@@ -2362,6 +2418,19 @@ const styles = StyleSheet.create({
   },
   endSessionButtonText: {
     color: '#fff',
+  },
+  discardSessionButton: {
+    backgroundColor: '#FF6B6B',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  discardSessionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   sessionActiveContainer: {
     backgroundColor: '#E8F5E9',
