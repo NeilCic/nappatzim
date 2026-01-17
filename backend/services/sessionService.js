@@ -27,6 +27,41 @@ function calculateVoterGradeAndDescriptors(votes, gradeSystem) {
   return { voterGrade, descriptors };
 }
 
+function calculateSessionStatistics(attempts) {
+  if (!attempts || attempts.length === 0) {
+    return {
+      totalRoutes: 0,
+      successfulRoutes: 0,
+      failedRoutes: 0,
+      totalAttempts: 0,
+      averageProposedGrade: null,
+      averageVoterGrade: null,
+    };
+  }
+
+  const successfulRoutes = attempts.filter((a) => a.status === "success").length;
+  const failedRoutes = attempts.filter((a) => a.status === "failure").length;
+  const totalAttempts = attempts.reduce((sum, a) => sum + a.attempts, 0);
+
+  // Calculate average grades (assuming single grade system per session)
+  const gradeSystem = attempts[0]?.gradeSystem || null;
+  const proposedGrades = attempts.map((a) => a.proposedGrade).filter(Boolean);
+  const voterGrades = attempts.map((a) => a.voterGrade).filter(Boolean);
+
+  return {
+    totalRoutes: attempts.length,
+    successfulRoutes,
+    failedRoutes,
+    totalAttempts,
+    averageProposedGrade: proposedGrades.length > 0 && gradeSystem 
+      ? calculateAverageGrade(proposedGrades, gradeSystem) 
+      : null,
+    averageVoterGrade: voterGrades.length > 0 && gradeSystem 
+      ? calculateAverageGrade(voterGrades, gradeSystem) 
+      : null,
+  };
+}
+
 class SessionService extends PrismaCrudService {
   constructor() {
     super("ClimbingSession", {}, { createdAt: "desc" });
@@ -105,7 +140,7 @@ class SessionService extends PrismaCrudService {
   }
 
   async getSessionsByUser(userId, options = {}) {
-    const { limit = 20, cursor } = options;
+    const { limit = 20, cursor, includeStatistics = false } = options;
 
     const where = { userId };
 
@@ -128,14 +163,24 @@ class SessionService extends PrismaCrudService {
     const results = hasMore ? sessions.slice(0, limit) : sessions;
     const nextCursor = hasMore ? results[results.length - 1].createdAt.toISOString() : null;
 
+    let sessionsToReturn = results;
+    if (includeStatistics) {
+      sessionsToReturn = results.map((session) => ({
+        ...session,
+        statistics: calculateSessionStatistics(session.attempts || []),
+      }));
+    }
+
     return {
-      sessions: results,
+      sessions: sessionsToReturn,
       nextCursor,
       hasMore,
     };
   }
 
-  async getSessionById(sessionId, userId) {
+  async getSessionById(sessionId, userId, options = {}) {
+    const { includeStatistics = true } = options;
+    
     const session = await prisma.climbingSession.findFirst({
       where: {
         id: sessionId,
@@ -147,6 +192,17 @@ class SessionService extends PrismaCrudService {
         },
       },
     });
+
+    if (!session) {
+      return null;
+    }
+
+    if (includeStatistics) {
+      return {
+        ...session,
+        statistics: calculateSessionStatistics(session.attempts || []),
+      };
+    }
 
     return session;
   }
@@ -176,10 +232,10 @@ class SessionService extends PrismaCrudService {
     });
   }
 
-  async updateAttemptMetadata(attemptId, userId) {
+  async updateRouteMetadata(routeId, userId) {
     const sessionRoute = await prisma.sessionRoute.findFirst({
       where: {
-        id: attemptId,
+        id: routeId,
         session: {
           userId, // Ensure user owns the session
         },
@@ -187,7 +243,7 @@ class SessionService extends PrismaCrudService {
     });
 
     if (!sessionRoute || !sessionRoute.climbId) {
-      throw new Error("Route attempt not found or climb no longer exists");
+      throw new Error("Route not found or climb no longer exists");
     }
 
     const climb = await climbService.getOne(
@@ -213,7 +269,7 @@ class SessionService extends PrismaCrudService {
     const { voterGrade, descriptors } = calculateVoterGradeAndDescriptors(climb.votes, climb.gradeSystem);
 
     return await prisma.sessionRoute.update({
-      where: { id: attemptId },
+      where: { id: routeId },
       data: {
         proposedGrade: climb.grade,
         gradeSystem: climb.gradeSystem,
@@ -221,53 +277,6 @@ class SessionService extends PrismaCrudService {
         descriptors,
       },
     });
-  }
-
-  async getSessionStatistics(sessionId) {
-    const session = await prisma.climbingSession.findUnique({
-      where: { id: sessionId },
-      include: {
-        attempts: true,
-      },
-    });
-
-    if (!session) {
-      return null;
-    }
-
-    const attempts = session.attempts || [];
-    if (attempts.length === 0) {
-      return {
-        totalRoutes: 0,
-        successfulRoutes: 0,
-        failedRoutes: 0,
-        totalAttempts: 0,
-        averageProposedGrade: null,
-        averageVoterGrade: null,
-      };
-    }
-
-    const successfulRoutes = attempts.filter((a) => a.status === "success").length;
-    const failedRoutes = attempts.filter((a) => a.status === "failure").length;
-    const totalAttempts = attempts.reduce((sum, a) => sum + a.attempts, 0);
-
-    // Calculate average grades (assuming single grade system per session)
-    const gradeSystem = attempts[0]?.gradeSystem || null;
-    const proposedGrades = attempts.map((a) => a.proposedGrade).filter(Boolean);
-    const voterGrades = attempts.map((a) => a.voterGrade).filter(Boolean);
-
-    return {
-      totalRoutes: attempts.length,
-      successfulRoutes,
-      failedRoutes,
-      totalAttempts,
-      averageProposedGrade: proposedGrades.length > 0 && gradeSystem 
-        ? calculateAverageGrade(proposedGrades, gradeSystem) 
-        : null,
-      averageVoterGrade: voterGrades.length > 0 && gradeSystem 
-        ? calculateAverageGrade(voterGrades, gradeSystem) 
-        : null,
-    };
   }
 
   async deleteSession(sessionId, userId) {

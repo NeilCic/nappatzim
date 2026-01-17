@@ -4,12 +4,14 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { useApi } from '../ApiProvider';
 import { showError } from '../utils/errorHandler';
 import LoadingScreen from '../components/LoadingScreen';
 import Button from '../components/Button';
 import { showErrorAlert, showSuccessAlert } from '../utils/alert';
+import { formatDateDetailed } from '../utils/stringUtils';
 
 export default function SessionDetailScreen({ navigation, route }) {
   const { sessionId } = route.params;
@@ -36,12 +38,12 @@ export default function SessionDetailScreen({ navigation, route }) {
     }
   };
 
-  const handleUpdateMetadata = async (attemptId) => {
+  const handleUpdateMetadata = async (routeId) => {
     try {
-      setUpdatingAttemptId(attemptId);
-      await api.put(`/sessions/attempts/${attemptId}/metadata`);
+      setUpdatingAttemptId(routeId);
+      await api.put(`/sessions/routes/${routeId}/metadata`);
       showSuccessAlert('Route metadata updated');
-      fetchSession(); // Refresh to show updated data
+      fetchSession();
     } catch (error) {
       if (error.response?.status === 404) {
         showErrorAlert('Route no longer exists or has been deleted');
@@ -55,7 +57,6 @@ export default function SessionDetailScreen({ navigation, route }) {
 
   const handleDelete = async () => {
     const confirmed = await new Promise((resolve) => {
-      const { Alert } = require('react-native');
       Alert.alert(
         'Delete Session?',
         'This action cannot be undone.',
@@ -78,18 +79,6 @@ export default function SessionDetailScreen({ navigation, route }) {
     } finally {
       setDeleting(false);
     }
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
   };
 
   const formatDuration = (startTime, endTime) => {
@@ -131,7 +120,7 @@ export default function SessionDetailScreen({ navigation, route }) {
           <Text style={styles.sectionTitle}>Session Details</Text>
           <View style={styles.metadataRow}>
             <Text style={styles.metadataLabel}>Date:</Text>
-            <Text style={styles.metadataValue}>{formatDate(session.startTime)}</Text>
+            <Text style={styles.metadataValue}>{formatDateDetailed(session.startTime)}</Text>
           </View>
           <View style={styles.metadataRow}>
             <Text style={styles.metadataLabel}>Duration:</Text>

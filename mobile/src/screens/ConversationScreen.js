@@ -16,6 +16,7 @@ import StyledTextInput from "../components/StyledTextInput";
 import Button from "../components/Button";
 import LoadingScreen from "../components/LoadingScreen";
 import KeyboardAvoidingContainer from "../components/KeyboardAvoidingContainer";
+import { formatDateRelative } from "../utils/stringUtils";
 
 export default function ConversationScreen({ route, navigation }) {
   const { conversationId } = route.params;
@@ -124,19 +125,7 @@ export default function ConversationScreen({ route, navigation }) {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return "Today";
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return "Yesterday";
-    } else {
-      return date.toLocaleDateString();
-    }
+    return formatDateRelative(dateString, { useDefaultLocale: true });
   };
 
   const importWorkout = async (workoutData) => {

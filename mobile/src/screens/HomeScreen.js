@@ -48,8 +48,15 @@ export default function HomeScreen({ navigation, onLogout }) {
                   text: 'Discard',
                   style: 'destructive',
                   onPress: async () => {
-                    await AsyncStorage.removeItem('activeSession');
-                    await AsyncStorage.removeItem('sessionRouteAttempts');
+                    try {
+                      await api.delete(`/sessions/${sessionData.session.id}`);
+                      await AsyncStorage.removeItem('activeSession');
+                      await AsyncStorage.removeItem('sessionRouteAttempts');
+                    } catch (error) {
+                      // If API call fails, keep session in storage so user will
+                      // see the prompt again and be aware the session still exists
+                      // TODO Could show an error alert here if needed
+                    }
                   },
                 },
                 {

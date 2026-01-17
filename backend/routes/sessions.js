@@ -5,7 +5,7 @@ import {
   addRouteAttemptController,
   getSessionsController,
   getSessionByIdController,
-  updateAttemptMetadataController,
+  updateRouteMetadataController,
   deleteSessionController,
 } from '../controllers/sessionController.js';
 import { verifyToken } from '../middleware/auth.js';
@@ -19,7 +19,7 @@ router.get('/', getSessionsController);
 router.get('/:sessionId', getSessionByIdController);
 router.put('/:sessionId/end', endSessionController);
 router.post('/:sessionId/attempts', addRouteAttemptController);
-router.put('/attempts/:attemptId/metadata', updateAttemptMetadataController);
+router.put('/routes/:routeId/metadata', updateRouteMetadataController);
 router.delete('/:sessionId', deleteSessionController);
 
 export default router;

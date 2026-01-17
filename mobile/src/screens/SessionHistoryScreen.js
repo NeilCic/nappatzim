@@ -11,6 +11,7 @@ import { useApi } from '../ApiProvider';
 import { showError } from '../utils/errorHandler';
 import LoadingScreen from '../components/LoadingScreen';
 import Pressable from '../components/Pressable';
+import { formatDateRelative } from '../utils/stringUtils';
 
 export default function SessionHistoryScreen({ navigation }) {
   const [sessions, setSessions] = useState([]);
@@ -66,20 +67,7 @@ export default function SessionHistoryScreen({ navigation }) {
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-      return 'Today';
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
-    } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    }
+    return formatDateRelative(dateString, { showDaysAgo: true, locale: 'en-US' });
   };
 
   const formatDuration = (startTime, endTime) => {

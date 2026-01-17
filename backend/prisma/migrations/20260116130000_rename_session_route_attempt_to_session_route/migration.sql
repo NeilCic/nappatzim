@@ -7,5 +7,5 @@ ALTER INDEX "SessionRouteAttempt_climbId_idx" RENAME TO "SessionRoute_climbId_id
 ALTER INDEX "SessionRouteAttempt_pkey" RENAME TO "SessionRoute_pkey";
 
 -- Rename foreign key constraints
+-- Note: climbId_fkey was dropped in migration 20260116125900_remove_climb_relation_field
 ALTER TABLE "SessionRoute" RENAME CONSTRAINT "SessionRouteAttempt_sessionId_fkey" TO "SessionRoute_sessionId_fkey";
-ALTER TABLE "SessionRoute" RENAME CONSTRAINT "SessionRouteAttempt_climbId_fkey" TO "SessionRoute_climbId_fkey";

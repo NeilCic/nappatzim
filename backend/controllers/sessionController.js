@@ -18,15 +18,11 @@ const addRouteAttemptSchema = z.object({
   attempts: z.coerce.number().int().min(1),
 });
 
-const updateAttemptMetadataSchema = z.object({
-  attemptId: z.string(),
-});
-
 export const createSessionController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
     const userId = req.user?.userId;
-    if (!userId) {
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -72,7 +68,7 @@ export const endSessionController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
     const userId = req.user?.userId;
-    if (!userId) {
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -87,7 +83,6 @@ export const endSessionController = async (req, res) => {
       validatedData.notes
     );
 
-    // Verify user owns the session
     if (session.userId !== userId) {
       return res.status(403).json({ error: "Forbidden" });
     }
@@ -127,7 +122,7 @@ export const addRouteAttemptController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
     const userId = req.user?.userId;
-    if (!userId) {
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -137,7 +132,6 @@ export const addRouteAttemptController = async (req, res) => {
 
     const validatedData = addRouteAttemptSchema.parse(req.body);
 
-    // Verify user owns the session
     const session = await sessionService.getSessionById(sessionId, userId);
     if (!session) {
       return res.status(404).json({ error: "Session not found" });
@@ -187,7 +181,7 @@ export const getSessionsController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
     const userId = req.user?.userId;
-    if (!userId) {
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -199,21 +193,11 @@ export const getSessionsController = async (req, res) => {
     const result = await sessionService.getSessionsByUser(userId, {
       limit,
       cursor,
+      includeStatistics: true,
     });
 
-    // Calculate statistics for each session
-    const sessionsWithStats = await Promise.all(
-      result.sessions.map(async (session) => {
-        const stats = await sessionService.getSessionStatistics(session.id);
-        return {
-          ...session,
-          statistics: stats,
-        };
-      })
-    );
-
     res.json({
-      sessions: sessionsWithStats,
+      sessions: result.sessions,
       nextCursor: result.nextCursor,
       hasMore: result.hasMore,
     });
@@ -235,7 +219,7 @@ export const getSessionByIdController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
     const userId = req.user?.userId;
-    if (!userId) {
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -249,12 +233,7 @@ export const getSessionByIdController = async (req, res) => {
       return res.status(404).json({ error: "Session not found" });
     }
 
-    const statistics = await sessionService.getSessionStatistics(sessionId);
-
-    res.json({
-      ...session,
-      statistics,
-    });
+    res.json(session);
   } catch (error) {
     logger.error(
       {
@@ -270,38 +249,38 @@ export const getSessionByIdController = async (req, res) => {
   }
 };
 
-export const updateAttemptMetadataController = async (req, res) => {
+export const updateRouteMetadataController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
     const userId = req.user?.userId;
-    if (!userId) {
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { attemptId } = req.params;
+    const { routeId } = req.params;
 
-    logger.info({ requestId, userId, attemptId }, "Updating attempt metadata");
+    logger.info({ requestId, userId, routeId }, "Updating route metadata");
 
-    const attempt = await sessionService.updateAttemptMetadata(attemptId, userId);
+    const route = await sessionService.updateRouteMetadata(routeId, userId);
 
-    logger.info({ requestId, attemptId }, "Attempt metadata updated");
+    logger.info({ requestId, routeId }, "Route metadata updated");
 
-    res.json(attempt);
+    res.json(route);
   } catch (error) {
-    if (error.message === "Route attempt not found or climb no longer exists") {
+    if (error.message === "Route not found or climb no longer exists") {
       res.status(404).json({ error: error.message });
     } else {
       logger.error(
         {
           requestId,
           userId: req.user?.userId,
-          attemptId: req.params.attemptId,
+          routeId: req.params.routeId,
           error: error.message,
           stack: error.stack,
         },
-        "Failed to update attempt metadata"
+        "Failed to update route metadata"
       );
-      res.status(500).json({ error: "Failed to update attempt metadata" });
+      res.status(500).json({ error: "Failed to update route metadata" });
     }
   }
 };
@@ -310,7 +289,7 @@ export const deleteSessionController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
     const userId = req.user?.userId;
-    if (!userId) {
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
