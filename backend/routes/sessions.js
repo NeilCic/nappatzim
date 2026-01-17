@@ -5,6 +5,7 @@ import {
   addRouteAttemptController,
   getSessionsController,
   getSessionByIdController,
+  updateRouteController,
   updateRouteMetadataController,
   deleteSessionController,
 } from '../controllers/sessionController.js';
@@ -19,6 +20,7 @@ router.get('/', getSessionsController);
 router.get('/:sessionId', getSessionByIdController);
 router.put('/:sessionId/end', endSessionController);
 router.post('/:sessionId/attempts', addRouteAttemptController);
+router.put('/routes/:routeId', updateRouteController);
 router.put('/routes/:routeId/metadata', updateRouteMetadataController);
 router.delete('/:sessionId', deleteSessionController);
 

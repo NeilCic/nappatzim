@@ -232,6 +232,34 @@ class SessionService extends PrismaCrudService {
     });
   }
 
+  async updateRoute(routeId, userId, data) {
+    const sessionRoute = await prisma.sessionRoute.findFirst({
+      where: {
+        id: routeId,
+        session: {
+          userId, // Ensure user owns the session
+        },
+      },
+    });
+
+    if (!sessionRoute) {
+      throw new Error("Route not found");
+    }
+
+    const updateData = {};
+    if (data.isSuccess !== undefined) {
+      updateData.status = data.isSuccess ? "success" : "failure";
+    }
+    if (data.attempts !== undefined) {
+      updateData.attempts = data.attempts;
+    }
+
+    return await prisma.sessionRoute.update({
+      where: { id: routeId },
+      data: updateData,
+    });
+  }
+
   async updateRouteMetadata(routeId, userId) {
     const sessionRoute = await prisma.sessionRoute.findFirst({
       where: {

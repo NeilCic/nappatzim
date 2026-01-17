@@ -60,6 +60,10 @@ export default function LayoutDetailScreen({ navigation, route }) {
   const [quickAddStatus, setQuickAddStatus] = useState(true);
   const [quickAddAttempts, setQuickAddAttempts] = useState(1);
   const [addingRouteToSession, setAddingRouteToSession] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [sessionNotes, setSessionNotes] = useState('');
+  const [editingRoutes, setEditingRoutes] = useState([]);
+  const [savingSession, setSavingSession] = useState(false);
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -359,25 +363,72 @@ export default function LayoutDetailScreen({ navigation, route }) {
         'This will save your logged routes.',
         [
           { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-          { text: 'End Session', style: 'destructive', onPress: () => resolve(true) },
+          { text: 'Review Session', style: 'default', onPress: () => resolve(true) },
         ]
       );
     });
 
     if (!confirmed) return;
 
+    // Open review modal with current routes and empty notes
+    setEditingRoutes(sessionRouteAttempts.map(route => ({
+      ...route,
+      isSuccess: route.status === 'success',
+    })));
+    setSessionNotes('');
+    setShowReviewModal(true);
+  };
+
+  const handleSaveSession = async () => {
+    if (!activeSession) return;
+
+    setSavingSession(true);
     try {
+      // Update any routes that were edited
+      const updatePromises = editingRoutes.map(async (route) => {
+        const originalRoute = sessionRouteAttempts.find(r => r.id === route.id);
+        if (!originalRoute) return;
+
+        const needsUpdate = 
+          originalRoute.status !== (route.isSuccess ? 'success' : 'failure') ||
+          originalRoute.attempts !== route.attempts;
+
+        if (needsUpdate) {
+          return api.put(`/sessions/routes/${route.id}`, {
+            isSuccess: route.isSuccess,
+            attempts: route.attempts,
+          });
+        }
+        return null;
+      }).filter(Boolean);
+
+      await Promise.all(updatePromises);
+
+      // End session with notes
       const endTime = new Date().toISOString();
       await api.put(`/sessions/${activeSession.id}/end`, {
         endTime,
+        notes: sessionNotes.trim() || undefined,
       });
+
       await clearActiveSession();
       setActiveSession(null);
       setSessionRouteAttempts([]);
+      setShowReviewModal(false);
+      setSessionNotes('');
+      setEditingRoutes([]);
       showSuccessAlert('Session saved!');
     } catch (error) {
-      showError(error, 'Failed to end session');
+      showError(error, 'Failed to save session');
+    } finally {
+      setSavingSession(false);
     }
+  };
+
+  const updateEditingRoute = (routeId, updates) => {
+    setEditingRoutes(prev => prev.map(route =>
+      route.id === routeId ? { ...route, ...updates } : route
+    ));
   };
 
   const addRouteToSession = async () => {
@@ -1278,6 +1329,157 @@ export default function LayoutDetailScreen({ navigation, route }) {
         )}
       </AppModal>
 
+      {/* Review Session Modal */}
+      <AppModal
+        visible={showReviewModal}
+        onClose={() => {
+          setShowReviewModal(false);
+          setSessionNotes('');
+          setEditingRoutes([]);
+        }}
+        title="Review Session"
+        style={[styles.modalContent, styles.reviewModalContent]}
+        dismissOnOverlayPress={!savingSession}
+      >
+        <ScrollView style={styles.reviewModalScroll} showsVerticalScrollIndicator={true}>
+          {/* Session Duration */}
+          {activeSession && (
+            <View style={styles.reviewSection}>
+              <Text style={styles.reviewLabel}>Duration</Text>
+              <Text style={styles.reviewDuration}>
+                {(() => {
+                  const start = new Date(activeSession.startTime);
+                  const now = new Date();
+                  const diffMs = now - start;
+                  const diffMins = Math.floor(diffMs / (1000 * 60));
+                  const hours = Math.floor(diffMins / 60);
+                  const mins = diffMins % 60;
+                  if (hours > 0) {
+                    return `${hours}h ${mins}m`;
+                  }
+                  return `${mins}m`;
+                })()}
+              </Text>
+            </View>
+          )}
+
+          {/* Routes List */}
+          <View style={styles.reviewSection}>
+            <Text style={styles.reviewLabel}>
+              Routes ({editingRoutes.length})
+            </Text>
+            {editingRoutes.length === 0 ? (
+              <Text style={styles.reviewEmptyText}>No routes logged</Text>
+            ) : (
+              editingRoutes.map((route) => (
+                <View key={route.id} style={styles.reviewRouteItem}>
+                  <View style={styles.reviewRouteHeader}>
+                    <Text style={styles.reviewRouteGrade}>
+                      {route.proposedGrade}
+                      {route.voterGrade && route.voterGrade !== route.proposedGrade && (
+                        <Text style={styles.reviewRouteVoterGrade}> ({route.voterGrade})</Text>
+                      )}
+                    </Text>
+                    {route.descriptors && route.descriptors.length > 0 && (
+                      <Text style={styles.reviewRouteDescriptors}>
+                        {route.descriptors.join(', ')}
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={styles.reviewRouteControls}>
+                    <View style={styles.statusToggleContainer}>
+                      <Pressable
+                        style={[
+                          styles.statusButton,
+                          route.isSuccess && styles.statusButtonActive
+                        ]}
+                        onPress={() => updateEditingRoute(route.id, { isSuccess: true })}
+                      >
+                        <Text style={[
+                          styles.statusButtonText,
+                          route.isSuccess && styles.statusButtonTextActive
+                        ]}>✓ Success</Text>
+                      </Pressable>
+                      <Pressable
+                        style={[
+                          styles.statusButton,
+                          !route.isSuccess && styles.statusButtonActive
+                        ]}
+                        onPress={() => updateEditingRoute(route.id, { isSuccess: false })}
+                      >
+                        <Text style={[
+                          styles.statusButtonText,
+                          !route.isSuccess && styles.statusButtonTextActive
+                        ]}>✗ Failure</Text>
+                      </Pressable>
+                    </View>
+
+                    <View style={styles.attemptsContainer}>
+                      <Pressable
+                        style={styles.attemptsButton}
+                        onPress={() => updateEditingRoute(route.id, {
+                          attempts: Math.max(1, route.attempts - 1)
+                        })}
+                      >
+                        <Text style={styles.attemptsButtonText}>−</Text>
+                      </Pressable>
+                      <Text style={styles.attemptsCount}>{route.attempts}</Text>
+                      <Pressable
+                        style={styles.attemptsButton}
+                        onPress={() => updateEditingRoute(route.id, {
+                          attempts: route.attempts + 1
+                        })}
+                      >
+                        <Text style={styles.attemptsButtonText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+
+          {/* Session Notes */}
+          <View style={styles.reviewSection}>
+            <Text style={styles.reviewLabel}>Session Notes (optional)</Text>
+            <StyledTextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Add notes about this session..."
+              value={sessionNotes}
+              onChangeText={setSessionNotes}
+              multiline
+              numberOfLines={4}
+              maxLength={1000}
+            />
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.buttonRow}>
+            <Button
+              title="Cancel"
+              onPress={() => {
+                setShowReviewModal(false);
+                setSessionNotes('');
+                setEditingRoutes([]);
+              }}
+              variant="secondary"
+              size="medium"
+              style={[styles.button, styles.cancelButton]}
+              disabled={savingSession}
+            />
+            <Button
+              title={savingSession ? "Saving..." : "Save Session"}
+              onPress={handleSaveSession}
+              variant="primary"
+              size="medium"
+              style={styles.button}
+              disabled={savingSession}
+            />
+          </View>
+        </ScrollView>
+      </AppModal>
+
     </ScrollView>
   );
 }
@@ -2142,6 +2344,65 @@ const styles = StyleSheet.create({
   },
   quickAddModalContent: {
     maxHeight: '80%',
+  },
+  reviewModalContent: {
+    maxHeight: '85%',
+    width: '90%',
+  },
+  reviewModalScroll: {
+    maxHeight: 600,
+  },
+  reviewSection: {
+    marginBottom: 24,
+  },
+  reviewLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  reviewDuration: {
+    fontSize: 18,
+    color: '#666',
+    fontWeight: '500',
+  },
+  reviewEmptyText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  reviewRouteItem: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  reviewRouteHeader: {
+    marginBottom: 8,
+  },
+  reviewRouteGrade: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  reviewRouteVoterGrade: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#666',
+  },
+  reviewRouteDescriptors: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  reviewRouteControls: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 12,
   },
   quickAddRouteInfo: {
     marginBottom: 20,

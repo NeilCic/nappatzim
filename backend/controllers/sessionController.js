@@ -18,6 +18,11 @@ const addRouteAttemptSchema = z.object({
   attempts: z.coerce.number().int().min(1),
 });
 
+const updateRouteSchema = z.object({
+  isSuccess: z.boolean().optional(),
+  attempts: z.coerce.number().int().min(1).optional(),
+});
+
 export const createSessionController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
@@ -246,6 +251,54 @@ export const getSessionByIdController = async (req, res) => {
       "Failed to fetch session"
     );
     res.status(500).json({ error: "Failed to fetch session" });
+  }
+};
+
+export const updateRouteController = async (req, res) => {
+  const requestId = Date.now().toString();
+  try {
+    const userId = req.user?.userId;
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { routeId } = req.params;
+
+    logger.info({ requestId, userId, routeId }, "Updating route");
+
+    const validatedData = updateRouteSchema.parse(req.body);
+    const route = await sessionService.updateRoute(routeId, userId, validatedData);
+
+    logger.info({ requestId, routeId }, "Route updated");
+
+    res.json(route);
+  } catch (error) {
+    if (error.name === "ZodError") {
+      logger.warn(
+        {
+          requestId,
+          userId: req.user?.userId,
+          validationError: error,
+        },
+        "Update route validation failed"
+      );
+      const formattedError = formatZodError(error);
+      res.status(400).json({ error: formattedError });
+    } else if (error.message === "Route not found") {
+      res.status(404).json({ error: error.message });
+    } else {
+      logger.error(
+        {
+          requestId,
+          userId: req.user?.userId,
+          routeId: req.params.routeId,
+          error: error.message,
+          stack: error.stack,
+        },
+        "Failed to update route"
+      );
+      res.status(500).json({ error: "Failed to update route" });
+    }
   }
 };
 
