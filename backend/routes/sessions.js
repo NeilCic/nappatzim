@@ -2,7 +2,7 @@ import express from 'express';
 import {
   createSessionController,
   endSessionController,
-  addRouteAttemptController,
+  addRouteController,
   getSessionsController,
   getSessionByIdController,
   getLoggedClimbIdsController,
@@ -21,7 +21,7 @@ router.get('/', getSessionsController);
 router.get('/logged-climbs', getLoggedClimbIdsController);
 router.get('/:sessionId', getSessionByIdController);
 router.put('/:sessionId/end', endSessionController);
-router.post('/:sessionId/attempts', addRouteAttemptController);
+router.post('/:sessionId/routes', addRouteController);
 router.put('/routes/:routeId', updateRouteController);
 router.put('/routes/:routeId/metadata', updateRouteMetadataController);
 router.delete('/:sessionId', deleteSessionController);

@@ -455,7 +455,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
 
     setAddingRouteToSession(true);
     try {
-      const response = await api.post(`/sessions/${activeSession.id}/attempts`, {
+      const response = await api.post(`/sessions/${activeSession.id}/routes`, {
         climbId: selectedClimbForSession.id,
         isSuccess: quickAddStatus,
         attempts: quickAddAttempts,

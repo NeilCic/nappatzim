@@ -12,7 +12,7 @@ const endSessionSchema = z.object({
   notes: z.string().max(1000).optional(),
 });
 
-const addRouteAttemptSchema = z.object({
+const addRouteSchema = z.object({
   climbId: z.string().optional(),
   isSuccess: z.boolean(),
   attempts: z.coerce.number().int().min(1),
@@ -123,7 +123,7 @@ export const endSessionController = async (req, res) => {
   }
 };
 
-export const addRouteAttemptController = async (req, res) => {
+export const addRouteController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
     const userId = req.user?.userId;
@@ -133,25 +133,25 @@ export const addRouteAttemptController = async (req, res) => {
 
     const { sessionId } = req.params;
 
-    logger.info({ requestId, userId, sessionId }, "Adding route attempt");
+    logger.info({ requestId, userId, sessionId }, "Adding route to session");
 
-    const validatedData = addRouteAttemptSchema.parse(req.body);
+    const validatedData = addRouteSchema.parse(req.body);
 
     const session = await sessionService.getSessionById(sessionId, userId);
     if (!session) {
       return res.status(404).json({ error: "Session not found" });
     }
 
-    const attempt = await sessionService.addRouteAttempt(
+    const route = await sessionService.addRoute(
       sessionId,
       validatedData.climbId || null,
       validatedData.isSuccess,
       validatedData.attempts
     );
 
-    logger.info({ requestId, attemptId: attempt.id }, "Route attempt added");
+    logger.info({ requestId, routeId: route.id }, "Route added to session");
 
-    res.status(201).json(attempt);
+    res.status(201).json(route);
   } catch (error) {
     if (error.name === "ZodError") {
       logger.warn(
@@ -160,7 +160,7 @@ export const addRouteAttemptController = async (req, res) => {
           userId: req.user?.userId,
           validationError: error,
         },
-        "Add route attempt validation failed"
+        "Add route validation failed"
       );
       const formattedError = formatZodError(error);
       res.status(400).json({ error: formattedError });
@@ -175,9 +175,9 @@ export const addRouteAttemptController = async (req, res) => {
           error: error.message,
           stack: error.stack,
         },
-        "Failed to add route attempt"
+        "Failed to add route to session"
       );
-      res.status(500).json({ error: "Failed to add route attempt" });
+      res.status(500).json({ error: "Failed to add route to session" });
     }
   }
 };

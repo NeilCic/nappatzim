@@ -81,7 +81,7 @@ class SessionService extends PrismaCrudService {
     });
   }
 
-  async addRouteAttempt(sessionId, climbId, isSuccess, attempts) {
+  async addRoute(sessionId, climbId, isSuccess, attempts) {
     let proposedGrade = null;
     let gradeSystem = null;
     let voterGrade = null;
