@@ -1300,13 +1300,13 @@ export default function LayoutDetailScreen({ navigation, route }) {
                 <Pressable
                   style={[
                     styles.statusButton,
-                    !quickAddStatus && styles.statusButtonActive
+                    !quickAddStatus && styles.statusButtonActiveFailure
                   ]}
                   onPress={() => setQuickAddStatus(false)}
                 >
                   <Text style={[
                     styles.statusButtonText,
-                    !quickAddStatus && styles.statusButtonTextActive
+                    !quickAddStatus && styles.statusButtonTextActiveFailure
                   ]}>✗ Failure</Text>
                 </Pressable>
               </View>
@@ -1432,13 +1432,13 @@ export default function LayoutDetailScreen({ navigation, route }) {
                       <Pressable
                         style={[
                           styles.statusButton,
-                          !route.isSuccess && styles.statusButtonActive
+                          !route.isSuccess && styles.statusButtonActiveFailure
                         ]}
                         onPress={() => updateEditingRoute(route.id, { isSuccess: false })}
                       >
                         <Text style={[
                           styles.statusButtonText,
-                          !route.isSuccess && styles.statusButtonTextActive
+                          !route.isSuccess && styles.statusButtonTextActiveFailure
                         ]}>✗ Failure</Text>
                       </Pressable>
                     </View>
@@ -2481,6 +2481,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F5E9',
     borderColor: '#4CAF50',
   },
+  statusButtonActiveFailure: {
+    backgroundColor: '#FFEBEE',
+    borderColor: '#F44336',
+  },
   statusButtonText: {
     fontSize: 16,
     fontWeight: '500',
@@ -2488,6 +2492,10 @@ const styles = StyleSheet.create({
   },
   statusButtonTextActive: {
     color: '#2E7D32',
+    fontWeight: '600',
+  },
+  statusButtonTextActiveFailure: {
+    color: '#C62828',
     fontWeight: '600',
   },
   attemptsContainer: {
