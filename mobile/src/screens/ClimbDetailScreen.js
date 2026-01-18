@@ -69,6 +69,7 @@ export default function ClimbDetailScreen({ navigation, route }) {
     'crimpy',
     'slippery',
     'static',
+    'technical',
     'dyno',
     'coordination',
     'explosive',
@@ -76,11 +77,13 @@ export default function ClimbDetailScreen({ navigation, route }) {
     'powerful',
     'must-try',
     'dangerous',
+    'overhang',
     'pockety',
     'dual-tex',
     'compression',
     'campusy',
     'shouldery',
+    'slab',
   ];
   
   const videoPlayer = useVideoPlayer(selectedVideo?.videoUrl || '');

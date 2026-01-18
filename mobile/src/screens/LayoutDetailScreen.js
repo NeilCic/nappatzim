@@ -33,7 +33,7 @@ import Pressable from '../components/Pressable';
 import Spinner from '../components/Spinner';
 import ColorPicker from '../components/ColorPicker';
 
-const DESCRIPTORS = ['reachy', 'balance', 'slopey', 'crimpy', 'slippery', 'static', 'dyno', 'coordination', 'explosive', 'endurance', 'powerful', 'must-try', 'dangerous', 'pockety', 'dual-tex', 'compression', 'campusy', 'shouldery'];
+const DESCRIPTORS = ['reachy', 'balance', 'slopey', 'crimpy', 'slippery', 'static', 'technical', 'dyno', 'coordination', 'explosive', 'endurance', 'powerful', 'must-try', 'dangerous', 'overhang', 'pockety', 'dual-tex', 'compression', 'campusy', 'shouldery', 'slab'];
 
 // Swipeable route item component for quick adding during active sessions
 const SwipeableRouteItem = ({ item, onPress, onSwipeSuccess, onSwipeFailure, loggedClimbIds }) => {
