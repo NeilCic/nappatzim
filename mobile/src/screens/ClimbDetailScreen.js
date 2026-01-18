@@ -604,7 +604,7 @@ export default function ClimbDetailScreen({ navigation, route }) {
     const confirmed = await new Promise((resolve) => {
       Alert.alert(
         'Delete Video?',
-        'This will permanently delete the video from Cloudinary and the database. This action cannot be undone.',
+        'Are you sure you want to delete this video? This action cannot be undone.',
         [
           { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
           { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
