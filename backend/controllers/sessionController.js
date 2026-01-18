@@ -437,6 +437,43 @@ export const getGradeProfileController = async (req, res) => {
   }
 };
 
+export const getStyleAnalysisController = async (req, res) => {
+  const requestId = Date.now().toString();
+  try {
+    const userId = req.user?.userId;
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    logger.info({ requestId, userId }, "Getting style analysis");
+
+    // Parse minSessions from query param if provided, otherwise use default minimum
+    // More sessions = more reliable data, but we require at least MIN_SESSIONS_REQUIRED
+    const minSessions = req.query.minSessions 
+      ? parseInt(req.query.minSessions, 10) 
+      : MIN_SESSIONS_REQUIRED;
+
+    const styleAnalysis = await sessionService.calculateStyleAnalysis(userId, {
+      minSessions: Math.max(minSessions, MIN_SESSIONS_REQUIRED), // Ensure at least minimum
+    });
+
+    logger.info({ requestId, hasEnoughData: styleAnalysis.hasEnoughData }, "Style analysis calculated");
+
+    res.status(200).json(styleAnalysis);
+  } catch (error) {
+    logger.error(
+      {
+        requestId,
+        userId: req.user?.userId,
+        error: error.message,
+        stack: error.stack,
+      },
+      "Failed to get style analysis"
+    );
+    res.status(500).json({ error: "Failed to get style analysis" });
+  }
+};
+
 export const deleteSessionController = async (req, res) => {
   const requestId = Date.now().toString();
   try {

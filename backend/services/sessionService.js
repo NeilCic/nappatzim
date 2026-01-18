@@ -427,7 +427,7 @@ class SessionService extends PrismaCrudService {
     return await this.delete({ id: sessionId });
   }
 
-  async calculateGradeProfile(userId, options = {}) {
+  async calculateInsights(userId, options = {}) {
     const { minSessions = 5 } = options;
 
     // Get all completed sessions (with endTime) for the user
@@ -448,6 +448,7 @@ class SessionService extends PrismaCrudService {
         sessionCount: sessions.length,
         minSessionsRequired: minSessions,
         gradeProfile: null,
+        styleAnalysis: null,
       };
     }
 
@@ -465,47 +466,78 @@ class SessionService extends PrismaCrudService {
         sessionCount: sessions.length,
         minSessionsRequired: minSessions,
         gradeProfile: null,
+        styleAnalysis: null,
       };
     }
 
     // Group routes by grade (prefer voterGrade, fallback to proposedGrade)
-    // Also track grade system (assuming single system per user for now)
     const gradeMap = new Map();
+    const descriptorMap = new Map();
     let primaryGradeSystem = null;
 
     allRoutes.forEach(route => {
+      const isSuccess = route.status === 'success';
+      const attempts = route.attempts || 1;
+
+      // Track statistics by grade: count routes and successes per grade
       const grade = route.voterGrade || route.proposedGrade;
       const gradeSystem = route.gradeSystem || 'V-Scale';
 
-      if (!grade || grade === 'Unknown') return;
+      if (grade && grade !== 'Unknown') {
+        if (!primaryGradeSystem) {
+          primaryGradeSystem = gradeSystem;
+        }
 
-      // Track primary grade system (use first one encountered, assuming single system per user)
-      if (!primaryGradeSystem) {
-        primaryGradeSystem = gradeSystem;
+        if (!gradeMap.has(grade)) {
+          gradeMap.set(grade, {
+            grade,
+            gradeSystem,
+            totalAttempts: 0,
+            successfulAttempts: 0,
+            totalRoutes: 0,
+            successfulRoutes: 0,
+          });
+        }
+
+        const gradeStats = gradeMap.get(grade);
+        gradeStats.totalAttempts += attempts;
+        gradeStats.totalRoutes += 1;
+        
+        if (isSuccess) {
+          gradeStats.successfulAttempts += attempts;
+          gradeStats.successfulRoutes += 1;
+        }
       }
 
-      if (!gradeMap.has(grade)) {
-        gradeMap.set(grade, {
-          grade,
-          gradeSystem,
-          totalAttempts: 0,
-          successfulAttempts: 0,
-          totalRoutes: 0,
-          successfulRoutes: 0,
-        });
-      }
+      // Track statistics by descriptor: count routes and successes per descriptor
+      const descriptors = route.descriptors || [];
+      descriptors.forEach(descriptor => {
+        const normalizedDescriptor = descriptor.trim().toLowerCase();
+        
+        if (!normalizedDescriptor) return;
 
-      const gradeStats = gradeMap.get(grade);
-      gradeStats.totalAttempts += route.attempts;
-      gradeStats.totalRoutes += 1;
-      
-      if (route.status === 'success') {
-        gradeStats.successfulAttempts += route.attempts;
-        gradeStats.successfulRoutes += 1;
-      }
+        if (!descriptorMap.has(normalizedDescriptor)) {
+          descriptorMap.set(normalizedDescriptor, {
+            descriptor: normalizedDescriptor,
+            totalRoutes: 0,
+            successfulRoutes: 0,
+            failedRoutes: 0,
+            totalAttempts: 0,
+          });
+        }
+
+        const stats = descriptorMap.get(normalizedDescriptor);
+        stats.totalRoutes += 1;
+        stats.totalAttempts += attempts;
+        
+        if (isSuccess) {
+          stats.successfulRoutes += 1;
+        } else {
+          stats.failedRoutes += 1;
+        }
+      });
     });
 
-    // Convert to array and calculate success rates
     const gradeStatsArray = Array.from(gradeMap.values())
       .map(stats => ({
         ...stats,
@@ -516,58 +548,28 @@ class SessionService extends PrismaCrudService {
       .filter(stats => stats.numericValue !== null)
       .sort((a, b) => a.numericValue - b.numericValue);
 
-    if (gradeStatsArray.length === 0) {
-      return {
-        hasEnoughData: false,
-        sessionCount: sessions.length,
-        minSessionsRequired: minSessions,
-        gradeProfile: null,
-      };
-    }
-
-    // Calculate zones based on success rate (using route success rate, not attempt rate)
-    // Logic:
-    // - Comfort Zone: High success rate (>= 70%) - grades you consistently send, confidence zone
-    //   These are grades where you send most routes, indicating they're well within your ability
-    // - Project Zone: Medium success rate (30-50%) - grades you're working on, challenging but achievable
-    //   These are grades where you're putting in effort and seeing some success, indicating they're at your limit
-    // - Too Hard: Very low success rate (< 20%) - grades that are currently too difficult
-    //   These are grades where you rarely send routes, indicating they're above your current ability
-    // Using route success rate (% of routes sent) rather than attempt success rate (% of attempts that succeeded)
-    // because route success better reflects consistency (did you send it or not) vs total attempts spent
-    
-    const COMFORT_ZONE_THRESHOLD = 70; // >= 70% route success rate
-    const PROJECT_ZONE_MIN = 30; // >= 30% route success rate (lower bound)
-    const PROJECT_ZONE_MAX = 50; // < 50% route success rate (upper bound)
-    const TOO_HARD_THRESHOLD = 20; // < 20% route success rate
-    
-    const comfortZone = gradeStatsArray.filter(stats => stats.successRateRoutes >= COMFORT_ZONE_THRESHOLD);
-    const projectZone = gradeStatsArray.filter(stats => 
-      stats.successRateRoutes >= PROJECT_ZONE_MIN && stats.successRateRoutes < PROJECT_ZONE_MAX
-    );
-    const tooHard = gradeStatsArray.filter(stats => stats.successRateRoutes < TOO_HARD_THRESHOLD);
-
-    // Find ideal progression grade (next grade up from highest comfort zone grade)
-    // Simply calculate next grade: if highest comfort is V5 (numericValue=5), progression is V6 (numericValue=6)
-    // No need to search - just increment numeric value and convert back to grade string
-    // This is just a grade suggestion - actual route matching happens in route suggestions feature
-    let idealProgressionGrade = null;
-    if (comfortZone.length > 0 && primaryGradeSystem) {
-      const highestComfortGrade = comfortZone[comfortZone.length - 1];
-      const nextGradeNumeric = highestComfortGrade.numericValue + 1;
-      const nextGradeString = numberToGrade(nextGradeNumeric, primaryGradeSystem);
+    let gradeProfile = null;
+    if (gradeStatsArray.length > 0) {
+      const COMFORT_ZONE_THRESHOLD = 70;
+      const PROJECT_ZONE_MIN = 30;
+      const PROJECT_ZONE_MAX = 50;
+      const TOO_HARD_THRESHOLD = 20;
       
-      if (nextGradeString) {
-        idealProgressionGrade = nextGradeString; // Just the grade string, e.g. "V6"
-      }
-    }
+      const comfortZone = gradeStatsArray.filter(stats => stats.successRateRoutes >= COMFORT_ZONE_THRESHOLD);
+      const projectZone = gradeStatsArray.filter(stats => 
+        stats.successRateRoutes >= PROJECT_ZONE_MIN && stats.successRateRoutes < PROJECT_ZONE_MAX
+      );
+      const tooHard = gradeStatsArray.filter(stats => stats.successRateRoutes < TOO_HARD_THRESHOLD);
 
-    return {
-      hasEnoughData: true,
-      sessionCount: sessions.length,
-      totalRoutes: allRoutes.length,
-      gradeSystem: primaryGradeSystem,
-      gradeProfile: {
+      let idealProgressionGrade = null;
+      // primaryGradeSystem is guaranteed to be set if gradeStatsArray.length > 0
+      if (comfortZone.length > 0) {
+        const highestComfortGrade = comfortZone[comfortZone.length - 1];
+        const nextGradeNumeric = highestComfortGrade.numericValue + 1;
+        idealProgressionGrade = numberToGrade(nextGradeNumeric, primaryGradeSystem);
+      }
+
+      gradeProfile = {
         byGrade: gradeStatsArray,
         comfortZone: comfortZone.map(s => ({
           grade: s.grade,
@@ -584,8 +586,97 @@ class SessionService extends PrismaCrudService {
           successRate: Math.round(s.successRateRoutes),
           totalRoutes: s.totalRoutes,
         })),
-        idealProgressionGrade: idealProgressionGrade, // Just the grade string, e.g. "V6"
-      },
+        idealProgressionGrade: idealProgressionGrade,
+      };
+    }
+
+    const descriptorStatsArray = Array.from(descriptorMap.values())
+      .map(stats => ({
+        ...stats,
+        successRate: stats.totalRoutes > 0 
+          ? (stats.successfulRoutes / stats.totalRoutes) * 100 
+          : 0,
+      }))
+      .filter(stats => stats.totalRoutes > 0);
+
+    let styleAnalysis = null;
+    if (descriptorStatsArray.length > 0) {
+      const STRENGTH_THRESHOLD = 60;
+      const WEAKNESS_THRESHOLD = 40;
+      const MIN_ROUTES_FOR_WEAKNESS = 2;
+
+      const strengths = descriptorStatsArray
+        .filter(stats => stats.successRate >= STRENGTH_THRESHOLD)
+        .map(stats => ({
+          descriptor: stats.descriptor,
+          successRate: Math.round(stats.successRate),
+          totalRoutes: stats.totalRoutes,
+          successfulRoutes: stats.successfulRoutes,
+          failedRoutes: stats.failedRoutes,
+          totalAttempts: stats.totalAttempts,
+        }))
+        .sort((a, b) => b.successRate - a.successRate);
+
+      const weaknesses = descriptorStatsArray
+        .filter(stats => 
+          stats.successRate < WEAKNESS_THRESHOLD && stats.totalRoutes >= MIN_ROUTES_FOR_WEAKNESS
+        )
+        .map(stats => ({
+          descriptor: stats.descriptor,
+          successRate: Math.round(stats.successRate),
+          totalRoutes: stats.totalRoutes,
+          successfulRoutes: stats.successfulRoutes,
+          failedRoutes: stats.failedRoutes,
+          totalAttempts: stats.totalAttempts,
+        }))
+        .sort((a, b) => a.successRate - b.successRate);
+
+      const preferences = descriptorStatsArray
+        .map(stats => ({
+          descriptor: stats.descriptor,
+          totalRoutes: stats.totalRoutes,
+          successfulRoutes: stats.successfulRoutes,
+          failedRoutes: stats.failedRoutes,
+          totalAttempts: stats.totalAttempts,
+          successRate: Math.round(stats.successRate),
+        }))
+        .sort((a, b) => b.totalRoutes - a.totalRoutes);
+
+      styleAnalysis = {
+        strengths,
+        weaknesses,
+        preferences,
+      };
+    }
+
+    return {
+      hasEnoughData: true,
+      sessionCount: sessions.length,
+      totalRoutes: allRoutes.length,
+      gradeSystem: primaryGradeSystem,
+      gradeProfile,
+      styleAnalysis,
+    };
+  }
+
+  // Legacy methods - kept for backward compatibility, now call calculateInsights todo: get rid of these methods
+  async calculateGradeProfile(userId, options = {}) {
+    const insights = await this.calculateInsights(userId, options);
+    return {
+      hasEnoughData: insights.hasEnoughData,
+      sessionCount: insights.sessionCount,
+      minSessionsRequired: insights.minSessionsRequired,
+      gradeProfile: insights.gradeProfile,
+    };
+  }
+
+  async calculateStyleAnalysis(userId, options = {}) {
+    const insights = await this.calculateInsights(userId, options);
+    return {
+      hasEnoughData: insights.hasEnoughData,
+      sessionCount: insights.sessionCount,
+      minSessionsRequired: insights.minSessionsRequired,
+      styleAnalysis: insights.styleAnalysis,
     };
   }
 }

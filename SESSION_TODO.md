@@ -28,9 +28,12 @@
      - Backend: `GET /sessions/insights/grade-profile`
    
    - **Style Analysis**:
+     - Track descriptors across all routes: total routes, successful routes, failed routes, total attempts
      - Strengths: descriptors with high success rate (>60%)
      - Weaknesses: descriptors with low success rate (<40%) but attempts made
-     - Preferences: most attempted descriptors (even if success is lower)
+     - Preferences: most attempted descriptors (even if success is lower) - sorted by total routes
+     - Future: Descriptor combinations (e.g., "dyno + powerful") for specialized badges/identities
+     - Backend: `GET /sessions/insights/style-analysis`
    
    - **Route Suggestions** (displayed in profile page, up to 3 per category):
      - **Enjoyable**: Match strengths at comfort/progression grade
