@@ -3,21 +3,16 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
 const COLOR_PALETTE = [
   '#FF6B6B', // Red
-  '#4ECDC4', // Teal
-  '#45B7D1', // Blue
-  '#FFA07A', // Light Salmon
-  '#98D8C8', // Mint
+  '#5DADE2', // Blue
   '#F7DC6F', // Yellow
-  '#BB8FCE', // Purple
-  '#85C1E2', // Sky Blue
-  '#F8B739', // Orange
+  '#8E44AD', // Purple
+  '#FF8C00', // Orange
   '#52BE80', // Green
-  '#EC7063', // Coral
-  '#5DADE2', // Light Blue
-  '#F1948A', // Pink
+  '#FFB6C1', // Pink
   '#73C6B6', // Turquoise
-  '#F4D03F', // Gold
-  '#AF7AC5', // Lavender
+  '#000000', // Black
+  '#808080', // Gray
+  '#FFFFFF', // White
 ];
 
 export default function ColorPicker({ selectedColor, onColorSelect }) {

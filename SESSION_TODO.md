@@ -18,24 +18,26 @@
    - Filter/section showing routes user hasn't logged in sessions
    - Help users discover new routes to try
 
-3. **Session insights/analytics** (requires minimum 5 sessions)
+3. **Session insights/analytics** ✅ (Backend complete - Frontend pending)
+   - Requires minimum 5 sessions
+   - Backend: `GET /sessions/insights` (unified endpoint returns all insights)
+   
    - **Grade Profile** ✅:
      - Success rate by grade (sends/total attempts)
-     - Comfort zone: high success rate (>70%)
-     - Project zone: medium success rate (30-50%), attempting regularly
+     - Comfort zone: high success rate (≥70%)
+     - Challenging zone: medium-high success rate (50-69%)
+     - Project zone: medium success rate (20-49%), attempting regularly
      - Too hard: very low success rate (<20%)
      - Ideal progression grade: next grade up from comfort zone
-     - Backend: `GET /sessions/insights/grade-profile`
    
-   - **Style Analysis**:
+   - **Style Analysis** ✅:
      - Track descriptors across all routes: total routes, successful routes, failed routes, total attempts
-     - Strengths: descriptors with high success rate (>60%)
+     - Strengths: descriptors with high success rate (≥60%)
      - Weaknesses: descriptors with low success rate (<40%) but attempts made
      - Preferences: most attempted descriptors (even if success is lower) - sorted by total routes
      - Future: Descriptor combinations (e.g., "dyno + powerful") for specialized badges/identities
-     - Backend: `GET /sessions/insights/style-analysis`
    
-   - **Route Suggestions** (displayed in profile page, up to 3 per category):
+   - **Route Suggestions** ✅ (displayed in profile page, up to 3 per category):
      - **Enjoyable**: Match strengths at comfort/progression grade
      - **Improve**: Match weaknesses at slightly easier grade (focus on technique)
      - **Progression**: Slightly harder grade in same style (push comfort zone)
