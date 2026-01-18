@@ -9,6 +9,7 @@ import {
   updateRouteController,
   updateRouteMetadataController,
   deleteSessionController,
+  getGradeProfileController,
 } from '../controllers/sessionController.js';
 import { verifyToken } from '../middleware/auth.js';
 
@@ -19,6 +20,7 @@ router.use(verifyToken);
 router.post('/', createSessionController);
 router.get('/', getSessionsController);
 router.get('/logged-climbs', getLoggedClimbIdsController);
+router.get('/insights/grade-profile', getGradeProfileController);
 router.get('/:sessionId', getSessionByIdController);
 router.put('/:sessionId/end', endSessionController);
 router.post('/:sessionId/routes', addRouteController);

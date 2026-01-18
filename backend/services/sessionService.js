@@ -1,6 +1,6 @@
 import PrismaCrudService from "./prismaCrudService.js";
 import prisma from "../lib/prisma.js";
-import { calculateAverageGrade, gradeToNumber } from "../lib/gradeUtils.js";
+import { calculateAverageGrade, gradeToNumber, numberToGrade } from "../lib/gradeUtils.js";
 import climbService from "./climbService.js";
 
 function calculateVoterGradeAndDescriptors(votes, gradeSystem) {
@@ -425,6 +425,168 @@ class SessionService extends PrismaCrudService {
     }
 
     return await this.delete({ id: sessionId });
+  }
+
+  async calculateGradeProfile(userId, options = {}) {
+    const { minSessions = 5 } = options;
+
+    // Get all completed sessions (with endTime) for the user
+    const sessions = await prisma.climbingSession.findMany({
+      where: {
+        userId,
+        endTime: { not: null }, // Only completed sessions
+      },
+      include: {
+        attempts: true,
+      },
+    });
+
+    // Check minimum session requirement
+    if (sessions.length < minSessions) {
+      return {
+        hasEnoughData: false,
+        sessionCount: sessions.length,
+        minSessionsRequired: minSessions,
+        gradeProfile: null,
+      };
+    }
+
+    // Collect all routes from all sessions
+    const allRoutes = [];
+    sessions.forEach(session => {
+      if (session.attempts && session.attempts.length > 0) {
+        allRoutes.push(...session.attempts);
+      }
+    });
+
+    if (allRoutes.length === 0) {
+      return {
+        hasEnoughData: false,
+        sessionCount: sessions.length,
+        minSessionsRequired: minSessions,
+        gradeProfile: null,
+      };
+    }
+
+    // Group routes by grade (prefer voterGrade, fallback to proposedGrade)
+    // Also track grade system (assuming single system per user for now)
+    const gradeMap = new Map();
+    let primaryGradeSystem = null;
+
+    allRoutes.forEach(route => {
+      const grade = route.voterGrade || route.proposedGrade;
+      const gradeSystem = route.gradeSystem || 'V-Scale';
+
+      if (!grade || grade === 'Unknown') return;
+
+      // Track primary grade system (use first one encountered, assuming single system per user)
+      if (!primaryGradeSystem) {
+        primaryGradeSystem = gradeSystem;
+      }
+
+      if (!gradeMap.has(grade)) {
+        gradeMap.set(grade, {
+          grade,
+          gradeSystem,
+          totalAttempts: 0,
+          successfulAttempts: 0,
+          totalRoutes: 0,
+          successfulRoutes: 0,
+        });
+      }
+
+      const gradeStats = gradeMap.get(grade);
+      gradeStats.totalAttempts += route.attempts;
+      gradeStats.totalRoutes += 1;
+      
+      if (route.status === 'success') {
+        gradeStats.successfulAttempts += route.attempts;
+        gradeStats.successfulRoutes += 1;
+      }
+    });
+
+    // Convert to array and calculate success rates
+    const gradeStatsArray = Array.from(gradeMap.values())
+      .map(stats => ({
+        ...stats,
+        successRateRoutes: stats.totalRoutes > 0 ? (stats.successfulRoutes / stats.totalRoutes) * 100 : 0,
+        successRateAttempts: stats.totalAttempts > 0 ? (stats.successfulAttempts / stats.totalAttempts) * 100 : 0,
+        numericValue: gradeToNumber(stats.grade, stats.gradeSystem),
+      }))
+      .filter(stats => stats.numericValue !== null)
+      .sort((a, b) => a.numericValue - b.numericValue);
+
+    if (gradeStatsArray.length === 0) {
+      return {
+        hasEnoughData: false,
+        sessionCount: sessions.length,
+        minSessionsRequired: minSessions,
+        gradeProfile: null,
+      };
+    }
+
+    // Calculate zones based on success rate (using route success rate, not attempt rate)
+    // Logic:
+    // - Comfort Zone: High success rate (>= 70%) - grades you consistently send, confidence zone
+    //   These are grades where you send most routes, indicating they're well within your ability
+    // - Project Zone: Medium success rate (30-50%) - grades you're working on, challenging but achievable
+    //   These are grades where you're putting in effort and seeing some success, indicating they're at your limit
+    // - Too Hard: Very low success rate (< 20%) - grades that are currently too difficult
+    //   These are grades where you rarely send routes, indicating they're above your current ability
+    // Using route success rate (% of routes sent) rather than attempt success rate (% of attempts that succeeded)
+    // because route success better reflects consistency (did you send it or not) vs total attempts spent
+    
+    const COMFORT_ZONE_THRESHOLD = 70; // >= 70% route success rate
+    const PROJECT_ZONE_MIN = 30; // >= 30% route success rate (lower bound)
+    const PROJECT_ZONE_MAX = 50; // < 50% route success rate (upper bound)
+    const TOO_HARD_THRESHOLD = 20; // < 20% route success rate
+    
+    const comfortZone = gradeStatsArray.filter(stats => stats.successRateRoutes >= COMFORT_ZONE_THRESHOLD);
+    const projectZone = gradeStatsArray.filter(stats => 
+      stats.successRateRoutes >= PROJECT_ZONE_MIN && stats.successRateRoutes < PROJECT_ZONE_MAX
+    );
+    const tooHard = gradeStatsArray.filter(stats => stats.successRateRoutes < TOO_HARD_THRESHOLD);
+
+    // Find ideal progression grade (next grade up from highest comfort zone grade)
+    // Simply calculate next grade: if highest comfort is V5 (numericValue=5), progression is V6 (numericValue=6)
+    // No need to search - just increment numeric value and convert back to grade string
+    // This is just a grade suggestion - actual route matching happens in route suggestions feature
+    let idealProgressionGrade = null;
+    if (comfortZone.length > 0 && primaryGradeSystem) {
+      const highestComfortGrade = comfortZone[comfortZone.length - 1];
+      const nextGradeNumeric = highestComfortGrade.numericValue + 1;
+      const nextGradeString = numberToGrade(nextGradeNumeric, primaryGradeSystem);
+      
+      if (nextGradeString) {
+        idealProgressionGrade = nextGradeString; // Just the grade string, e.g. "V6"
+      }
+    }
+
+    return {
+      hasEnoughData: true,
+      sessionCount: sessions.length,
+      totalRoutes: allRoutes.length,
+      gradeSystem: primaryGradeSystem,
+      gradeProfile: {
+        byGrade: gradeStatsArray,
+        comfortZone: comfortZone.map(s => ({
+          grade: s.grade,
+          successRate: Math.round(s.successRateRoutes),
+          totalRoutes: s.totalRoutes,
+        })),
+        projectZone: projectZone.map(s => ({
+          grade: s.grade,
+          successRate: Math.round(s.successRateRoutes),
+          totalRoutes: s.totalRoutes,
+        })),
+        tooHard: tooHard.map(s => ({
+          grade: s.grade,
+          successRate: Math.round(s.successRateRoutes),
+          totalRoutes: s.totalRoutes,
+        })),
+        idealProgressionGrade: idealProgressionGrade, // Just the grade string, e.g. "V6"
+      },
+    };
   }
 }
 

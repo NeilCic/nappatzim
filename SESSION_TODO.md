@@ -18,10 +18,24 @@
    - Filter/section showing routes user hasn't logged in sessions
    - Help users discover new routes to try
 
-3. **Session insights/analytics**
-   - Derive insights from user session data
-   - Examples: "mostly doing V5s in overhangs", success rate by descriptor, grade progression patterns
-   - Display trends and patterns over time
+3. **Session insights/analytics** (requires minimum 5 sessions)
+   - **Grade Profile** ✅:
+     - Success rate by grade (sends/total attempts)
+     - Comfort zone: high success rate (>70%)
+     - Project zone: medium success rate (30-50%), attempting regularly
+     - Too hard: very low success rate (<20%)
+     - Ideal progression grade: next grade up from comfort zone
+     - Backend: `GET /sessions/insights/grade-profile`
+   
+   - **Style Analysis**:
+     - Strengths: descriptors with high success rate (>60%)
+     - Weaknesses: descriptors with low success rate (<40%) but attempts made
+     - Preferences: most attempted descriptors (even if success is lower)
+   
+   - **Route Suggestions** (displayed in profile page, up to 3 per category):
+     - **Enjoyable**: Match strengths at comfort/progression grade
+     - **Improve**: Match weaknesses at slightly easier grade (focus on technique)
+     - **Progression**: Slightly harder grade in same style (push comfort zone)
 
 ### Technical Debt / Maintenance
 1. **Reanimated Migration (runOnJS deprecation)**
@@ -36,6 +50,12 @@
    - Current state: Swipe-to-add feature only works in **list view**, not in **map view**
    - Reason: SwipeableRouteItem component is only used in the FlatList renderItem for list view; map view uses spot markers that open a modal
    - Future enhancement: Implement swipe gestures for routes in map view modal (if desired)
+
+3. **Grade System Preference**
+   - **Future feature**: Allow users to pick their preferred grading system for insights/analytics
+   - Currently assumes single grade system per user (uses first encountered)
+   - Would need user preference setting and UI to select preferred system
+   - For now, stick with current implementation (auto-detect from first route)
 
 ---
 

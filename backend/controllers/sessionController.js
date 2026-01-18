@@ -3,6 +3,8 @@ import { z } from "zod";
 import logger from "../lib/logger.js";
 import { formatZodError } from "../lib/zodErrorFormatter.js";
 
+const MIN_SESSIONS_REQUIRED = 5; // Minimum sessions needed to generate reliable insights
+
 const createSessionSchema = z.object({
   startTime: z.string().datetime().optional().transform((val) => val ? new Date(val) : new Date()),
 });
@@ -395,6 +397,43 @@ export const getLoggedClimbIdsController = async (req, res) => {
       "Failed to fetch logged climb IDs"
     );
     res.status(500).json({ error: "Failed to fetch logged climb IDs" });
+  }
+};
+
+export const getGradeProfileController = async (req, res) => {
+  const requestId = Date.now().toString();
+  try {
+    const userId = req.user?.userId;
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    logger.info({ requestId, userId }, "Getting grade profile");
+
+    // Parse minSessions from query param if provided, otherwise use default minimum
+    // More sessions = more reliable data, but we require at least MIN_SESSIONS_REQUIRED
+    const minSessions = req.query.minSessions 
+      ? parseInt(req.query.minSessions, 10) 
+      : MIN_SESSIONS_REQUIRED;
+
+    const gradeProfile = await sessionService.calculateGradeProfile(userId, {
+      minSessions: Math.max(minSessions, MIN_SESSIONS_REQUIRED), // Ensure at least minimum
+    });
+
+    logger.info({ requestId, hasEnoughData: gradeProfile.hasEnoughData }, "Grade profile calculated");
+
+    res.status(200).json(gradeProfile);
+  } catch (error) {
+    logger.error(
+      {
+        requestId,
+        userId: req.user?.userId,
+        error: error.message,
+        stack: error.stack,
+      },
+      "Failed to get grade profile"
+    );
+    res.status(500).json({ error: "Failed to get grade profile" });
   }
 };
 
