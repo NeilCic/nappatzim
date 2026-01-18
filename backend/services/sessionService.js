@@ -470,6 +470,10 @@ class SessionService extends PrismaCrudService {
       };
     }
 
+    const loggedClimbIdsSet = new Set(
+      allRoutes.map(route => route.climbId).filter(Boolean)
+    );
+
     // Group routes by grade (prefer voterGrade, fallback to proposedGrade)
     const gradeMap = new Map();
     const descriptorMap = new Map();
@@ -551,13 +555,16 @@ class SessionService extends PrismaCrudService {
     let gradeProfile = null;
     if (gradeStatsArray.length > 0) {
       const COMFORT_ZONE_THRESHOLD = 70;
-      const PROJECT_ZONE_MIN = 30;
+      const CHALLENGING_ZONE_MIN = 50;
       const PROJECT_ZONE_MAX = 50;
       const TOO_HARD_THRESHOLD = 20;
       
       const comfortZone = gradeStatsArray.filter(stats => stats.successRateRoutes >= COMFORT_ZONE_THRESHOLD);
+      const challengingZone = gradeStatsArray.filter(stats => 
+        stats.successRateRoutes >= CHALLENGING_ZONE_MIN && stats.successRateRoutes < COMFORT_ZONE_THRESHOLD
+      );
       const projectZone = gradeStatsArray.filter(stats => 
-        stats.successRateRoutes >= PROJECT_ZONE_MIN && stats.successRateRoutes < PROJECT_ZONE_MAX
+        stats.successRateRoutes >= TOO_HARD_THRESHOLD && stats.successRateRoutes < PROJECT_ZONE_MAX
       );
       const tooHard = gradeStatsArray.filter(stats => stats.successRateRoutes < TOO_HARD_THRESHOLD);
 
@@ -572,6 +579,11 @@ class SessionService extends PrismaCrudService {
       gradeProfile = {
         byGrade: gradeStatsArray,
         comfortZone: comfortZone.map(s => ({
+          grade: s.grade,
+          successRate: Math.round(s.successRateRoutes),
+          totalRoutes: s.totalRoutes,
+        })),
+        challengingZone: challengingZone.map(s => ({
           grade: s.grade,
           successRate: Math.round(s.successRateRoutes),
           totalRoutes: s.totalRoutes,
@@ -649,6 +661,133 @@ class SessionService extends PrismaCrudService {
       };
     }
 
+    // Calculate route suggestions based on insights
+    let routeSuggestions = null;
+    if (gradeProfile && styleAnalysis) {
+      const { limitPerCategory = 3 } = options;
+      
+      // Get all climbs with votes (needed to calculate voter grades and descriptors)
+      const allClimbs = await prisma.climb.findMany({
+        where: {
+          id: {
+            notIn: Array.from(loggedClimbIdsSet), // Exclude already-logged climbs
+          },
+        },
+        include: {
+          votes: {
+            select: {
+              grade: true,
+              gradeSystem: true,
+              descriptors: true,
+            },
+          },
+          spot: {
+            select: {
+              id: true,
+              name: true,
+              layout: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Calculate voter grades and descriptors for each climb
+      const climbsWithMetadata = allClimbs.map(climb => {
+        const { voterGrade, descriptors } = calculateVoterGradeAndDescriptors(
+          climb.votes,
+          climb.gradeSystem
+        );
+        return {
+          ...climb,
+          voterGrade,
+          descriptors: descriptors.map(d => d.toLowerCase()),
+        };
+      });
+
+      const suggestions = {
+        enjoyable: [],
+        improve: [],
+        progression: [],
+      };
+
+      // Helper function to find climbs matching criteria
+      const findMatchingClimbs = (targetGrade, targetDescriptors, maxResults = limitPerCategory) => {
+        return climbsWithMetadata
+          .filter(climb => {
+            // Match grade (prefer voter grade, fallback to proposed)
+            const climbGrade = climb.voterGrade || climb.grade;
+            if (!climbGrade) return false;
+
+            const climbGradeNumeric = gradeToNumber(climbGrade, primaryGradeSystem);
+            const targetGradeNumeric = gradeToNumber(targetGrade, primaryGradeSystem);
+            
+            if (climbGradeNumeric === null || targetGradeNumeric === null) return false;
+            if (climbGradeNumeric !== targetGradeNumeric) return false;
+
+            // Match at least one descriptor
+            if (!targetDescriptors || targetDescriptors.length === 0) return true;
+            
+            const climbDescriptorsLower = climb.descriptors || [];
+            return targetDescriptors.some(desc => 
+              climbDescriptorsLower.includes(desc.toLowerCase())
+            );
+          })
+          .slice(0, maxResults)
+          .map(climb => ({
+            id: climb.id,
+            grade: climb.grade,
+            voterGrade: climb.voterGrade,
+            descriptors: climb.descriptors,
+            spotName: climb.spot?.name,
+            layoutId: climb.spot?.layout?.id,
+            layoutName: climb.spot?.layout?.name,
+          }));
+      };
+
+      // 1. Enjoyable: Match strengths at comfort/progression grade
+      const strengths = styleAnalysis.strengths.slice(0, 2); // Top 2 strengths
+      if (strengths.length > 0 && gradeProfile.comfortZone.length > 0) {
+        // Use highest comfort zone grade or progression grade
+        const targetGrade = gradeProfile.idealProgressionGrade || 
+                           gradeProfile.comfortZone[gradeProfile.comfortZone.length - 1].grade;
+        const strengthDescriptors = strengths.map(s => s.descriptor);
+        
+        suggestions.enjoyable = findMatchingClimbs(targetGrade, strengthDescriptors);
+      }
+
+      // 2. Improve: Match weaknesses at slightly easier grade
+      const weaknesses = styleAnalysis.weaknesses.slice(0, 2); // Top 2 weaknesses
+      if (weaknesses.length > 0 && gradeProfile.comfortZone.length > 0) {
+        // Use one grade below lowest comfort zone
+        const lowestComfortGrade = gradeProfile.comfortZone[0];
+        const lowestComfortNumeric = gradeToNumber(lowestComfortGrade.grade, primaryGradeSystem);
+        if (lowestComfortNumeric !== null && lowestComfortNumeric > 0) {
+          const improveGradeNumeric = lowestComfortNumeric - 1;
+          const improveGrade = numberToGrade(improveGradeNumeric, primaryGradeSystem);
+          
+          if (improveGrade) {
+            const weaknessDescriptors = weaknesses.map(w => w.descriptor);
+            suggestions.improve = findMatchingClimbs(improveGrade, weaknessDescriptors);
+          }
+        }
+      }
+
+      // 3. Progression: Slightly harder grade in same style (strengths)
+      if (strengths.length > 0 && gradeProfile.idealProgressionGrade) {
+        const targetGrade = gradeProfile.idealProgressionGrade;
+        const strengthDescriptors = strengths.map(s => s.descriptor);
+        
+        suggestions.progression = findMatchingClimbs(targetGrade, strengthDescriptors);
+      }
+
+      routeSuggestions = suggestions;
+    }
+
     return {
       hasEnoughData: true,
       sessionCount: sessions.length,
@@ -656,27 +795,7 @@ class SessionService extends PrismaCrudService {
       gradeSystem: primaryGradeSystem,
       gradeProfile,
       styleAnalysis,
-    };
-  }
-
-  // Legacy methods - kept for backward compatibility, now call calculateInsights todo: get rid of these methods
-  async calculateGradeProfile(userId, options = {}) {
-    const insights = await this.calculateInsights(userId, options);
-    return {
-      hasEnoughData: insights.hasEnoughData,
-      sessionCount: insights.sessionCount,
-      minSessionsRequired: insights.minSessionsRequired,
-      gradeProfile: insights.gradeProfile,
-    };
-  }
-
-  async calculateStyleAnalysis(userId, options = {}) {
-    const insights = await this.calculateInsights(userId, options);
-    return {
-      hasEnoughData: insights.hasEnoughData,
-      sessionCount: insights.sessionCount,
-      minSessionsRequired: insights.minSessionsRequired,
-      styleAnalysis: insights.styleAnalysis,
+      routeSuggestions,
     };
   }
 }

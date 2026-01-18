@@ -4,6 +4,7 @@ import logger from "../lib/logger.js";
 import { formatZodError } from "../lib/zodErrorFormatter.js";
 
 const MIN_SESSIONS_REQUIRED = 5; // Minimum sessions needed to generate reliable insights
+const SUGGESTIONS_PER_INSIGHT_CATEGORY = 3; // Maximum number of route suggestions per category (enjoyable, improve, progression)
 
 const createSessionSchema = z.object({
   startTime: z.string().datetime().optional().transform((val) => val ? new Date(val) : new Date()),
@@ -400,7 +401,7 @@ export const getLoggedClimbIdsController = async (req, res) => {
   }
 };
 
-export const getGradeProfileController = async (req, res) => {
+export const getInsightsController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
     const userId = req.user?.userId;
@@ -408,21 +409,30 @@ export const getGradeProfileController = async (req, res) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    logger.info({ requestId, userId }, "Getting grade profile");
+    logger.info({ requestId, userId }, "Getting all insights");
 
-    // Parse minSessions from query param if provided, otherwise use default minimum
-    // More sessions = more reliable data, but we require at least MIN_SESSIONS_REQUIRED
     const minSessions = req.query.minSessions 
       ? parseInt(req.query.minSessions, 10) 
       : MIN_SESSIONS_REQUIRED;
 
-    const gradeProfile = await sessionService.calculateGradeProfile(userId, {
-      minSessions: Math.max(minSessions, MIN_SESSIONS_REQUIRED), // Ensure at least minimum
+    // Calculate all insights (including route suggestions) in one call
+    const insights = await sessionService.calculateInsights(userId, {
+      minSessions: Math.max(minSessions, MIN_SESSIONS_REQUIRED),
+      limitPerCategory: SUGGESTIONS_PER_INSIGHT_CATEGORY,
     });
 
-    logger.info({ requestId, hasEnoughData: gradeProfile.hasEnoughData }, "Grade profile calculated");
+    logger.info({ requestId, hasEnoughData: insights.hasEnoughData }, "Insights calculated");
 
-    res.status(200).json(gradeProfile);
+    res.status(200).json({
+      hasEnoughData: insights.hasEnoughData,
+      sessionCount: insights.sessionCount,
+      minSessionsRequired: insights.minSessionsRequired || MIN_SESSIONS_REQUIRED,
+      totalRoutes: insights.totalRoutes,
+      gradeSystem: insights.gradeSystem,
+      gradeProfile: insights.gradeProfile,
+      styleAnalysis: insights.styleAnalysis,
+      routeSuggestions: insights.routeSuggestions,
+    });
   } catch (error) {
     logger.error(
       {
@@ -431,46 +441,9 @@ export const getGradeProfileController = async (req, res) => {
         error: error.message,
         stack: error.stack,
       },
-      "Failed to get grade profile"
+      "Failed to get insights"
     );
-    res.status(500).json({ error: "Failed to get grade profile" });
-  }
-};
-
-export const getStyleAnalysisController = async (req, res) => {
-  const requestId = Date.now().toString();
-  try {
-    const userId = req.user?.userId;
-    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    logger.info({ requestId, userId }, "Getting style analysis");
-
-    // Parse minSessions from query param if provided, otherwise use default minimum
-    // More sessions = more reliable data, but we require at least MIN_SESSIONS_REQUIRED
-    const minSessions = req.query.minSessions 
-      ? parseInt(req.query.minSessions, 10) 
-      : MIN_SESSIONS_REQUIRED;
-
-    const styleAnalysis = await sessionService.calculateStyleAnalysis(userId, {
-      minSessions: Math.max(minSessions, MIN_SESSIONS_REQUIRED), // Ensure at least minimum
-    });
-
-    logger.info({ requestId, hasEnoughData: styleAnalysis.hasEnoughData }, "Style analysis calculated");
-
-    res.status(200).json(styleAnalysis);
-  } catch (error) {
-    logger.error(
-      {
-        requestId,
-        userId: req.user?.userId,
-        error: error.message,
-        stack: error.stack,
-      },
-      "Failed to get style analysis"
-    );
-    res.status(500).json({ error: "Failed to get style analysis" });
+    res.status(500).json({ error: "Failed to get insights" });
   }
 };
 
