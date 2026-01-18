@@ -19,6 +19,7 @@ model User {
   height                   Float?
   climbs                   Climb[]
   climbComments            ClimbComment[]
+  climbVideos              ClimbVideo[]
   climbReactions           ClimbCommentReaction[]
   climbVotes               ClimbGradeVote[]
   conversationParticipants ConversationParticipant[]
@@ -188,12 +189,15 @@ model ClimbVideo {
   fileSize      Int
   duration      Float?
   climbId       String
+  userId        String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   climb         Climb    @relation(fields: [climbId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([climbId])
   @@index([climbId, createdAt])
+  @@index([userId])
 }
 
 model Climb {

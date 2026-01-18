@@ -21,6 +21,7 @@ class ClimbVideoService extends PrismaCrudService {
         thumbnailUrl: true,
         duration: true,
         createdAt: true,
+        userId: true,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -50,7 +51,7 @@ class ClimbVideoService extends PrismaCrudService {
     );
   }
 
-  async createVideo(climbId, title, description, videoFile) {
+  async createVideo(climbId, userId, title, description, videoFile) {
     const climb = await climbService.getClimbById(climbId);
 
     if (!climb) {
@@ -82,6 +83,9 @@ class ClimbVideoService extends PrismaCrudService {
         climb: {
           connect: { id: climbId },
         },
+        user: {
+          connect: { id: userId },
+        },
         title: title || null,
         description: description || null,
         videoUrl: uploadResult.url,
@@ -102,15 +106,27 @@ class ClimbVideoService extends PrismaCrudService {
     }
   }
 
-  async updateVideo(videoId, data) {
+  async updateVideo(videoId, userId, data) {
+    const video = await this.getVideoById(videoId);
+    if (!video) {
+      return null;
+    }
+    if (video.userId !== userId) {
+      throw new Error("Unauthorized: You can only update your own videos");
+    }
     return await this.update({ id: videoId }, data);
   }
 
-  async deleteVideo(videoId) {
+  async deleteVideo(videoId, userId) {
     const video = await this.getVideoById(videoId);
     
     if (!video) {
       return null;
+    }
+
+    // Check ownership
+    if (video.userId !== userId) {
+      throw new Error("Unauthorized: You can only delete your own videos");
     }
 
     // Delete video from Cloudinary

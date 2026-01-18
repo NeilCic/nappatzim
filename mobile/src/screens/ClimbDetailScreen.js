@@ -8,6 +8,7 @@ import {
   Platform,
   Image,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -52,6 +53,10 @@ export default function ClimbDetailScreen({ navigation, route }) {
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [newVideoTitle, setNewVideoTitle] = useState('');
   const [newVideoDescription, setNewVideoDescription] = useState('');
+  const [editingVideoId, setEditingVideoId] = useState(null);
+  const [editVideoTitle, setEditVideoTitle] = useState('');
+  const [editVideoDescription, setEditVideoDescription] = useState('');
+  const [deletingVideoId, setDeletingVideoId] = useState(null);
   const [activeTab, setActiveTab] = useState('votes');
   const [selectedDescriptors, setSelectedDescriptors] = useState([]);
   const scrollViewRef = useRef(null);
@@ -565,6 +570,59 @@ export default function ClimbDetailScreen({ navigation, route }) {
       showError(error, 'Error', 'Failed to upload video');
     } finally {
       setUploadingVideo(false);
+    }
+  };
+
+  const handleEditVideo = (video) => {
+    setEditingVideoId(video.id);
+    setEditVideoTitle(video.title || '');
+    setEditVideoDescription(video.description || '');
+  };
+
+  const handleUpdateVideo = async () => {
+    if (!climbId || !editingVideoId) return;
+
+    try {
+      await api.patch(`/videos/${editingVideoId}`, {
+        title: editVideoTitle.trim() || null,
+        description: editVideoDescription.trim() || null,
+      });
+
+      await fetchClimbDetails(climbId);
+      setEditingVideoId(null);
+      setEditVideoTitle('');
+      setEditVideoDescription('');
+      showSuccessAlert('Video updated successfully!');
+    } catch (error) {
+      showError(error, 'Error', 'Failed to update video');
+    }
+  };
+
+  const handleDeleteVideo = async (videoId) => {
+    if (!climbId || !videoId) return;
+
+    const confirmed = await new Promise((resolve) => {
+      Alert.alert(
+        'Delete Video?',
+        'This will permanently delete the video from Cloudinary and the database. This action cannot be undone.',
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
+        ]
+      );
+    });
+
+    if (!confirmed) return;
+
+    setDeletingVideoId(videoId);
+    try {
+      await api.delete(`/videos/${videoId}`);
+      await fetchClimbDetails(climbId);
+      showSuccessAlert('Video deleted successfully!');
+    } catch (error) {
+      showError(error, 'Error', 'Failed to delete video');
+    } finally {
+      setDeletingVideoId(null);
     }
   };
 
@@ -1512,43 +1570,102 @@ export default function ClimbDetailScreen({ navigation, route }) {
         {climbVideos.length > 0 ? (
           <View style={styles.videosList}>
             {climbVideos.map((video) => (
-              <Pressable
-                key={video.id}
-                style={styles.videoItem}
-                onPress={() => handleVideoPress(video)}
-              >
-                <View style={styles.thumbnailContainer}>
-                  {video.thumbnailUrl ? (
-                    <Image
-                      source={{ uri: video.thumbnailUrl }}
-                      style={styles.videoThumbnail}
-                      resizeMode="cover"
+              <View key={video.id}>
+                {editingVideoId === video.id ? (
+                  <View style={styles.editVideoContainer}>
+                    <StyledTextInput
+                      style={styles.input}
+                      placeholder="Video title (optional)"
+                      value={editVideoTitle}
+                      onChangeText={setEditVideoTitle}
                     />
-                  ) : (
-                    <View style={[styles.videoThumbnail, styles.thumbnailPlaceholder]}>
-                      <Text style={styles.thumbnailPlaceholderText}>▶</Text>
+                    <StyledTextInput
+                      style={[styles.input, styles.textArea]}
+                      placeholder="Video description (optional)"
+                      value={editVideoDescription}
+                      onChangeText={setEditVideoDescription}
+                      multiline
+                      numberOfLines={3}
+                    />
+                    <View style={styles.editActions}>
+                      <Pressable
+                        style={styles.actionButton}
+                        onPress={handleUpdateVideo}
+                      >
+                        <Text style={styles.actionButtonText}>Save</Text>
+                      </Pressable>
+                      <Pressable
+                        style={styles.actionButton}
+                        onPress={() => {
+                          setEditingVideoId(null);
+                          setEditVideoTitle('');
+                          setEditVideoDescription('');
+                        }}
+                      >
+                        <Text style={styles.actionButtonText}>Cancel</Text>
+                      </Pressable>
                     </View>
-                  )}
-                  <View style={styles.playIconOverlay}>
-                    <Text style={styles.playIcon}>▶</Text>
                   </View>
-                  {video.duration && (
-                    <View style={styles.durationBadge}>
-                      <Text style={styles.durationText}>{formatVideoDuration(video.duration)}</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.videoInfo}>
-                  <Text style={styles.videoTitle} numberOfLines={2}>
-                    {video.title || 'Untitled Video'}
-                  </Text>
-                  {video.description && (
-                    <Text style={styles.videoDescription} numberOfLines={2}>
-                      {video.description}
-                    </Text>
-                  )}
-                </View>
-              </Pressable>
+                ) : (
+                  <View style={styles.videoItemContainer}>
+                    <Pressable
+                      style={styles.videoItem}
+                      onPress={() => handleVideoPress(video)}
+                    >
+                      <View style={styles.thumbnailContainer}>
+                        {video.thumbnailUrl ? (
+                          <Image
+                            source={{ uri: video.thumbnailUrl }}
+                            style={styles.videoThumbnail}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={[styles.videoThumbnail, styles.thumbnailPlaceholder]}>
+                            <Text style={styles.thumbnailPlaceholderText}>▶</Text>
+                          </View>
+                        )}
+                        <View style={styles.playIconOverlay}>
+                          <Text style={styles.playIcon}>▶</Text>
+                        </View>
+                        {video.duration && (
+                          <View style={styles.durationBadge}>
+                            <Text style={styles.durationText}>{formatVideoDuration(video.duration)}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <View style={styles.videoInfo}>
+                        <Text style={styles.videoTitle} numberOfLines={2}>
+                          {video.title || 'Untitled Video'}
+                        </Text>
+                        {video.description && (
+                          <Text style={styles.videoDescription} numberOfLines={2}>
+                            {video.description}
+                          </Text>
+                        )}
+                      </View>
+                    </Pressable>
+                    {currentUserId && video.userId === currentUserId && (
+                      <View style={styles.videoActions}>
+                        <Pressable
+                          style={styles.actionButton}
+                          onPress={() => handleEditVideo(video)}
+                        >
+                          <Text style={styles.actionButtonText}>Edit</Text>
+                        </Pressable>
+                        <Pressable
+                          style={styles.actionButton}
+                          onPress={() => handleDeleteVideo(video.id)}
+                          disabled={deletingVideoId === video.id}
+                        >
+                          <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
+                            {deletingVideoId === video.id ? 'Deleting...' : 'Delete'}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
             ))}
           </View>
         ) : (
@@ -2254,12 +2371,30 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 16,
   },
-  videoItem: {
-    flexDirection: 'row',
-    marginBottom: 16,
-    paddingBottom: 16,
+  videoItemContainer: {
+    marginBottom: 12,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+  },
+  videoItem: {
+    flexDirection: 'row',
+    padding: 12,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+  },
+  videoActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+  },
+  editVideoContainer: {
+    padding: 12,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginBottom: 12,
   },
   thumbnailContainer: {
     position: 'relative',

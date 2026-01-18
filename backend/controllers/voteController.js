@@ -13,6 +13,7 @@ const descriptorEnum = z.enum([
   "crimpy",
   "slippery",
   "static",
+  "technical",
   "dyno",
   "coordination",
   "explosive",
@@ -20,11 +21,13 @@ const descriptorEnum = z.enum([
   "powerful",
   "must-try",
   "dangerous",
+  "overhang",
   "pockety",
   "dual-tex",
   "compression",
   "campusy",
   "shouldery",
+  "slab",
 ]);
 
 const submitVoteSchema = z.object({

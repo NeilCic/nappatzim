@@ -350,6 +350,11 @@ export const getVideoByIdController = async (req, res) => {
 
 export const createVideoController = async (req, res) => {
   try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     if (!req.file) {
       return res.status(400).json({ error: "Video file is required" });
     }
@@ -369,6 +374,7 @@ export const createVideoController = async (req, res) => {
 
     const video = await climbVideoService.createVideo(
       climbId,
+      userId,
       validation.data.title || null,
       validation.data.description || null,
       req.file.buffer
@@ -389,6 +395,11 @@ export const createVideoController = async (req, res) => {
 
 export const updateVideoController = async (req, res) => {
   try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const { videoId } = req.params;
     const validation = climbVideoSchema.partial().safeParse(req.body);
     
@@ -399,7 +410,7 @@ export const updateVideoController = async (req, res) => {
       });
     }
 
-    const video = await climbVideoService.updateVideo(videoId, validation.data);
+    const video = await climbVideoService.updateVideo(videoId, userId, validation.data);
     
     if (!video) {
       return res.status(404).json({ error: "Video not found" });
@@ -408,15 +419,25 @@ export const updateVideoController = async (req, res) => {
     res.json({ video });
   } catch (error) {
     logger.error({ error, videoId: req.params.videoId }, "Error updating video");
+    
+    if (error.message?.includes('Unauthorized')) {
+      return res.status(403).json({ error: error.message });
+    }
+    
     res.status(500).json({ error: "Failed to update video" });
   }
 };
 
 export const deleteVideoController = async (req, res) => {
   try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const { videoId } = req.params;
     
-    const deleted = await climbVideoService.deleteVideo(videoId);
+    const deleted = await climbVideoService.deleteVideo(videoId, userId);
     
     if (!deleted) {
       return res.status(404).json({ error: "Video not found" });
@@ -425,6 +446,11 @@ export const deleteVideoController = async (req, res) => {
     res.status(204).send();
   } catch (error) {
     logger.error({ error, videoId: req.params.videoId }, "Error deleting video");
+    
+    if (error.message?.includes('Unauthorized')) {
+      return res.status(403).json({ error: error.message });
+    }
+    
     res.status(500).json({ error: "Failed to delete video" });
   }
 };
