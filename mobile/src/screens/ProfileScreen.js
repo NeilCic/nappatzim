@@ -95,7 +95,6 @@ export default function ProfileScreen({ navigation }) {
     
     const sessionCount = insights.sessionCount || 0;
     const minSessions = insights.minSessionsRequired || 5;
-    const filledBars = Math.floor((sessionCount / minSessions) * 10);
     
     return (
       <Section>
@@ -108,12 +107,12 @@ export default function ProfileScreen({ navigation }) {
             Progress: {sessionCount}/{minSessions} sessions
           </Text>
           <View style={styles.progressBarContainer}>
-            {Array.from({ length: 10 }).map((_, i) => (
+            {Array.from({ length: minSessions }).map((_, i) => (
               <View
                 key={i}
                 style={[
                   styles.progressBarSegment,
-                  i < filledBars ? styles.progressBarFilled : styles.progressBarEmpty,
+                  i < sessionCount ? styles.progressBarFilled : styles.progressBarEmpty,
                 ]}
               />
             ))}
