@@ -12,14 +12,38 @@ export function gradeToNumber(grade, gradeSystem) {
   const trimmedGrade = grade.trim();
 
   switch (gradeSystem) {
-    case 'V-Scale':
-    case 'V-Scale Range':
-      // Extract number from "V4" → 4
+    case 'V-Scale': {
+      // Exact V-grade only, e.g. "V4"
       const vMatch = trimmedGrade.match(/^V(\d+)$/);
       if (vMatch) {
         return parseInt(vMatch[1], 10);
       }
       return null;
+    }
+
+    case 'V-Scale Range': {
+      // 1) If it's already a specific V-grade (e.g. votes): treat like V-Scale
+      const exactMatch = trimmedGrade.match(/^V(\d+)$/);
+      if (exactMatch) {
+        return parseInt(exactMatch[1], 10);
+      }
+
+      // 2) Range such as "V3-V5" (take the LOWER end so ranges still appear in stats)
+      const rangeMatchFull = trimmedGrade.match(/^V(\d+)-V(\d+)$/);
+      if (rangeMatchFull) {
+        const lower = parseInt(rangeMatchFull[1], 10);
+        return lower;
+      }
+
+      // 3) Be tolerant of "V3-5" style just in case
+      const rangeMatchShort = trimmedGrade.match(/^V(\d+)-(\d+)$/);
+      if (rangeMatchShort) {
+        const lower = parseInt(rangeMatchShort[1], 10);
+        return lower;
+      }
+
+      return null;
+    }
 
     case 'French':
       // Convert French grades: 1a, 1a+, 1b, 1b+, 1c, 1c+, 2a, 2a+, ..., 9c+
