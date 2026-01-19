@@ -14,34 +14,6 @@
    - Store session data locally when offline
    - Sync to backend when connection restored
 
-2. **Route discovery** ("Routes you haven't tried yet")
-   - Filter/section showing routes user hasn't logged in sessions
-   - Help users discover new routes to try
-
-3. **Session insights/analytics** ✅ (Backend complete - Frontend pending)
-   - Requires minimum 5 sessions
-   - Backend: `GET /sessions/insights` (unified endpoint returns all insights)
-   
-   - **Grade Profile** ✅:
-     - Success rate by grade (sends/total attempts)
-     - Comfort zone: high success rate (≥70%)
-     - Challenging zone: medium-high success rate (50-69%)
-     - Project zone: medium success rate (20-49%), attempting regularly
-     - Too hard: very low success rate (<20%)
-     - Ideal progression grade: next grade up from comfort zone
-   
-   - **Style Analysis** ✅:
-     - Track descriptors across all routes: total routes, successful routes, failed routes, total attempts
-     - Strengths: descriptors with high success rate (≥60%)
-     - Weaknesses: descriptors with low success rate (<40%) but attempts made
-     - Preferences: most attempted descriptors (even if success is lower) - sorted by total routes
-     - Future: Descriptor combinations (e.g., "dyno + powerful") for specialized badges/identities
-   
-   - **Route Suggestions** ✅ (displayed in profile page, up to 3 per category):
-     - **Enjoyable**: Match strengths at comfort/progression grade
-     - **Improve**: Match weaknesses at slightly easier grade (focus on technique)
-     - **Progression**: Slightly harder grade in same style (push comfort zone)
-
 ### Technical Debt / Maintenance
 1. **Reanimated Migration (runOnJS deprecation)**
    - Migrate from deprecated `runOnJS` to `scheduleOnRN` from `react-native-worklets` (Reanimated 4.x migration)
@@ -86,6 +58,11 @@
 ### Phase 3: Future Features ✅
 - Quick actions (swipe to mark as success) - *Note: Only works in list view, not map view*
 - Session statistics (Total routes, sends, failed, attempts, average grades)
+- **Session insights/analytics** ✅ (Backend complete - Frontend in progress)
+  - Backend: `GET /sessions/insights` (unified endpoint returns all insights)
+  - Planning: See `INSIGHTS_UI_PLAN.md` for UI/UX planning and implementation roadmap
+  - **Route discovery** is covered by Route Suggestions feature
+  - Includes: Grade Profile, Style Analysis, Route Suggestions (Enjoyable/Improve/Progression)
 
 ---
 
