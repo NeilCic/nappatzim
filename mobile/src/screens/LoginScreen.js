@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useApi } from "../ApiProvider";
 import axios from 'axios';
@@ -177,58 +178,65 @@ export default function LoginScreen({ onLoggedIn }) {
   };
 
   return (
-    <View style={styles.container}>
-      <FormField
-        label={null}
-        error={emailError}
-        inputProps={{
-          placeholder: "Email",
-          autoCapitalize: "none",
-          value: email,
-          onChangeText: handleEmailChange,
-        }}
-      />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <View style={styles.container}>
+        <FormField
+          label={null}
+          error={emailError}
+          inputProps={{
+            placeholder: "Email",
+            autoCapitalize: "none",
+            value: email,
+            onChangeText: handleEmailChange,
+          }}
+        />
 
-      <FormField
-        label={null}
-        error={passwordError}
-        inputProps={{
-          placeholder: "Password",
-          secureTextEntry: true,
-          value: password,
-          onChangeText: handlePasswordChange,
-        }}
-      />
+        <FormField
+          label={null}
+          error={passwordError}
+          inputProps={{
+            placeholder: "Password",
+            secureTextEntry: true,
+            value: password,
+            onChangeText: handlePasswordChange,
+          }}
+        />
 
-      {generalError && !emailError && !passwordError && (
-        <Text style={styles.generalErrorText}>{generalError}</Text>
-      )}
+        {generalError && !emailError && !passwordError && (
+          <Text style={styles.generalErrorText}>{generalError}</Text>
+        )}
 
-      <Button 
-        title="Login" 
-        onPress={login} 
-        disabled={loading}
-        loading={loading}
-        variant="primary"
-        size="large"
-        style={styles.button}
-      />
-      <Button 
-        title="Register" 
-        onPress={register} 
-        disabled={loading}
-        loading={loading}
-        variant="primary"
-        size="large"
-        style={styles.button}
-      />
-    </View>
+        <Button 
+          title="Login" 
+          onPress={login} 
+          disabled={loading}
+          loading={loading}
+          variant="primary"
+          size="large"
+          style={styles.button}
+        />
+        <Button 
+          title="Register" 
+          onPress={register} 
+          disabled={loading}
+          loading={loading}
+          variant="primary"
+          size="large"
+          style={styles.button}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
   container: {
     padding: 16,
+    paddingTop: 40,
     gap: 12,
   },
   generalErrorText: {

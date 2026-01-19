@@ -187,6 +187,14 @@ ProfileScreen
 │ │Technical│ 30%   │             │
 │ └────────┴────────┘             │
 │                                 │
+│ Style Balance (Radar Chart)     │
+│         Power                   │
+│           ▲                     │
+│           │                     │
+│    Tech ──┼── Dyno              │
+│           │                     │
+│      (normalized %)             │
+│                                 │
 │ Preferences ❤️                  │
 │ ┌────────┬────────┐             │
 │ │ Reachy │ 15 routes│           │
@@ -199,6 +207,12 @@ ProfileScreen
 - Tags/chips with percentages
 - Icon indicators (✓ for strengths, 🔧 for weaknesses)
 - Horizontal lists or grids
+- **Radar Chart (Spider Chart)**: Triangular/polygonal visualization showing balance of style categories
+  - If there are 3 main style categories, display as a triangle
+  - Center point = 0% for that category
+  - Each vertex/tip = 100% for that category
+  - Plot point shows user's normalized distribution (e.g., if one category is 100% and others 0%, point is at that vertex)
+  - Useful for visualizing strengths/weaknesses balance at a glance
 
 ---
 
@@ -298,13 +312,15 @@ const fetchInsights = async () => {
 - Handle API errors gracefully
 
 ### Empty States:
-- < 5 sessions: Show progress card
-- No route suggestions: Show "Keep climbing to get suggestions"
-- No weaknesses: Show "You're strong across all styles!"
+- < 5 sessions: Show progress card with progress bar (5 bars = 1 per session needed)
+- No route suggestions: Show "Keep climbing to get personalized route suggestions!"
+- No weaknesses: Show "You're strong across all styles! 🎉"
+- No strengths: Show "Keep practicing to develop your climbing strengths!"
+- No style data: Show "Log more sessions with descriptors to see your style analysis"
 
 ### Refresh:
-- Consider pull-to-refresh
-- Auto-refresh when navigating back from session completion
+- **Pull-to-refresh**: Allow users to pull down to refresh insights data (useful across all screens)
+- **Auto-refresh on focus**: When navigating back to ProfileScreen from completing a session, automatically refresh insights to show updated data (using React Navigation's `useFocusEffect` hook)
 
 ### Animations:
 - Expand/collapse sections smoothly
@@ -342,6 +358,7 @@ const fetchInsights = async () => {
    - Grade distribution bar chart
    - Success rate over time
    - Style preference pie chart
+   - **Radar/Spider chart for style balance** (triangular visualization of strengths/weaknesses distribution)
 
 2. **Comparison**
    - Compare insights across time periods
@@ -410,9 +427,10 @@ const fetchInsights = async () => {
    - Success rate visualization
    - Ideal progression grade
 
-4. **Style Analysis** (1 hour)
+4. **Style Analysis** (1-2 hours)
    - Strengths/weaknesses/preferences
    - Tag/chip display
+   - Radar chart visualization (triangular/polygonal) for style balance (if 3+ categories)
 
 5. **Route Suggestions** (1-2 hours)
    - Route cards
