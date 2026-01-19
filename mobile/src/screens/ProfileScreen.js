@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
+  ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { useApi } from "../ApiProvider";
 import { getCurrentUserId } from "../utils/jwtUtils";
@@ -20,10 +22,13 @@ export default function ProfileScreen({ navigation }) {
   const [height, setHeight] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [insights, setInsights] = useState(null);
+  const [loadingInsights, setLoadingInsights] = useState(true);
   const { api } = useApi();
 
   useEffect(() => {
     fetchCurrentUser();
+    fetchInsights();
   }, []);
 
   const fetchCurrentUser = async () => {
@@ -42,6 +47,20 @@ export default function ProfileScreen({ navigation }) {
     if (data) {
       setUsername(data.username || "");
       setHeight(data.height ? String(data.height) : "");
+    }
+  };
+
+  const fetchInsights = async () => {
+    try {
+      setLoadingInsights(true);
+      const response = await api.get("/sessions/insights");
+      setInsights(response.data);
+    } catch (error) {
+      // Silently fail - insights are optional
+      console.error("Failed to fetch insights:", error);
+      setInsights(null);
+    } finally {
+      setLoadingInsights(false);
     }
   };
 
@@ -71,8 +90,219 @@ export default function ProfileScreen({ navigation }) {
     return <LoadingScreen />;
   }
 
+  const renderProgressCard = () => {
+    if (!insights || insights.hasEnoughData) return null;
+    
+    const sessionCount = insights.sessionCount || 0;
+    const minSessions = insights.minSessionsRequired || 5;
+    const filledBars = Math.floor((sessionCount / minSessions) * 10);
+    
+    return (
+      <Section>
+        <Text style={styles.insightsTitle}>📊 Session Insights</Text>
+        <Text style={styles.progressText}>
+          Log {minSessions} sessions to unlock your climbing insights!
+        </Text>
+        <View style={styles.progressContainer}>
+          <Text style={styles.progressLabel}>
+            Progress: {sessionCount}/{minSessions} sessions
+          </Text>
+          <View style={styles.progressBarContainer}>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.progressBarSegment,
+                  i < filledBars ? styles.progressBarFilled : styles.progressBarEmpty,
+                ]}
+              />
+            ))}
+          </View>
+        </View>
+      </Section>
+    );
+  };
+
+  const renderGradeProfile = () => {
+    if (!insights?.gradeProfile) return null;
+    
+    const { gradeProfile } = insights;
+    const zones = [
+      { name: "Comfort Zone", grades: gradeProfile.comfortZone || [], color: "#4CAF50", icon: "✅" },
+      { name: "Challenging", grades: gradeProfile.challengingZone || [], color: "#FF9800", icon: "⚡" },
+      { name: "Project", grades: gradeProfile.projectZone || [], color: "#FF5722", icon: "🎯" },
+      { name: "Too Hard", grades: gradeProfile.tooHard || [], color: "#F44336", icon: "💪" },
+    ];
+
+    return (
+      <Section>
+        <Text style={styles.insightsTitle}>📈 Grade Profile</Text>
+        {zones.map((zone) => {
+          if (zone.grades.length === 0) return null;
+          return (
+            <View key={zone.name} style={styles.zoneContainer}>
+              <Text style={styles.zoneLabel}>
+                {zone.icon} {zone.name}
+              </Text>
+              <View style={styles.gradeChipsContainer}>
+                {zone.grades.map((gradeData) => {
+                  const grade = typeof gradeData === 'string' ? gradeData : gradeData.grade;
+                  const successRate = typeof gradeData === 'object' && gradeData.successRate 
+                    ? gradeData.successRate 
+                    : null;
+                  return (
+                    <View
+                      key={grade}
+                      style={[styles.gradeChip, { borderColor: zone.color }]}
+                    >
+                      <Text style={styles.gradeChipText}>{grade}</Text>
+                      {successRate !== null && (
+                        <Text style={[styles.gradeChipRate, { color: zone.color }]}>
+                          {Math.round(successRate)}%
+                        </Text>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          );
+        })}
+        {gradeProfile.idealProgressionGrade && (
+          <View style={styles.progressionTip}>
+            <Text style={styles.progressionTipText}>
+              💡 Next: Try {gradeProfile.idealProgressionGrade} routes
+            </Text>
+          </View>
+        )}
+      </Section>
+    );
+  };
+
+  const renderStyleAnalysis = () => {
+    if (!insights?.styleAnalysis) return null;
+    
+    const { styleAnalysis } = insights;
+
+    return (
+      <Section>
+        <Text style={styles.insightsTitle}>🎯 Style Analysis</Text>
+        
+        {styleAnalysis.strengths && styleAnalysis.strengths.length > 0 && (
+          <View style={styles.styleSection}>
+            <Text style={styles.styleLabel}>💪 Strengths</Text>
+            <View style={styles.descriptorChipsContainer}>
+              {styleAnalysis.strengths.map((item) => (
+                <View key={item.descriptor} style={[styles.descriptorChip, styles.strengthChip]}>
+                  <Text style={styles.descriptorChipText}>{item.descriptor}</Text>
+                  <Text style={styles.descriptorChipRate}>{item.successRate}%</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {styleAnalysis.weaknesses && styleAnalysis.weaknesses.length > 0 && (
+          <View style={styles.styleSection}>
+            <Text style={styles.styleLabel}>🔧 Weaknesses</Text>
+            <View style={styles.descriptorChipsContainer}>
+              {styleAnalysis.weaknesses.map((item) => (
+                <View key={item.descriptor} style={[styles.descriptorChip, styles.weaknessChip]}>
+                  <Text style={styles.descriptorChipText}>{item.descriptor}</Text>
+                  <Text style={styles.descriptorChipRate}>{item.successRate}%</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {styleAnalysis.preferences && styleAnalysis.preferences.length > 0 && (
+          <View style={styles.styleSection}>
+            <Text style={styles.styleLabel}>❤️ Preferences</Text>
+            <View style={styles.descriptorChipsContainer}>
+              {styleAnalysis.preferences.slice(0, 5).map((item) => (
+                <View key={item.descriptor} style={styles.descriptorChip}>
+                  <Text style={styles.descriptorChipText}>{item.descriptor}</Text>
+                  <Text style={styles.descriptorChipCount}>{item.totalRoutes} routes</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+      </Section>
+    );
+  };
+
+  const renderRouteSuggestions = () => {
+    if (!insights?.routeSuggestions) return null;
+    
+    const { routeSuggestions } = insights;
+    const categories = [
+      { key: "enjoyable", title: "Enjoyable Routes", icon: "😊" },
+      { key: "improve", title: "Improve Your Skills", icon: "📈" },
+      { key: "progression", title: "Push Your Limits", icon: "🚀" },
+    ];
+
+    const hasAnySuggestions = categories.some(
+      (cat) => routeSuggestions[cat.key] && routeSuggestions[cat.key].length > 0
+    );
+
+    if (!hasAnySuggestions) {
+      return (
+        <Section>
+          <Text style={styles.insightsTitle}>💡 Route Suggestions</Text>
+          <Text style={styles.emptyText}>Keep climbing to get personalized route suggestions!</Text>
+        </Section>
+      );
+    }
+
+    return (
+      <Section>
+        <Text style={styles.insightsTitle}>💡 Route Suggestions</Text>
+        {categories.map((category) => {
+          const routes = routeSuggestions[category.key] || [];
+          if (routes.length === 0) return null;
+
+          return (
+            <View key={category.key} style={styles.suggestionCategory}>
+              <Text style={styles.suggestionCategoryTitle}>
+                {category.icon} {category.title}
+              </Text>
+              {routes.map((route) => (
+                <Pressable
+                  key={route.id}
+                  style={styles.routeCard}
+                  onPress={() => navigation.navigate("Climb Detail", { climbId: route.id })}
+                >
+                  <View style={styles.routeCardContent}>
+                    <Text style={styles.routeGrade}>
+                      {route.voterGrade || route.grade}
+                    </Text>
+                    {route.descriptors && route.descriptors.length > 0 && (
+                      <View style={styles.routeDescriptors}>
+                        {route.descriptors.slice(0, 3).map((desc, idx) => (
+                          <View key={idx} style={styles.routeDescriptorTag}>
+                            <Text style={styles.routeDescriptorText}>{desc}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    <Text style={styles.routeLocation}>
+                      {route.layoutName || "Unknown Layout"} - {route.spotName || "Unknown Spot"}
+                    </Text>
+                  </View>
+                  <Text style={styles.routeArrow}>→</Text>
+                </Pressable>
+              ))}
+            </View>
+          );
+        })}
+      </Section>
+    );
+  };
+
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Section>
         <FormField
           label="Username"
@@ -120,7 +350,26 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.sessionsButtonSubtext}>Track your progress and view session history</Text>
         </Pressable>
       </Section>
-    </View>
+
+      {/* Insights Section */}
+      {loadingInsights ? (
+        <Section>
+          <ActivityIndicator size="small" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading insights...</Text>
+        </Section>
+      ) : (
+        <>
+          {renderProgressCard()}
+          {insights?.hasEnoughData && (
+            <>
+              {renderGradeProfile()}
+              {renderStyleAnalysis()}
+              {renderRouteSuggestions()}
+            </>
+          )}
+        </>
+      )}
+    </ScrollView>
   );
 }
 
@@ -128,6 +377,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+  },
+  contentContainer: {
     padding: 16,
   },
   saveButton: {
@@ -153,5 +404,205 @@ const styles = StyleSheet.create({
   sessionsButtonSubtext: {
     fontSize: 14,
     color: "#666",
+  },
+  // Insights styles
+  insightsTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 8,
+    textAlign: "center",
+  },
+  // Progress card styles
+  progressText: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 12,
+  },
+  progressContainer: {
+    marginTop: 8,
+  },
+  progressLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#333",
+    marginBottom: 8,
+  },
+  progressBarContainer: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  progressBarSegment: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+  },
+  progressBarFilled: {
+    backgroundColor: "#4CAF50",
+  },
+  progressBarEmpty: {
+    backgroundColor: "#E0E0E0",
+  },
+  // Grade profile styles
+  zoneContainer: {
+    marginBottom: 16,
+  },
+  zoneLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 8,
+  },
+  gradeChipsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  gradeChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "#fff",
+    borderWidth: 2,
+    gap: 6,
+  },
+  gradeChipText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
+  gradeChipRate: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  progressionTip: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: "#E3F2FD",
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: "#2196F3",
+  },
+  progressionTipText: {
+    fontSize: 14,
+    color: "#1976D2",
+    fontWeight: "500",
+  },
+  // Style analysis styles
+  styleSection: {
+    marginBottom: 16,
+  },
+  styleLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 8,
+  },
+  descriptorChipsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  descriptorChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "#f0f0f0",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    gap: 6,
+  },
+  strengthChip: {
+    backgroundColor: "#E8F5E9",
+    borderColor: "#4CAF50",
+  },
+  weaknessChip: {
+    backgroundColor: "#FFF3E0",
+    borderColor: "#FF9800",
+  },
+  descriptorChipText: {
+    fontSize: 13,
+    color: "#555",
+    fontWeight: "500",
+  },
+  descriptorChipRate: {
+    fontSize: 12,
+    color: "#4CAF50",
+    fontWeight: "600",
+  },
+  descriptorChipCount: {
+    fontSize: 12,
+    color: "#666",
+    fontWeight: "500",
+  },
+  // Route suggestions styles
+  suggestionCategory: {
+    marginBottom: 20,
+  },
+  suggestionCategoryTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 12,
+  },
+  routeCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+  },
+  routeCardContent: {
+    flex: 1,
+  },
+  routeGrade: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 4,
+  },
+  routeDescriptors: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+    marginBottom: 4,
+  },
+  routeDescriptorTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    backgroundColor: "#f0f0f0",
+  },
+  routeDescriptorText: {
+    fontSize: 11,
+    color: "#666",
+  },
+  routeLocation: {
+    fontSize: 12,
+    color: "#666",
+  },
+  routeArrow: {
+    fontSize: 20,
+    color: "#007AFF",
+    marginLeft: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#666",
+    fontStyle: "italic",
+    textAlign: "center",
+    paddingVertical: 8,
   },
 });

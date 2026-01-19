@@ -63,6 +63,7 @@
   - Planning: See `INSIGHTS_UI_PLAN.md` for UI/UX planning and implementation roadmap
   - **Route discovery** is covered by Route Suggestions feature
   - Includes: Grade Profile, Style Analysis, Route Suggestions (Enjoyable/Improve/Progression)
+  - Grade profile now handles `V-Scale Range` by using the **lower end** of the range (e.g. `"V3-V5"` → numeric `3`) so ranged climbs still appear in stats
 
 ---
 
