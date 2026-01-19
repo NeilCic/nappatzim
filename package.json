@@ -16,7 +16,8 @@
     "docker:up": "cd backend && docker compose up -d",
     "docker:down": "cd backend && docker compose down",
     "docker:logs": "cd backend && docker compose logs -f",
-    "db:sync": "node backend/scripts/copyProdToDev.js"
+    "db:sync": "node backend/scripts/copyProdToDev.js",
+    "test:data": "node backend/scripts/createTestData.js"
   },
   "keywords": [],
   "author": "",
