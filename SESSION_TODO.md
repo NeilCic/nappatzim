@@ -2,8 +2,8 @@
 
 ## Remaining Tasks
 
-### Phase 2: Enhancements
-1. **Active session panel (floating/expandable)**
+### Phase 2: Enhancements (Nice-to-have, not priority)
+1. **Active session panel (floating/expandable)** *(deprioritized)*
    - Show current session routes in a floating/expandable panel
    - Display route count, duration
    - Quick edit/remove for each route
@@ -58,8 +58,9 @@
 ### Phase 3: Future Features ✅
 - Quick actions (swipe to mark as success) - *Note: Only works in list view, not map view*
 - Session statistics (Total routes, sends, failed, attempts, average grades)
-- **Session insights/analytics** ✅ (Backend complete - Frontend in progress)
+- **Session insights/analytics** ✅ (Backend + ProfileScreen UI complete)
   - Backend: `GET /sessions/insights` (unified endpoint returns all insights)
+  - Frontend: ProfileScreen shows progress card, grade profile, style analysis (including triangular graph), and route suggestions
   - Planning: See `INSIGHTS_UI_PLAN.md` for UI/UX planning and implementation roadmap
   - **Route discovery** is covered by Route Suggestions feature
   - Includes: Grade Profile, Style Analysis, Route Suggestions (Enjoyable/Improve/Progression)

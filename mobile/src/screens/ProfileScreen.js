@@ -5,6 +5,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
+import Svg, { Polygon, Line, Circle, Text as SvgText } from "react-native-svg";
 import { useApi } from "../ApiProvider";
 import { getCurrentUserId } from "../utils/jwtUtils";
 import handleApiCall from "../utils/apiUtils";
@@ -89,6 +90,121 @@ export default function ProfileScreen({ navigation }) {
   if (loading) {
     return <LoadingScreen />;
   }
+
+  const StyleRadarChart = ({ axes }) => {
+    if (!axes || axes.length === 0) return null;
+
+    const vertices = axes;
+    const count = vertices.length;
+    if (count === 0) return null;
+
+    const size = 200;
+    const centerX = size / 2;
+    const centerY = size / 2;
+    const radius = size * 0.4;
+
+    const angleStep = (2 * Math.PI) / count;
+    const levelCount = 4; // number of concentric circles (excluding center)
+
+    const basePoints = vertices.map((_, index) => {
+      const angle = -Math.PI / 2 + index * angleStep; // start at top
+      const x = centerX + radius * Math.cos(angle);
+      const y = centerY + radius * Math.sin(angle);
+      return { x, y };
+    });
+
+    const valuePoints = vertices.map((v, index) => {
+      const angle = -Math.PI / 2 + index * angleStep;
+      const norm = Math.max(0, Math.min(1, v.normalizedValue || 0));
+      const r = radius * norm;
+      const x = centerX + r * Math.cos(angle);
+      const y = centerY + r * Math.sin(angle);
+      return { x, y };
+    });
+
+    const basePointsStr = basePoints.map((p) => `${p.x},${p.y}`).join(" ");
+    const valuePointsStr = valuePoints.map((p) => `${p.x},${p.y}`).join(" ");
+
+    return (
+      <View style={styles.radarContainer}>
+        <Svg width={size} height={size}>
+          {/* Concentric circles */}
+          {Array.from({ length: levelCount }).map((_, i) => {
+            const r = radius * ((i + 1) / levelCount);
+            return (
+              <Circle
+                key={`grid-${i}`}
+                cx={centerX}
+                cy={centerY}
+                r={r}
+                stroke="#D0D0D0"
+                strokeWidth={1}
+                fill="none"
+              />
+            );
+          })}
+
+          {/* Radial grid lines */}
+          {basePoints.map((p, index) => (
+            <Line
+              key={`axis-${index}`}
+              x1={centerX}
+              y1={centerY}
+              x2={p.x}
+              y2={p.y}
+              stroke="#D0D0D0"
+              strokeWidth={1}
+            />
+          ))}
+
+          {/* Value polygon */}
+          <Polygon
+            points={valuePointsStr}
+            stroke="#E53935"
+            strokeWidth={2}
+            fill="rgba(229, 57, 53, 0.25)"
+          />
+
+          {/* Data points */}
+          {valuePoints.map((p, index) => (
+            <Circle
+              key={`point-${index}`}
+              cx={p.x}
+              cy={p.y}
+              r={3}
+              fill="#E53935"
+            />
+          ))}
+
+          {/* Axis labels */}
+          {vertices.map((v, index) => {
+            const angle = -Math.PI / 2 + index * angleStep;
+            const labelRadius = radius * 1.1;
+            const x = centerX + labelRadius * Math.cos(angle);
+            const y = centerY + labelRadius * Math.sin(angle);
+            return (
+              <SvgText
+                key={`label-${v.descriptor}`}
+                x={x}
+                y={y}
+                fill="#333"
+                fontSize={11}
+                textAnchor="middle"
+                alignmentBaseline="middle"
+              >
+                {v.descriptor}
+              </SvgText>
+            );
+          })}
+        </Svg>
+
+        <Text style={styles.radarHint}>
+          Radar shows your balance across top styles (closer to edge = stronger
+          preference/success).
+        </Text>
+      </View>
+    );
+  };
 
   const renderProgressCard = () => {
     if (!insights || insights.hasEnoughData) return null;
@@ -180,21 +296,61 @@ export default function ProfileScreen({ navigation }) {
 
   const renderStyleAnalysis = () => {
     if (!insights?.styleAnalysis) return null;
-    
+
     const { styleAnalysis } = insights;
+
+    const radarAxes = (() => {
+      const allStyles = [
+        ...(styleAnalysis.strengths || []).map((s) => ({
+          descriptor: s.descriptor,
+          rawValue: s.successRate,
+          type: "strength",
+        })),
+        ...(styleAnalysis.weaknesses || []).map((w) => ({
+          descriptor: w.descriptor,
+          rawValue: 100 - w.successRate,
+          type: "weakness",
+        })),
+        ...(styleAnalysis.preferences || []).map((p) => ({
+          descriptor: p.descriptor,
+          rawValue: Math.min(p.totalRoutes * 10, 100),
+          type: "preference",
+        })),
+      ];
+
+      if (allStyles.length === 0) return null;
+
+      const top = [...allStyles]
+        .sort((a, b) => b.rawValue - a.rawValue)
+        .slice(0, 5);
+
+      const maxValue = top.reduce((max, s) => Math.max(max, s.rawValue), 0) || 1;
+
+      return top.map((s) => ({
+        ...s,
+        normalizedValue: s.rawValue / maxValue,
+      }));
+    })();
 
     return (
       <Section>
         <Text style={styles.insightsTitle}>🎯 Style Analysis</Text>
-        
+
+        {radarAxes && <StyleRadarChart axes={radarAxes} />}
+
         {styleAnalysis.strengths && styleAnalysis.strengths.length > 0 && (
           <View style={styles.styleSection}>
             <Text style={styles.styleLabel}>💪 Strengths</Text>
             <View style={styles.descriptorChipsContainer}>
               {styleAnalysis.strengths.map((item) => (
-                <View key={item.descriptor} style={[styles.descriptorChip, styles.strengthChip]}>
+                <View
+                  key={item.descriptor}
+                  style={[styles.descriptorChip, styles.strengthChip]}
+                >
                   <Text style={styles.descriptorChipText}>{item.descriptor}</Text>
-                  <Text style={styles.descriptorChipRate}>{item.successRate}%</Text>
+                  <Text style={styles.descriptorChipRate}>
+                    {item.successRate}%
+                  </Text>
                 </View>
               ))}
             </View>
@@ -206,9 +362,14 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.styleLabel}>🔧 Weaknesses</Text>
             <View style={styles.descriptorChipsContainer}>
               {styleAnalysis.weaknesses.map((item) => (
-                <View key={item.descriptor} style={[styles.descriptorChip, styles.weaknessChip]}>
+                <View
+                  key={item.descriptor}
+                  style={[styles.descriptorChip, styles.weaknessChip]}
+                >
                   <Text style={styles.descriptorChipText}>{item.descriptor}</Text>
-                  <Text style={styles.descriptorChipRate}>{item.successRate}%</Text>
+                  <Text style={styles.descriptorChipRate}>
+                    {item.successRate}%
+                  </Text>
                 </View>
               ))}
             </View>
@@ -221,8 +382,12 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.descriptorChipsContainer}>
               {styleAnalysis.preferences.slice(0, 5).map((item) => (
                 <View key={item.descriptor} style={styles.descriptorChip}>
-                  <Text style={styles.descriptorChipText}>{item.descriptor}</Text>
-                  <Text style={styles.descriptorChipCount}>{item.totalRoutes} routes</Text>
+                  <Text style={styles.descriptorChipText}>
+                    {item.descriptor}
+                  </Text>
+                  <Text style={styles.descriptorChipCount}>
+                    {item.totalRoutes} routes
+                  </Text>
                 </View>
               ))}
             </View>
@@ -542,6 +707,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
     fontWeight: "500",
+  },
+  radarContainer: {
+    marginBottom: 16,
+    alignItems: "center",
+  },
+  radarHint: {
+    fontSize: 11,
+    color: "#555",
+    marginTop: 4,
+    textAlign: "center",
   },
   // Route suggestions styles
   suggestionCategory: {
