@@ -1640,10 +1640,14 @@ export default function LayoutDetailScreen({ navigation, route }) {
           setEditingRoutes([]);
         }}
         title="Review Session"
-        style={[styles.modalContent, styles.reviewModalContent]}
+        style={[styles.modalContent, { paddingBottom: 12 }]}
         dismissOnOverlayPress={!savingSession}
       >
-        <ScrollView style={styles.reviewModalScroll} showsVerticalScrollIndicator={true}>
+        <ScrollView 
+          style={styles.reviewModalScroll} 
+          contentContainerStyle={styles.reviewModalScrollContent}
+          showsVerticalScrollIndicator={true}
+        >
           {/* Session Duration */}
           {activeSession && (
             <View style={styles.reviewSection}>
@@ -2665,12 +2669,11 @@ const styles = StyleSheet.create({
   quickAddModalContent: {
     maxHeight: '80%',
   },
-  reviewModalContent: {
-    maxHeight: '85%',
-    width: '90%',
-  },
   reviewModalScroll: {
-    maxHeight: 600,
+    maxHeight: '100%',
+  },
+  reviewModalScrollContent: {
+    paddingBottom: 20,
   },
   reviewSection: {
     marginBottom: 24,

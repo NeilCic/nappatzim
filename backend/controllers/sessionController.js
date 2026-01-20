@@ -447,6 +447,38 @@ export const getInsightsController = async (req, res) => {
   }
 };
 
+export const getGradeProgressionController = async (req, res) => {
+  const requestId = Date.now().toString();
+  try {
+    const userId = req.user?.userId;
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    logger.info({ requestId, userId }, "Getting grade progression");
+
+    const progression = await sessionService.calculateGradeProgression(userId);
+
+    logger.info({ 
+      requestId, 
+      sessionCount: progression.progression?.length || 0 
+    }, "Grade progression calculated");
+
+    res.status(200).json(progression);
+  } catch (error) {
+    logger.error(
+      {
+        requestId,
+        userId: req.user?.userId,
+        error: error.message,
+        stack: error.stack,
+      },
+      "Failed to get grade progression"
+    );
+    res.status(500).json({ error: "Failed to get grade progression" });
+  }
+};
+
 export const deleteSessionController = async (req, res) => {
   const requestId = Date.now().toString();
   try {

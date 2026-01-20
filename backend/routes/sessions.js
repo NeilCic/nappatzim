@@ -10,6 +10,7 @@ import {
   updateRouteMetadataController,
   deleteSessionController,
   getInsightsController,
+  getGradeProgressionController,
 } from '../controllers/sessionController.js';
 import { verifyToken } from '../middleware/auth.js';
 
@@ -21,6 +22,7 @@ router.post('/', createSessionController);
 router.get('/', getSessionsController);
 router.get('/logged-climbs', getLoggedClimbIdsController);
 router.get('/insights', getInsightsController);
+router.get('/progression', getGradeProgressionController);
 router.get('/:sessionId', getSessionByIdController);
 router.put('/:sessionId/end', endSessionController);
 router.post('/:sessionId/routes', addRouteController);

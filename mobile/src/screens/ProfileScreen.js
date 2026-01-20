@@ -17,6 +17,7 @@ import RefreshableScrollView from "../components/RefreshableScrollView";
 import { showSuccessAlert } from "../utils/alert";
 import Pressable from "../components/Pressable";
 import { Text } from "react-native";
+import GradeProgressionChart from "../components/GradeProgressionChart";
 
 export default function ProfileScreen({ navigation }) {
   const [username, setUsername] = useState("");
@@ -26,11 +27,13 @@ export default function ProfileScreen({ navigation }) {
   const [insights, setInsights] = useState(null);
   const [loadingInsights, setLoadingInsights] = useState(true);
   const [refreshingInsights, setRefreshingInsights] = useState(false);
+  const [progression, setProgression] = useState(null);
   const { api } = useApi();
 
   useEffect(() => {
     fetchCurrentUser();
     fetchInsights();
+    fetchProgression();
   }, []);
 
   const fetchCurrentUser = async () => {
@@ -66,10 +69,22 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
+  const fetchProgression = async () => {
+    try {
+      const response = await api.get("/sessions/progression");
+      setProgression(response.data);
+    } catch (error) {
+      // Silently fail - progression is optional
+      console.error("Failed to fetch progression:", error);
+      setProgression(null);
+    }
+  };
+
   const handleRefreshInsights = async () => {
     try {
       setRefreshingInsights(true);
       await fetchInsights();
+      await fetchProgression();
     } finally {
       setRefreshingInsights(false);
     }
@@ -300,6 +315,20 @@ export default function ProfileScreen({ navigation }) {
             </Text>
           </View>
         )}
+      </Section>
+    );
+  };
+
+  const renderGradeProgression = () => {
+    if (!progression || progression.progression.length === 0) return null;
+
+    return (
+      <Section>
+        <Text style={styles.insightsTitle}>📈 Grade Progression</Text>
+        <GradeProgressionChart 
+          progression={progression.progression}
+          gradeSystem={progression.gradeSystem}
+        />
       </Section>
     );
   };
@@ -539,6 +568,8 @@ export default function ProfileScreen({ navigation }) {
       ) : (
         <>
           {renderProgressCard()}
+          {/* Grade Progression - shows independently if data available */}
+          {renderGradeProgression()}
           {insights?.hasEnoughData && (
             <>
               {renderGradeProfile()}

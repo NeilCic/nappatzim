@@ -797,6 +797,132 @@ class SessionService extends PrismaCrudService {
       routeSuggestions,
     };
   }
+
+  async calculateGradeProgression(userId) {
+    // Get all sessions for user, ordered by date (oldest first)
+    const sessions = await prisma.climbingSession.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        attempts: {
+          select: {
+            status: true,
+            voterGrade: true,
+            proposedGrade: true,
+            gradeSystem: true,
+          },
+        },
+      },
+    });
+
+    if (!sessions || sessions.length === 0) {
+      return {
+        progression: [],
+        gradeSystem: null,
+      };
+    }
+
+    // Determine primary grade system from first session with grades
+    let primaryGradeSystem = null;
+    for (const session of sessions) {
+      const firstRouteWithGrade = session.attempts?.find(
+        a => a.voterGrade || a.proposedGrade
+      );
+      if (firstRouteWithGrade?.gradeSystem) {
+        primaryGradeSystem = firstRouteWithGrade.gradeSystem;
+        break;
+      }
+    }
+
+    if (!primaryGradeSystem) {
+      return {
+        progression: [],
+        gradeSystem: null,
+      };
+    }
+
+    // Calculate progression data for each session
+    const progression = sessions.map((session) => {
+      const attempts = session.attempts || [];
+      
+      if (attempts.length === 0) {
+      return {
+        sessionId: session.id,
+        date: session.createdAt.toISOString(),
+        averageGradeSent: null,
+        averageGradeSentNumeric: null,
+        bestGradeSent: null,
+        bestGradeSentNumeric: null,
+        sendRate: 0,
+        totalRoutes: 0,
+        successfulRoutes: 0,
+      };
+      }
+
+      // Filter successful routes only
+      const successfulRoutes = attempts.filter(a => a.status === 'success');
+      const successfulRoutesWithGrades = successfulRoutes.filter(
+        a => a.voterGrade || a.proposedGrade
+      );
+
+      // Calculate average grade of successful sends
+      let averageGradeSent = null;
+      let averageGradeSentNumeric = null;
+      if (successfulRoutesWithGrades.length > 0) {
+        const successfulGrades = successfulRoutesWithGrades.map(
+          a => a.voterGrade || a.proposedGrade
+        ).filter(Boolean);
+        
+        if (successfulGrades.length > 0) {
+          averageGradeSent = calculateAverageGrade(successfulGrades, primaryGradeSystem);
+          averageGradeSentNumeric = averageGradeSent 
+            ? gradeToNumber(averageGradeSent, primaryGradeSystem) 
+            : null;
+        }
+      }
+
+      // Calculate best grade sent
+      let bestGradeSent = null;
+      let bestGradeSentNumeric = null;
+      if (successfulRoutesWithGrades.length > 0) {
+        const successfulNumericGrades = successfulRoutesWithGrades
+          .map(a => {
+            const grade = a.voterGrade || a.proposedGrade;
+            return grade ? gradeToNumber(grade, primaryGradeSystem) : null;
+          })
+          .filter(val => val !== null);
+
+        if (successfulNumericGrades.length > 0) {
+          bestGradeSentNumeric = Math.max(...successfulNumericGrades);
+          bestGradeSent = numberToGrade(bestGradeSentNumeric, primaryGradeSystem);
+        }
+      }
+
+      // Calculate send rate
+      const totalRoutes = attempts.length;
+      const successfulRoutesCount = successfulRoutes.length;
+      const sendRate = totalRoutes > 0 
+        ? (successfulRoutesCount / totalRoutes) * 100 
+        : 0;
+
+      return {
+        sessionId: session.id,
+        date: session.createdAt.toISOString(),
+        averageGradeSent,
+        averageGradeSentNumeric,
+        bestGradeSent,
+        bestGradeSentNumeric,
+        sendRate: Math.round(sendRate),
+        totalRoutes,
+        successfulRoutes: successfulRoutesCount,
+      };
+    }).filter(session => session.totalRoutes > 0); // Only include sessions with routes
+
+    return {
+      progression,
+      gradeSystem: primaryGradeSystem,
+    };
+  }
 }
 
 const sessionService = new SessionService();
