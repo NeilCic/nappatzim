@@ -37,6 +37,7 @@ if (existsSync(backendEnv)) {
 import prisma from '../lib/prisma.js';
 import spotService from '../services/spotService.js';
 import climbVoteService from '../services/climbVoteService.js';
+import DESCRIPTORS from '../../shared/descriptors.js';
 
 // Colors available for climbs
 const COLORS = [
@@ -51,31 +52,6 @@ const COLORS = [
   '#000000', // Black
   '#808080', // Gray
   '#FFFFFF', // White
-];
-
-// Descriptors available
-const DESCRIPTORS = [
-  'reachy',
-  'balance',
-  'slopey',
-  'crimpy',
-  'slippery',
-  'static',
-  'technical',
-  'dyno',
-  'coordination',
-  'explosive',
-  'endurance',
-  'powerful',
-  'must-try',
-  'dangerous',
-  'overhang',
-  'pockety',
-  'dual-tex',
-  'compression',
-  'campusy',
-  'shouldery',
-  'slab',
 ];
 
 // V-Scale grades (V0 to V10)
