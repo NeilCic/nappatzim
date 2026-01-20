@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal as RNModal, View, Text, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import { Modal as RNModal, View, Text, StyleSheet, Pressable, TouchableWithoutFeedback } from 'react-native';
 
 /**
  * Centralized Modal component with overlay and content styling
@@ -32,17 +32,18 @@ export default function AppModal({
       animationType={animationType}
       onRequestClose={onClose}
     >
-      <TouchableWithoutFeedback onPress={dismissOnOverlayPress ? onClose : undefined}>
-        <View style={[styles.overlay, overlayStyle]}>
-          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-            <View style={[styles.content, style]}>
-              {title && <Text style={styles.title}>{title}</Text>}
-              {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-              {children}
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+      <Pressable 
+        style={[styles.overlay, overlayStyle]}
+        onPress={dismissOnOverlayPress ? onClose : undefined}
+      >
+        <TouchableWithoutFeedback>
+          <View style={[styles.content, style]}>
+            {title && <Text style={styles.title}>{title}</Text>}
+            {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+            {children}
+          </View>
+        </TouchableWithoutFeedback>
+      </Pressable>
     </RNModal>
   );
 }
@@ -60,6 +61,7 @@ const styles = StyleSheet.create({
     padding: 20,
     width: '85%',
     maxWidth: 400,
+    overflow: 'hidden', // Prevent content overflow issues
   },
   title: {
     fontSize: 20,
