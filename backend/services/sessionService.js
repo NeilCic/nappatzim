@@ -88,17 +88,6 @@ class SessionService extends PrismaCrudService {
     let descriptors = [];
 
     if (climbId) {
-      const existing = await prisma.sessionRoute.findFirst({
-        where: {
-          sessionId,
-          climbId,
-        },
-      });
-
-      if (existing) {
-        throw new Error("Route already logged in this session");
-      }
-
       const climb = await climbService.getOne(
         { id: climbId },
         undefined,
@@ -125,18 +114,28 @@ class SessionService extends PrismaCrudService {
       }
     }
 
-    return await prisma.sessionRoute.create({
-      data: {
-        sessionId,
-        climbId,
-        proposedGrade: proposedGrade || "Unknown",
-        gradeSystem: gradeSystem || "V-Scale",
-        voterGrade,
-        descriptors,
-        status: isSuccess ? "success" : "failure",
-        attempts,
-      },
-    });
+    try {
+      return await prisma.sessionRoute.create({
+        data: {
+          sessionId,
+          climbId,
+          proposedGrade: proposedGrade || "Unknown",
+          gradeSystem: gradeSystem || "V-Scale",
+          voterGrade,
+          descriptors,
+          status: isSuccess ? "success" : "failure",
+          attempts,
+        },
+      });
+    } catch (error) {
+      // Handle Prisma unique constraint violation (P2002) for duplicate route in session
+      if (error.code === 'P2002' && error.meta?.target?.includes('sessionId') && error.meta?.target?.includes('climbId')) {
+        const conflictError = new Error("Route already logged in this session");
+        conflictError.statusCode = 409;
+        throw conflictError;
+      }
+      throw error;
+    }
   }
 
   async getSessionsByUser(userId, options = {}) {

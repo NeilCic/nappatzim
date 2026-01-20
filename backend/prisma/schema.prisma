@@ -42,8 +42,8 @@ model WorkoutCategory {
   workouts         Workout[]
   user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, name])
   @@index([userId])
-  @@index([userId, name])
 }
 
 model Workout {
@@ -305,6 +305,7 @@ model SessionRoute {
   updatedAt     DateTime        @updatedAt
   session       ClimbingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
+  @@unique([sessionId, climbId])
   @@index([sessionId])
   @@index([climbId])
 }

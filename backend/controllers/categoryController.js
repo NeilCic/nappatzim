@@ -42,11 +42,6 @@ const createCategoryController = async (req, res) => {
         );
 
         const validatedData = categorySchema.parse(req.body);
-        const exists = await categoryService.checkCategoryExists(validatedData.name, req.user.userId);
-        if (exists) {
-            logger.warn({ requestId, userId: req.user.userId, name: validatedData.name }, "Category name already exists");
-            return res.status(409).json({ error: "Category name already exists" });
-        }
         const category_id = await categoryService.createCategory({
             ...validatedData,
             userId: req.user.userId,
@@ -65,6 +60,9 @@ const createCategoryController = async (req, res) => {
                 "Category creation validation failed"
             );
             res.status(400).json({ error: error.message });
+        } else if (error.statusCode === 409) {
+            logger.warn({ requestId, userId: req.user.userId, name: validatedData.name }, "Category name already exists");
+            res.status(409).json({ error: error.message });
         } else {
             logger.error(
                 {

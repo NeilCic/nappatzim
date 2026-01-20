@@ -37,14 +37,20 @@ class CategoryService extends PrismaCrudService {
     }
 
     async createCategory(data) {
-        const created = await this.create(data);
-        // Invalidate user's category cache
-        await invalidateCache(cacheKeys.userCategories(data.userId));
-        return created.id;
-    }
-
-    async checkCategoryExists(name, userId) {
-        return await this.hasOne({ name, userId });
+        try {
+            const created = await this.create(data);
+            // Invalidate user's category cache
+            await invalidateCache(cacheKeys.userCategories(data.userId));
+            return created.id;
+        } catch (error) {
+            // Handle Prisma unique constraint violation (P2002) for duplicate category name
+            if (error.code === 'P2002' && error.meta?.target?.includes('name')) {
+                const conflictError = new Error("Category name already exists");
+                conflictError.statusCode = 409;
+                throw conflictError;
+            }
+            throw error;
+        }
     }
 
     async getCategoryById(categoryId, userId) {

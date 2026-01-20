@@ -110,10 +110,6 @@ class AuthService extends PrismaCrudService {
         const updateData = {};
         
         if (username !== undefined) {
-            const existing = await this.getOne({ username });
-            if (existing && existing.id !== userId) {
-                throw new Error("Username already taken");
-            }
             updateData.username = username;
         }
         
@@ -122,7 +118,17 @@ class AuthService extends PrismaCrudService {
             await climbVoteService.updateVotesHeightByUserId(userId, height);
         }
         
-        return await this.update({ id: userId }, updateData);
+        try {
+            return await this.update({ id: userId }, updateData);
+        } catch (error) {
+            // Handle Prisma unique constraint violation (P2002) for username
+            if (error.code === 'P2002' && error.meta?.target?.includes('username')) {
+                const conflictError = new Error("Username already taken");
+                conflictError.statusCode = 409;
+                throw conflictError;
+            }
+            throw error;
+        }
     }
 }
 
