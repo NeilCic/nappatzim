@@ -15,6 +15,7 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import * as ImagePicker from 'expo-image-picker';
 import { useApi } from '../ApiProvider';
 import { showError } from '../utils/errorHandler';
+import DESCRIPTORS from '../../../shared/descriptors';
 import StyledTextInput from '../components/StyledTextInput';
 import LoadingScreen from '../components/LoadingScreen';
 import { showErrorAlert, showSuccessAlert } from '../utils/alert';
@@ -67,29 +68,7 @@ export default function ClimbDetailScreen({ navigation, route }) {
   const hasAutoPlayedRef = useRef(false);
   const { api } = useApi();
 
-  const DESCRIPTOR_OPTIONS = [
-    'reachy',
-    'balance',
-    'slopey',
-    'crimpy',
-    'slippery',
-    'static',
-    'technical',
-    'dyno',
-    'coordination',
-    'explosive',
-    'endurance',
-    'powerful',
-    'must-try',
-    'dangerous',
-    'overhang',
-    'pockety',
-    'dual-tex',
-    'compression',
-    'campusy',
-    'shouldery',
-    'slab',
-  ];
+  const DESCRIPTOR_OPTIONS = DESCRIPTORS;
   
   const videoPlayer = useVideoPlayer(selectedVideo?.videoUrl || '');
 

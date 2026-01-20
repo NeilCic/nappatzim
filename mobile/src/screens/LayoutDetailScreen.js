@@ -32,8 +32,7 @@ import Button from '../components/Button';
 import Pressable from '../components/Pressable';
 import Spinner from '../components/Spinner';
 import ColorPicker from '../components/ColorPicker';
-
-const DESCRIPTORS = ['reachy', 'balance', 'slopey', 'crimpy', 'slippery', 'static', 'technical', 'dyno', 'coordination', 'explosive', 'endurance', 'powerful', 'must-try', 'dangerous', 'overhang', 'pockety', 'dual-tex', 'compression', 'campusy', 'shouldery', 'slab'];
+import DESCRIPTORS from '../../../shared/descriptors';
 
 // Swipeable route item component for quick adding during active sessions
 const SwipeableRouteItem = ({ item, onPress, onSwipeSuccess, onSwipeFailure, loggedClimbIds }) => {

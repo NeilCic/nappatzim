@@ -5,30 +5,9 @@ import { z } from "zod";
 import logger from "../lib/logger.js";
 import { formatZodError } from "../lib/zodErrorFormatter.js";
 import { validateGrade } from "../lib/gradeValidation.js";
+import DESCRIPTORS from "../../shared/descriptors.js";
 
-const descriptorEnum = z.enum([
-  "reachy",
-  "balance",
-  "slopey",
-  "crimpy",
-  "slippery",
-  "static",
-  "technical",
-  "dyno",
-  "coordination",
-  "explosive",
-  "endurance",
-  "powerful",
-  "must-try",
-  "dangerous",
-  "overhang",
-  "pockety",
-  "dual-tex",
-  "compression",
-  "campusy",
-  "shouldery",
-  "slab",
-]);
+const descriptorEnum = z.enum(DESCRIPTORS);
 
 const submitVoteSchema = z.object({
   grade: z.string().min(1, "Grade is required"),
