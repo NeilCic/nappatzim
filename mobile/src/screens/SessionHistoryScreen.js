@@ -44,6 +44,7 @@ export default function SessionHistoryScreen({ navigation }) {
     minAvgVoterGrade: '',
     maxAvgVoterGrade: '',
   });
+  const [refreshing, setRefreshing] = useState(false);
   const { api } = useApi();
 
   useFocusEffect(
@@ -171,6 +172,17 @@ export default function SessionHistoryScreen({ navigation }) {
     }
   };
 
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      setNextCursor(null);
+      setHasMore(false);
+      await fetchSessionsWithFilters(filters);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     return formatDateRelative(dateString, { showDaysAgo: true, locale: 'en-US' });
   };
@@ -267,6 +279,8 @@ export default function SessionHistoryScreen({ navigation }) {
           onEndReachedThreshold={0.5}
           ListFooterComponent={renderFooter}
           contentContainerStyle={styles.listContent}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
         />
       )}
 

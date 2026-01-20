@@ -60,7 +60,7 @@
 - Session statistics (Total routes, sends, failed, attempts, average grades)
 - **Session insights/analytics** ✅ (Backend + ProfileScreen UI complete)
   - Backend: `GET /sessions/insights` (unified endpoint returns all insights)
-  - Frontend: ProfileScreen shows progress card, grade profile, style analysis (including triangular graph), and route suggestions
+  - Frontend: ProfileScreen shows progress card, grade profile, style analysis (including the radar chart), and route suggestions
   - Planning: See `INSIGHTS_UI_PLAN.md` for UI/UX planning and implementation roadmap
   - **Route discovery** is covered by Route Suggestions feature
   - Includes: Grade Profile, Style Analysis, Route Suggestions (Enjoyable/Improve/Progression)

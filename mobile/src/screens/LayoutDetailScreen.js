@@ -32,6 +32,7 @@ import Button from '../components/Button';
 import Pressable from '../components/Pressable';
 import Spinner from '../components/Spinner';
 import ColorPicker from '../components/ColorPicker';
+import RefreshableScrollView from '../components/RefreshableScrollView';
 import DESCRIPTORS from '../../../shared/descriptors';
 
 // Swipeable route item component for quick adding during active sessions
@@ -220,6 +221,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [viewMode, setViewMode] = useState('map'); // 'map' or 'list'
   const [matchingClimbCount, setMatchingClimbCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   
   const videoPlayer = useVideoPlayer(selectedVideo?.videoUrl || '');
   
@@ -892,12 +894,29 @@ export default function LayoutDetailScreen({ navigation, route }) {
     ].filter(Boolean).length;
   }, [filters.minProposedGrade, filters.maxProposedGrade, filters.minVoterGrade, filters.maxVoterGrade, filters.descriptors, filters.setterName, filters.hasVideo]);
 
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await Promise.all([
+        fetchLayout(),
+        fetchSpots(),
+        fetchLoggedClimbIds(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   if (loading || !layout) {
     return <LoadingScreen />;
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <RefreshableScrollView
+      style={styles.container}
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
+    >
       {viewMode === 'map' ? (
         <View style={styles.imageContainer}>
           <Pressable 
@@ -1744,7 +1763,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
         </ScrollView>
       </AppModal>
 
-    </ScrollView>
+    </RefreshableScrollView>
   );
 }
 

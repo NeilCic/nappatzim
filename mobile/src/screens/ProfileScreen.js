@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
-  ScrollView,
   ActivityIndicator,
 } from "react-native";
 import Svg, { Polygon, Line, Circle, Text as SvgText } from "react-native-svg";
@@ -14,6 +13,7 @@ import Button from "../components/Button";
 import LoadingScreen from "../components/LoadingScreen";
 import FormField from "../components/FormField";
 import Section from "../components/Section";
+import RefreshableScrollView from "../components/RefreshableScrollView";
 import { showSuccessAlert } from "../utils/alert";
 import Pressable from "../components/Pressable";
 import { Text } from "react-native";
@@ -25,6 +25,7 @@ export default function ProfileScreen({ navigation }) {
   const [saving, setSaving] = useState(false);
   const [insights, setInsights] = useState(null);
   const [loadingInsights, setLoadingInsights] = useState(true);
+  const [refreshingInsights, setRefreshingInsights] = useState(false);
   const { api } = useApi();
 
   useEffect(() => {
@@ -62,6 +63,15 @@ export default function ProfileScreen({ navigation }) {
       setInsights(null);
     } finally {
       setLoadingInsights(false);
+    }
+  };
+
+  const handleRefreshInsights = async () => {
+    try {
+      setRefreshingInsights(true);
+      await fetchInsights();
+    } finally {
+      setRefreshingInsights(false);
     }
   };
 
@@ -466,7 +476,12 @@ export default function ProfileScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <RefreshableScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      refreshing={refreshingInsights}
+      onRefresh={handleRefreshInsights}
+    >
       <Section>
         <FormField
           label="Username"
@@ -533,7 +548,7 @@ export default function ProfileScreen({ navigation }) {
           )}
         </>
       )}
-    </ScrollView>
+    </RefreshableScrollView>
   );
 }
 
