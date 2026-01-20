@@ -16,5 +16,9 @@ export const VALIDATION = {
         MIN_LENGTH: 6,
         MAX_LENGTH: 80,
     },
+    SPOT_NAME: {
+        MIN_LENGTH: 1,
+        MAX_LENGTH: 20,
+    },
 };
 

@@ -218,11 +218,39 @@ class SpotService extends PrismaCrudService {
   }
 
   async createSpot(data) {
-    return await this.create(data);
+    try {
+      return await this.create({
+        ...data,
+        name: data.name.trim(),
+      });
+    } catch (error) {
+      // Handle Prisma unique constraint violation (P2002)
+      if (error.code === 'P2002' && error.meta?.target?.includes('name')) {
+        const conflictError = new Error("A spot with this name already exists in this layout");
+        conflictError.statusCode = 409; // Conflict
+        throw conflictError;
+      }
+      throw error;
+    }
   }
 
   async updateSpot(spotId, userId, data) {
-    return await this.update({ id: spotId, userId }, data);
+    // Trim name if provided
+    if (data.name) {
+      data.name = data.name.trim();
+    }
+
+    try {
+      return await this.update({ id: spotId, userId }, data);
+    } catch (error) {
+      // Handle Prisma unique constraint violation (P2002)
+      if (error.code === 'P2002' && error.meta?.target?.includes('name')) {
+        const conflictError = new Error("A spot with this name already exists in this layout");
+        conflictError.statusCode = 409; // Conflict
+        throw conflictError;
+      }
+      throw error;
+    }
   }
 
   async deleteSpot(spotId, userId) {

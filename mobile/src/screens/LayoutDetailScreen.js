@@ -34,6 +34,7 @@ import Spinner from '../components/Spinner';
 import ColorPicker from '../components/ColorPicker';
 import RefreshableScrollView from '../components/RefreshableScrollView';
 import DESCRIPTORS from '../../../shared/descriptors';
+import { VALIDATION } from '../shared/constants';
 
 // Swipeable route item component for quick adding during active sessions
 const SwipeableRouteItem = ({ item, onPress, onSwipeSuccess, onSwipeFailure, loggedClimbIds }) => {
@@ -756,14 +757,21 @@ export default function LayoutDetailScreen({ navigation, route }) {
   };
 
   const handleCreateSpot = async () => {
-    if (!newSpotData.name.trim()) {
+    const trimmedName = newSpotData.name.trim();
+    
+    if (!trimmedName) {
       showErrorAlert("Spot name is required");
+      return;
+    }
+
+    if (trimmedName.length > VALIDATION.SPOT_NAME.MAX_LENGTH) {
+      showErrorAlert(`Spot name must be ${VALIDATION.SPOT_NAME.MAX_LENGTH} characters or less`);
       return;
     }
 
     try {
       await api.post(`/layouts/${layoutId}/spots`, {
-        name: newSpotData.name,
+        name: trimmedName,
         description: newSpotData.description || null,
         color: newSpotData.color,
         x: tapPosition.x,
@@ -775,7 +783,12 @@ export default function LayoutDetailScreen({ navigation, route }) {
       setNewSpotData({ name: '', description: '', color: '#FF0000' });
       fetchSpots();  // keeping this "extra" API call to ensure we get realtime updates instead of using the data we already have
     } catch (error) {
-      showError(error, "Error", "Failed to create spot");
+      // Handle uniqueness error specifically
+      if (error.response?.status === 409) {
+        showErrorAlert(error.response.data?.error || "A spot with this name already exists in this layout");
+      } else {
+        showError(error, "Error", "Failed to create spot");
+      }
     }
   };
 
@@ -1168,7 +1181,13 @@ export default function LayoutDetailScreen({ navigation, route }) {
           style={styles.input}
           placeholder="Spot name *"
           value={newSpotData.name}
-          onChangeText={(text) => setNewSpotData({ ...newSpotData, name: text })}
+          onChangeText={(text) => {
+            // Limit to max length
+            if (text.length <= VALIDATION.SPOT_NAME.MAX_LENGTH) {
+              setNewSpotData({ ...newSpotData, name: text });
+            }
+          }}
+          maxLength={VALIDATION.SPOT_NAME.MAX_LENGTH}
         />
         
         <StyledTextInput

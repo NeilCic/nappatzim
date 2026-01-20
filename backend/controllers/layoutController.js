@@ -4,6 +4,7 @@ import climbVideoService from "../services/climbVideoService.js";
 import { z } from "zod";
 import logger from "../lib/logger.js";
 import { formatZodError } from "../lib/zodErrorFormatter.js";
+import { VALIDATION } from "../lib/constants.js";
 
 const isValidUrl = (val) => {
   try {
@@ -33,7 +34,9 @@ const createVideoSchema = z.object({
 });
 
 const spotSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: z.string()
+    .min(VALIDATION.SPOT_NAME.MIN_LENGTH, "Name is required")
+    .max(VALIDATION.SPOT_NAME.MAX_LENGTH, `Name must be ${VALIDATION.SPOT_NAME.MAX_LENGTH} characters or less`),
   description: z.string().nullable().optional(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Color must be a valid hex code").optional(),
   x: z.number().min(0).max(100, "X coordinate must be between 0 and 100"),
@@ -273,6 +276,9 @@ export const createSpotController = async (req, res) => {
     res.status(201).json({ spot });
   } catch (error) {
     logger.error({ error, userId: req.user?.userId }, "Error creating spot");
+    if (error.statusCode === 409) {
+      return res.status(409).json({ error: error.message });
+    }
     res.status(500).json({ error: "Failed to create spot" });
   }
 };
@@ -290,13 +296,21 @@ export const updateSpotController = async (req, res) => {
     }
 
     const userId = req.user?.userId;
-    const spot = await spotService.updateSpot(spotId, userId, validation.data);
     
-    if (!spot) {
-      return res.status(404).json({ error: "Spot not found or you don't have permission" });
+    try {
+      const spot = await spotService.updateSpot(spotId, userId, validation.data);
+      
+      if (!spot) {
+        return res.status(404).json({ error: "Spot not found or you don't have permission" });
+      }
+      
+      res.json({ spot });
+    } catch (error) {
+      if (error.statusCode === 409) {
+        return res.status(409).json({ error: error.message });
+      }
+      throw error;
     }
-    
-    res.json({ spot });
   } catch (error) {
     logger.error({ error, spotId: req.params.spotId, userId: req.user?.userId }, "Error updating spot");
     res.status(500).json({ error: "Failed to update spot" });

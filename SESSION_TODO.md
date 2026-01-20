@@ -25,8 +25,9 @@
 
 2. **Swipe Feature Limitation (Map View)**
    - Current state: Swipe-to-add feature only works in **list view**, not in **map view**
-   - Reason: SwipeableRouteItem component is only used in the FlatList renderItem for list view; map view uses spot markers that open a modal
-   - Future enhancement: Implement swipe gestures for routes in map view modal (if desired)
+   - Reason: Nested scrollable containers (ScrollView > FlatList) in the spot detail modal prevent gesture handler from properly detecting horizontal swipe gestures
+   - Attempted fixes: Tried using gesture handler's ScrollView/FlatList and adjusting gesture config, but gestures are still blocked
+   - Future enhancement: Would need to restructure the modal (e.g., remove nested scrollables or use different gesture approach)
 
 3. **Grade System Preference**
    - **Future feature**: Allow users to pick their preferred grading system for insights/analytics
