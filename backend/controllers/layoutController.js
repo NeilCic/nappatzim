@@ -402,6 +402,10 @@ export const createVideoController = async (req, res) => {
     if (error.message?.includes('not found')) {
       return res.status(404).json({ error: error.message });
     }
+
+    if (error.statusCode === 409) {
+      return res.status(409).json({ error: error.message || "You have already uploaded a video for this climb" });
+    }
     
     res.status(500).json({ error: "Failed to create video" });
   }

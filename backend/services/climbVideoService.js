@@ -102,6 +102,14 @@ class ClimbVideoService extends PrismaCrudService {
       } catch (cleanupError) {
         logger.error({ cleanupError, publicId: uploadResult.publicId, climbId }, "Failed to clean up Cloudinary upload after database save failure - video may be orphaned");
       }
+
+      // Handle Prisma unique constraint violation (P2002) for one-video-per-user-per-climb rule
+      if (dbError.code === "P2002" && dbError.meta?.target?.includes("climbId") && dbError.meta?.target?.includes("userId")) {
+        const error = new Error("You have already uploaded a video for this climb");
+        error.statusCode = 409;
+        throw error;
+      }
+
       throw dbError;
     }
   }

@@ -200,6 +200,7 @@ model ClimbVideo {
   @@index([climbId])
   @@index([climbId, createdAt])
   @@index([userId])
+  @@unique([climbId, userId])
 }
 
 model Climb {
