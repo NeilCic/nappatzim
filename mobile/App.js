@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import { NavigationContainer, useNavigation } from "@react-navigation/native";
+import { NavigationContainer, useNavigation, CommonActions } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -64,6 +64,16 @@ const CustomHeader = ({ HeaderRightButtons, navigationRef, currentRoute }) => {
     }
   };
 
+  const handleBackLongPress = () => {
+    // Long press: go straight to Home and clear history
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: "Home" }],
+      })
+    );
+  };
+
   return (
     <View style={styles.customHeader}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
@@ -73,6 +83,7 @@ const CustomHeader = ({ HeaderRightButtons, navigationRef, currentRoute }) => {
             <TouchableOpacity
               style={styles.backButton}
               onPress={handleBack}
+              onLongPress={handleBackLongPress}
             >
               <Text style={styles.backIcon}>←</Text>
             </TouchableOpacity>
