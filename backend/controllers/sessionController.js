@@ -479,6 +479,49 @@ export const getGradeProgressionController = async (req, res) => {
   }
 };
 
+export const getInsightsAndProgressionController = async (req, res) => {
+  const requestId = Date.now().toString();
+  try {
+    const userId = req.user?.userId;
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    logger.info({ requestId, userId }, "Getting insights and grade progression");
+
+    const minSessions = req.query.minSessions
+      ? parseInt(req.query.minSessions, 10)
+      : MIN_SESSIONS_REQUIRED;
+
+    const result = await sessionService.calculateInsightsAndProgression(userId, {
+      minSessions: Math.max(minSessions, MIN_SESSIONS_REQUIRED),
+      limitPerCategory: SUGGESTIONS_PER_INSIGHT_CATEGORY,
+    });
+
+    logger.info(
+      {
+        requestId,
+        hasEnoughData: result.insights?.hasEnoughData,
+        progressionPoints: result.progression?.progression?.length || 0,
+      },
+      "Insights and progression calculated"
+    );
+
+    res.status(200).json(result);
+  } catch (error) {
+    logger.error(
+      {
+        requestId,
+        userId: req.user?.userId,
+        error: error.message,
+        stack: error.stack,
+      },
+      "Failed to get insights and progression"
+    );
+    res.status(500).json({ error: "Failed to get insights and progression" });
+  }
+};
+
 export const deleteSessionController = async (req, res) => {
   const requestId = Date.now().toString();
   try {

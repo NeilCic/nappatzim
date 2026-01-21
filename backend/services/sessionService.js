@@ -426,19 +426,8 @@ class SessionService extends PrismaCrudService {
     return await this.delete({ id: sessionId });
   }
 
-  async calculateInsights(userId, options = {}) {
+  async calculateInsightsFromSessions(sessions, options = {}) {
     const { minSessions = 5 } = options;
-
-    // Get all completed sessions (with endTime) for the user
-    const sessions = await prisma.climbingSession.findMany({
-      where: {
-        userId,
-        endTime: { not: null }, // Only completed sessions
-      },
-      include: {
-        attempts: true,
-      },
-    });
 
     // Check minimum session requirement
     if (sessions.length < minSessions) {
@@ -469,9 +458,7 @@ class SessionService extends PrismaCrudService {
       };
     }
 
-    const loggedClimbIdsSet = new Set(
-      allRoutes.map(route => route.climbId).filter(Boolean)
-    );
+    const loggedClimbIdsSet = new Set(allRoutes.map(route => route.climbId).filter(Boolean));
 
     // Group routes by grade (prefer voterGrade, fallback to proposedGrade)
     const gradeMap = new Map();
@@ -798,23 +785,22 @@ class SessionService extends PrismaCrudService {
     };
   }
 
-  async calculateGradeProgression(userId) {
-    // Get all sessions for user, ordered by date (oldest first)
+  async calculateInsights(userId, options = {}) {
+    // Get all completed sessions (with endTime) for the user
     const sessions = await prisma.climbingSession.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'asc' },
+      where: {
+        userId,
+        endTime: { not: null }, // Only completed sessions
+      },
       include: {
-        attempts: {
-          select: {
-            status: true,
-            voterGrade: true,
-            proposedGrade: true,
-            gradeSystem: true,
-          },
-        },
+        attempts: true,
       },
     });
 
+    return this.calculateInsightsFromSessions(sessions, options);
+  }
+
+  calculateGradeProgressionFromSessions(sessions) {
     if (!sessions || sessions.length === 0) {
       return {
         progression: [],
@@ -822,9 +808,14 @@ class SessionService extends PrismaCrudService {
       };
     }
 
+    // Sort by createdAt ascending to build the timeline
+    const sortedSessions = [...sessions].sort(
+      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+    );
+
     // Determine primary grade system from first session with grades
     let primaryGradeSystem = null;
-    for (const session of sessions) {
+    for (const session of sortedSessions) {
       const firstRouteWithGrade = session.attempts?.find(
         a => a.voterGrade || a.proposedGrade
       );
@@ -842,7 +833,7 @@ class SessionService extends PrismaCrudService {
     }
 
     // Calculate progression data for each session
-    const progression = sessions.map((session) => {
+    const progression = sortedSessions.map((session) => {
       const attempts = session.attempts || [];
       
       if (attempts.length === 0) {
@@ -921,6 +912,59 @@ class SessionService extends PrismaCrudService {
     return {
       progression,
       gradeSystem: primaryGradeSystem,
+    };
+  }
+
+  async calculateGradeProgression(userId) {
+    // Use only completed sessions for progression as well – ongoing sessions are typically "in flight" and don't represent stable performance.
+    const sessions = await prisma.climbingSession.findMany({
+      where: {
+        userId,
+        endTime: { not: null },
+      },
+      include: {
+        attempts: {
+          select: {
+            status: true,
+            voterGrade: true,
+            proposedGrade: true,
+            gradeSystem: true,
+          },
+        },
+      },
+    });
+
+    return this.calculateGradeProgressionFromSessions(sessions);
+  }
+
+  async calculateInsightsAndProgression(userId, options = {}) {
+    const sessions = await prisma.climbingSession.findMany({
+      where: {
+        userId,
+        endTime: { not: null },
+      },
+      include: {
+        attempts: true,
+      },
+    });
+
+    const insights = await this.calculateInsightsFromSessions(sessions, options);
+    const progression = this.calculateGradeProgressionFromSessions(
+      // progression only needs a subset of attempt fields; passing full attempts is fine
+      sessions.map((s) => ({
+        ...s,
+        attempts: s.attempts.map((a) => ({
+          status: a.status,
+          voterGrade: a.voterGrade,
+          proposedGrade: a.proposedGrade,
+          gradeSystem: a.gradeSystem,
+        })),
+      }))
+    );
+
+    return {
+      insights,
+      progression,
     };
   }
 }

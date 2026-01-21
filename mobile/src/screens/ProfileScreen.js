@@ -33,7 +33,6 @@ export default function ProfileScreen({ navigation }) {
   useEffect(() => {
     fetchCurrentUser();
     fetchInsights();
-    fetchProgression();
   }, []);
 
   const fetchCurrentUser = async () => {
@@ -58,25 +57,16 @@ export default function ProfileScreen({ navigation }) {
   const fetchInsights = async () => {
     try {
       setLoadingInsights(true);
-      const response = await api.get("/sessions/insights");
-      setInsights(response.data);
+      const response = await api.get("/sessions/overview");
+      setInsights(response.data.insights || null);
+      setProgression(response.data.progression || null);
     } catch (error) {
       // Silently fail - insights are optional
       console.error("Failed to fetch insights:", error);
       setInsights(null);
+      setProgression(null);
     } finally {
       setLoadingInsights(false);
-    }
-  };
-
-  const fetchProgression = async () => {
-    try {
-      const response = await api.get("/sessions/progression");
-      setProgression(response.data);
-    } catch (error) {
-      // Silently fail - progression is optional
-      console.error("Failed to fetch progression:", error);
-      setProgression(null);
     }
   };
 
@@ -84,7 +74,6 @@ export default function ProfileScreen({ navigation }) {
     try {
       setRefreshingInsights(true);
       await fetchInsights();
-      await fetchProgression();
     } finally {
       setRefreshingInsights(false);
     }
