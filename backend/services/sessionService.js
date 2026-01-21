@@ -427,7 +427,7 @@ class SessionService extends PrismaCrudService {
   }
 
   async calculateInsightsFromSessions(sessions, options = {}) {
-    const { minSessions = 5 } = options;
+    const { minSessions = 5, preferredGradeSystem = null } = options;
 
     // Check minimum session requirement
     if (sessions.length < minSessions) {
@@ -463,7 +463,7 @@ class SessionService extends PrismaCrudService {
     // Group routes by grade (prefer voterGrade, fallback to proposedGrade)
     const gradeMap = new Map();
     const descriptorMap = new Map();
-    let primaryGradeSystem = null;
+    let primaryGradeSystem = preferredGradeSystem || null;
 
     allRoutes.forEach(route => {
       const isSuccess = route.status === 'success';
@@ -474,6 +474,8 @@ class SessionService extends PrismaCrudService {
       const gradeSystem = route.gradeSystem || 'V-Scale';
 
       if (grade && grade !== 'Unknown') {
+        // If user has no explicit preference or we haven't locked it in yet,
+        // default to the first grade system we actually see in the data.
         if (!primaryGradeSystem) {
           primaryGradeSystem = gradeSystem;
         }
@@ -797,10 +799,18 @@ class SessionService extends PrismaCrudService {
       },
     });
 
-    return this.calculateInsightsFromSessions(sessions, options);
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { preferredGradeSystem: true },
+    });
+
+    return this.calculateInsightsFromSessions(sessions, {
+      ...options,
+      preferredGradeSystem: user?.preferredGradeSystem || null,
+    });
   }
 
-  calculateGradeProgressionFromSessions(sessions) {
+  calculateGradeProgressionFromSessions(sessions, preferredGradeSystem = null) {
     if (!sessions || sessions.length === 0) {
       return {
         progression: [],
@@ -813,15 +823,31 @@ class SessionService extends PrismaCrudService {
       (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
     );
 
-    // Determine primary grade system from first session with grades
+    // Determine primary grade system
     let primaryGradeSystem = null;
-    for (const session of sortedSessions) {
-      const firstRouteWithGrade = session.attempts?.find(
-        a => a.voterGrade || a.proposedGrade
-      );
-      if (firstRouteWithGrade?.gradeSystem) {
-        primaryGradeSystem = firstRouteWithGrade.gradeSystem;
-        break;
+
+    // If user has a preferred system and we have at least one route with that system,
+    // respect it. Otherwise, fall back to the first system we encounter.
+    if (preferredGradeSystem) {
+      outer: for (const session of sortedSessions) {
+        for (const attempt of session.attempts || []) {
+          if ((attempt.voterGrade || attempt.proposedGrade) && attempt.gradeSystem === preferredGradeSystem) {
+            primaryGradeSystem = preferredGradeSystem;
+            break outer;
+          }
+        }
+      }
+    }
+
+    if (!primaryGradeSystem) {
+      for (const session of sortedSessions) {
+        const firstRouteWithGrade = session.attempts?.find(
+          a => a.voterGrade || a.proposedGrade
+        );
+        if (firstRouteWithGrade?.gradeSystem) {
+          primaryGradeSystem = firstRouteWithGrade.gradeSystem;
+          break;
+        }
       }
     }
 
@@ -934,7 +960,15 @@ class SessionService extends PrismaCrudService {
       },
     });
 
-    return this.calculateGradeProgressionFromSessions(sessions);
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { preferredGradeSystem: true },
+    });
+
+    return this.calculateGradeProgressionFromSessions(
+      sessions,
+      user?.preferredGradeSystem || null
+    );
   }
 
   async calculateInsightsAndProgression(userId, options = {}) {
@@ -947,8 +981,16 @@ class SessionService extends PrismaCrudService {
         attempts: true,
       },
     });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { preferredGradeSystem: true },
+    });
+    const preferredGradeSystem = user?.preferredGradeSystem || null;
 
-    const insights = await this.calculateInsightsFromSessions(sessions, options);
+    const insights = await this.calculateInsightsFromSessions(sessions, {
+      ...options,
+      preferredGradeSystem,
+    });
     const progression = this.calculateGradeProgressionFromSessions(
       // progression only needs a subset of attempt fields; passing full attempts is fine
       sessions.map((s) => ({
@@ -959,7 +1001,8 @@ class SessionService extends PrismaCrudService {
           proposedGrade: a.proposedGrade,
           gradeSystem: a.gradeSystem,
         })),
-      }))
+      })),
+      preferredGradeSystem
     );
 
     return {

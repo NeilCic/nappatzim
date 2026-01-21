@@ -17,6 +17,7 @@ model User {
   updatedAt                DateTime                  @updatedAt
   username                 String?                   @unique
   height                   Float?
+  preferredGradeSystem     String?
   climbs                   Climb[]
   climbComments            ClimbComment[]
   climbVideos              ClimbVideo[]

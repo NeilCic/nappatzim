@@ -201,7 +201,11 @@ const getCurrentUser = async (req, res) => {
             "Fetching current user"
         );
 
-        const user = await authService.getOne({ id: req.user.userId }, undefined, { id: true, email: true, username: true, height: true });
+        const user = await authService.getOne(
+          { id: req.user.userId },
+          undefined,
+          { id: true, email: true, username: true, height: true, preferredGradeSystem: true }
+        );
         if (!user) {
             logger.warn({ requestId, userId: req.user.userId }, "User not found");
             return res.status(404).json({ error: "User not found" });
@@ -232,6 +236,7 @@ const updateProfileSchema = z.object({
         .positive("Height must be a positive number")
         .nullable()
         .optional(),
+    preferredGradeSystem: z.enum(['V-Scale', 'V-Scale Range', 'French']).optional(),
 });
 
 const updateProfile = async (req, res) => {
@@ -246,7 +251,12 @@ const updateProfile = async (req, res) => {
         const user = await authService.updateUserProfile(req.user.userId, validatedData);
 
         logger.info({ requestId, userId: req.user.userId }, "User profile updated successfully");
-        res.json({ id: user.id, username: user.username, height: user.height });
+        res.json({
+          id: user.id,
+          username: user.username,
+          height: user.height,
+          preferredGradeSystem: user.preferredGradeSystem || null,
+        });
     } catch (error) {
         if (error.name === "ZodError") {
             logger.warn(

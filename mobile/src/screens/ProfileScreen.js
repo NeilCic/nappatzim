@@ -21,6 +21,7 @@ import GradeProgressionChart from "../components/GradeProgressionChart";
 export default function ProfileScreen({ navigation }) {
   const [username, setUsername] = useState("");
   const [height, setHeight] = useState("");
+  const [preferredGradeSystem, setPreferredGradeSystem] = useState("V-Scale");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [insights, setInsights] = useState(null);
@@ -35,6 +36,9 @@ export default function ProfileScreen({ navigation }) {
       if (user) {
         setUsername(user.username || "");
         setHeight(user.height ? String(user.height) : "");
+        if (user.preferredGradeSystem) {
+          setPreferredGradeSystem(user.preferredGradeSystem);
+        }
         setLoading(false);
         return;
       }
@@ -44,6 +48,9 @@ export default function ProfileScreen({ navigation }) {
       if (freshUser) {
         setUsername(freshUser.username || "");
         setHeight(freshUser.height ? String(freshUser.height) : "");
+        if (freshUser.preferredGradeSystem) {
+          setPreferredGradeSystem(freshUser.preferredGradeSystem);
+        }
       }
       setLoading(false);
     };
@@ -83,6 +90,7 @@ export default function ProfileScreen({ navigation }) {
       const updateData = {
         username: username.trim() || undefined,
         height: height.trim() === "" ? null : parseFloat(height.trim()),
+        preferredGradeSystem,
       };
 
       const res = await api.patch("/auth/profile", updateData);
@@ -90,6 +98,9 @@ export default function ProfileScreen({ navigation }) {
       if (res.data) {
         setUsername(res.data.username || "");
         setHeight(res.data.height ? String(res.data.height) : "");
+        if (res.data.preferredGradeSystem) {
+          setPreferredGradeSystem(res.data.preferredGradeSystem);
+        }
         setUser(res.data);
       }
       showSuccessAlert("Profile updated successfully");
@@ -527,6 +538,34 @@ export default function ProfileScreen({ navigation }) {
         />
       </Section>
 
+      <Section>
+        <Text style={styles.preferenceLabel}>Preferred grade system</Text>
+        <View style={styles.gradeSystemButtons}>
+          {["V-Scale", "V-Scale Range", "French"].map((system) => (
+            <Pressable
+              key={system}
+              style={[
+                styles.gradeSystemButton,
+                preferredGradeSystem === system && styles.gradeSystemButtonActive,
+              ]}
+              onPress={() => setPreferredGradeSystem(system)}
+            >
+              <Text
+                style={[
+                  styles.gradeSystemButtonText,
+                  preferredGradeSystem === system && styles.gradeSystemButtonTextActive,
+                ]}
+              >
+                {system}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={styles.preferenceHint}>
+          Used for insights and grade progression when possible.
+        </Text>
+      </Section>
+
       <Button
         title="Save All Changes"
         onPress={saveProfile}
@@ -578,6 +617,43 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 16,
+  },
+  preferenceLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 8,
+  },
+  gradeSystemButtons: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 4,
+  },
+  gradeSystemButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    backgroundColor: "#fff",
+  },
+  gradeSystemButtonActive: {
+    borderColor: "#007AFF",
+    backgroundColor: "#E3F2FD",
+  },
+  gradeSystemButtonText: {
+    fontSize: 13,
+    color: "#555",
+  },
+  gradeSystemButtonTextActive: {
+    color: "#007AFF",
+    fontWeight: "600",
+  },
+  preferenceHint: {
+    fontSize: 12,
+    color: "#777",
+    marginTop: 4,
   },
   saveButton: {
     marginTop: 0,
