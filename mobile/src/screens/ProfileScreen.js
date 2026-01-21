@@ -6,8 +6,7 @@ import {
 } from "react-native";
 import Svg, { Polygon, Line, Circle, Text as SvgText } from "react-native-svg";
 import { useApi } from "../ApiProvider";
-import { getCurrentUserId } from "../utils/jwtUtils";
-import handleApiCall from "../utils/apiUtils";
+import { useUser } from "../UserProvider";
 import { showError } from "../utils/errorHandler";
 import Button from "../components/Button";
 import LoadingScreen from "../components/LoadingScreen";
@@ -29,30 +28,29 @@ export default function ProfileScreen({ navigation }) {
   const [refreshingInsights, setRefreshingInsights] = useState(false);
   const [progression, setProgression] = useState(null);
   const { api } = useApi();
+  const { user, setUser, refreshUser } = useUser();
 
   useEffect(() => {
-    fetchCurrentUser();
-    fetchInsights();
-  }, []);
+    const initUser = async () => {
+      if (user) {
+        setUsername(user.username || "");
+        setHeight(user.height ? String(user.height) : "");
+        setLoading(false);
+        return;
+      }
 
-  const fetchCurrentUser = async () => {
-    const userId = await getCurrentUserId();
-    if (!userId) {
+      // Fallback: try to refresh user once if not present
+      const freshUser = await refreshUser();
+      if (freshUser) {
+        setUsername(freshUser.username || "");
+        setHeight(freshUser.height ? String(freshUser.height) : "");
+      }
       setLoading(false);
-      return;
-    }
+    };
 
-    const data = await handleApiCall(
-      () => api.get(`/auth/me`),
-      setLoading,
-      "Error fetching user info"
-    );
-
-    if (data) {
-      setUsername(data.username || "");
-      setHeight(data.height ? String(data.height) : "");
-    }
-  };
+    initUser();
+    fetchInsights();
+  }, [user, refreshUser]);
 
   const fetchInsights = async () => {
     try {
@@ -92,6 +90,7 @@ export default function ProfileScreen({ navigation }) {
       if (res.data) {
         setUsername(res.data.username || "");
         setHeight(res.data.height ? String(res.data.height) : "");
+        setUser(res.data);
       }
       showSuccessAlert("Profile updated successfully");
     } catch (error) {

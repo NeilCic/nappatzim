@@ -15,19 +15,17 @@
    - Sync to backend when connection restored
 
 ### Technical Debt / Maintenance
-1. **Reanimated Migration (runOnJS deprecation)**
+1. **Reanimated Migration (runOnJS deprecation)** *(blocked / deprioritized for now)*
    - Migrate from deprecated `runOnJS` to `scheduleOnRN` from `react-native-worklets` (Reanimated 4.x migration)
    - Location: `mobile/src/screens/LayoutDetailScreen.js` (2 calls in SwipeableRouteItem component)
-   - Steps: 
-     1. Install `react-native-worklets` package
-     2. Replace `runOnJS` imports and calls with `scheduleOnRN` from `react-native-worklets`
-     3. Update import statement from `react-native-reanimated` to `react-native-worklets`
+   - Status: Blocked in current Expo Go setup because `react-native-worklets` requires a dev build / native rebuild.
+   - Note: Keep using `runOnJS` until we move to a custom dev build or Expo supports this flow.
 
-2. **Swipe Feature Limitation (Map View)**
+2. **Swipe Feature Limitation (Map View)** *(deprioritized)*
    - Current state: Swipe-to-add feature only works in **list view**, not in **map view**
    - Reason: Nested scrollable containers (ScrollView > FlatList) in the spot detail modal prevent gesture handler from properly detecting horizontal swipe gestures
    - Attempted fixes: Tried using gesture handler's ScrollView/FlatList and adjusting gesture config, but gestures are still blocked
-   - Future enhancement: Would need to restructure the modal (e.g., remove nested scrollables or use different gesture approach)
+   - Status: Deprioritized for now due to gesture/scroll nesting complexity; would require restructuring the modal or a different gesture approach.
 
 3. **Grade System Preference**
    - **Future feature**: Allow users to pick their preferred grading system for insights/analytics

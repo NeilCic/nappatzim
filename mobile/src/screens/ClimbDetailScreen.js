@@ -14,6 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import * as ImagePicker from 'expo-image-picker';
 import { useApi } from '../ApiProvider';
+import { useUser } from '../UserProvider';
 import { showError } from '../utils/errorHandler';
 import DESCRIPTORS from '../../../shared/descriptors';
 import StyledTextInput from '../components/StyledTextInput';
@@ -67,6 +68,7 @@ export default function ClimbDetailScreen({ navigation, route }) {
   const errorLoggedRef = useRef(false);
   const hasAutoPlayedRef = useRef(false);
   const { api } = useApi();
+  const { user } = useUser();
 
   const DESCRIPTOR_OPTIONS = DESCRIPTORS;
   
@@ -79,6 +81,11 @@ export default function ClimbDetailScreen({ navigation, route }) {
     };
     initUserId();
   }, []);
+
+  useEffect(() => {
+    // Keep userHeight in sync with current user profile (height is optional)
+    setUserHeight(user?.height ?? null);
+  }, [user]);
 
   useEffect(() => {
     const keyboardWillShowListener = Keyboard.addListener(  // todo check if this is how we've done things up until now - make it consistent
@@ -110,13 +117,12 @@ export default function ClimbDetailScreen({ navigation, route }) {
   const fetchClimbDetails = async (climbId) => {
     setLoadingClimbDetails(true);
     try {
-      const [climbRes, statisticsRes, myVoteRes, commentsRes, videosRes, userRes] = await Promise.all([
+      const [climbRes, statisticsRes, myVoteRes, commentsRes, videosRes] = await Promise.all([
         api.get(`/climbs/${climbId}`),
         api.get(`/climbs/${climbId}/votes/statistics`),
         api.get(`/climbs/${climbId}/votes/me`).catch(() => ({ data: { vote: null } })),
         api.get(`/climbs/${climbId}/comments?sortBy=${commentSortBy}`),
         api.get(`/climbs/${climbId}/videos`),
-        api.get('/auth/me').catch(() => ({ data: { height: null } })),
       ]);
 
       setClimbDetails(climbRes.data.climb);
@@ -124,7 +130,6 @@ export default function ClimbDetailScreen({ navigation, route }) {
       setMyVote(myVoteRes.data.vote || null);
       setSelectedVoteGrade(myVoteRes.data.vote?.grade || '');
       setSelectedDescriptors(myVoteRes.data.vote?.descriptors || []);
-      setUserHeight(userRes.data?.height || null);
       setClimbComments(commentsRes.data.comments || []);
       setClimbVideos(videosRes.data.videos || []);
     } catch (error) {

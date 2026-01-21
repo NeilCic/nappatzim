@@ -27,6 +27,7 @@ import ClimbDetailScreen from "./src/screens/ClimbDetailScreen";
 import { ApiProvider } from "./src/ApiProvider";
 import { createApi } from "./src/ApiClient";
 import { clearCachedUserId } from "./src/utils/jwtUtils";
+import { UserProvider } from "./src/UserProvider";
 
 const Stack = createNativeStackNavigator();
 
@@ -199,6 +200,7 @@ export default function App() {
   const navigationRef = useRef(null);
   const [currentRoute, setCurrentRoute] = useState("Home");
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const { api, setAuthToken } = useMemo(
     () =>
@@ -214,6 +216,19 @@ export default function App() {
     clearCachedUserId();
     setAuthToken(undefined);
     setIsAuthed(false);
+    setCurrentUser(null);
+  };
+
+  const refreshUser = async () => {
+    try {
+      const response = await api.get("/auth/me");
+      const userData = response?.data || null;
+      setCurrentUser(userData);
+      return userData;
+    } catch (error) {
+      setCurrentUser(null);
+      return null;
+    }
   };
 
   useEffect(() => {
@@ -233,8 +248,8 @@ export default function App() {
           
           for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-              await api.get("/auth/me");
-              // Success - token is valid
+              const meResponse = await api.get("/auth/me");
+              setCurrentUser(meResponse?.data || null);
               setIsAuthed(true);
               return;
             } catch (error) {
@@ -255,6 +270,8 @@ export default function App() {
                     
                     await AsyncStorage.setItem("token", newAccessToken);
                     setAuthToken(newAccessToken);
+                    const meResponse = await api.get("/auth/me");
+                    setCurrentUser(meResponse?.data || null);
                     setIsAuthed(true);
                     return;
                   } catch (refreshError) {
@@ -367,17 +384,19 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ApiProvider value={{ api, setAuthToken }}>
-        <NavigationContainer ref={navigationRef} onStateChange={handleStateChange}>
-          <NavigationWrapper 
-            isAuthed={isAuthed} 
-            HeaderRightButtons={HeaderRightButtons} 
-            handleLogout={handleLogout}
-            Stack={Stack}
-            onLoggedIn={() => setIsAuthed(true)}
-            navigationRef={navigationRef}
-            currentRoute={currentRoute}
-          />
-        </NavigationContainer>
+        <UserProvider value={{ user: currentUser, setUser: setCurrentUser, refreshUser }}>
+          <NavigationContainer ref={navigationRef} onStateChange={handleStateChange}>
+            <NavigationWrapper 
+              isAuthed={isAuthed} 
+              HeaderRightButtons={HeaderRightButtons} 
+              handleLogout={handleLogout}
+              Stack={Stack}
+              onLoggedIn={() => setIsAuthed(true)}
+              navigationRef={navigationRef}
+              currentRoute={currentRoute}
+            />
+          </NavigationContainer>
+        </UserProvider>
       </ApiProvider>
     </GestureHandlerRootView>
   );
