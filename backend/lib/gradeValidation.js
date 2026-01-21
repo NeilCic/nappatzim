@@ -37,19 +37,22 @@ export function validateGrade(grade, gradeSystem, allowRanges = true) {
         };
       }
       
-      // Ranges allowed (for climbs): must be a range
+      // Ranges allowed (for climbs): must be a range and span at most 3 grades (e.g. V3-V6 is OK, V1-V8 is not)
       if (V_SCALE_RANGE_PATTERN.test(trimmedGrade)) {
         const match = trimmedGrade.match(/^V(\d+)-V(\d+)$/);
         if (match) {
           const first = parseInt(match[1], 10);
           const second = parseInt(match[2], 10);
-          if (first <= second && second <= 17) {
+          const span = second - first;
+
+          // Must be an actual range (second > first) and span at most 3 grades
+          if (first >= 0 && second <= 17 && span >= 1 && span <= 3) {
             return { valid: true };
           }
         }
         return {
           valid: false,
-          error: 'Invalid V-Scale range. First grade must be less than or equal to second grade, and both must be V0-V17.',
+          error: 'Invalid V-Scale range. The second grade must be >= the first, both in V0-V17, and the range may span at most 3 grades (e.g. "V3-V6" is OK, "V1-V8" is not).',
         };
       }
       return {
