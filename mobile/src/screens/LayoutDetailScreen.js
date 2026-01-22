@@ -570,6 +570,13 @@ export default function LayoutDetailScreen({ navigation, route }) {
   const handleSaveSession = async () => {
     if (!activeLocalSession) return;
 
+    // This shouldn't be possible (button is disabled), but safety check
+    if (editingRoutes.length === 0) {
+      setShowReviewModal(false);
+      showErrorAlert('Cannot save session with no routes. Please log at least one route.');
+      return;
+    }
+
     setSavingSession(true);
     try {
       // Update routes based on editingRoutes
@@ -1133,15 +1140,20 @@ export default function LayoutDetailScreen({ navigation, route }) {
             <Pressable
               style={[
                 styles.filterButton,
-                activeLocalSession && styles.endSessionButton
+                activeLocalSession && styles.endSessionButton,
+                activeLocalSession && sessionRoutes.length === 0 && styles.disabledButton
               ]}
               onPress={activeLocalSession ? endSession : startSession}
+              disabled={activeLocalSession && sessionRoutes.length === 0}
             >
               <Text style={[
                 styles.filterButtonText,
-                activeLocalSession && styles.endSessionButtonText
+                activeLocalSession && styles.endSessionButtonText,
+                activeLocalSession && sessionRoutes.length === 0 && styles.disabledButtonText
               ]}>
-                {activeLocalSession ? '⏹️ End Session' : '▶️ Start Session'}
+                {activeLocalSession 
+                  ? (sessionRoutes.length === 0 ? '⏹️ End Session (log a route first)' : '⏹️ End Session')
+                  : '▶️ Start Session'}
               </Text>
             </Pressable>
             
@@ -2643,6 +2655,13 @@ const styles = StyleSheet.create({
   },
   endSessionButtonText: {
     color: '#fff',
+  },
+  disabledButton: {
+    backgroundColor: '#CCCCCC',
+    opacity: 0.6,
+  },
+  disabledButtonText: {
+    color: '#666',
   },
   discardSessionButton: {
     backgroundColor: '#FF6B6B',

@@ -1,58 +1,48 @@
 # Offline Session Logging - TODO
 
-## Phase 1: Client-First Sessions (Snapshot Sync)
+## Phase 1: Client-First Sessions (Snapshot Sync) ✅ COMPLETE
 
-1. **Local Session Model**
-   - Define a `LocalSession` shape (in TypeScript/JSDoc) representing an entire session:
-     - `id` (local temp id)
-     - `startTime`, `endTime`, `notes`
-     - `routes[]` with `climbId`, `isSuccess`, `attempts`
-     - `status` (`active` | `completed` | `synced` | `sync_failed`)
-   - Store an array of `LocalSession` objects in AsyncStorage.
+1. **Local Session Model** ✅
+   - ✅ Defined `LocalSession` shape with JSDoc in `localSessionStorage.js`
+   - ✅ Stores array of `LocalSession` objects in AsyncStorage
 
-2. **Active Session Uses LocalSession Only**
-   - Refactor active session flow (in `LayoutDetailScreen`) to:
-     - Create a `LocalSession` when starting a session (no immediate API calls).
-     - Update the `LocalSession` routes/notes locally when logging routes or editing.
-     - Mark the session as `completed` locally when user ends session.
+2. **Active Session Uses LocalSession Only** ✅
+   - ✅ Refactored `LayoutDetailScreen` to use `LocalSession` model
+   - ✅ Creates `LocalSession` when starting session (no immediate API calls)
+   - ✅ Updates `LocalSession` routes/notes locally
+   - ✅ Marks session as `completed` when user ends session
 
-3. **Sync Endpoint (Backend)**
-   - Add `POST /sessions/offline` endpoint that accepts a full session snapshot:
-     - Body: `{ startTime, endTime, notes, routes: [{ climbId, isSuccess, attempts }] }`.
-   - In a transaction:
-     - Create `ClimbingSession`.
-     - Bulk insert `SessionRoute` rows.
-   - Response: `{ sessionId }` (and optionally created route ids).
+3. **Sync Endpoint (Backend)** ✅
+   - ✅ `POST /sessions/sync` endpoint accepts full session snapshot
+   - ✅ Creates `ClimbingSession` and bulk inserts `SessionRoute` rows in transaction
+   - ✅ Returns `{ sessionId }`
 
-4. **Sync Engine (Frontend)**
-   - Implement a simple sync function that:
-     - Finds all `LocalSession` objects with `status === "completed"` and not yet synced.
-     - For each, calls `POST /sessions/offline`.
-     - On success: mark them as `synced` or remove from local storage.
-     - On failure: mark as `sync_failed` and show a non-blocking error.
-   - Trigger sync:
-     - On app start.
-     - On explicit "Sync now" action (e.g. button in `ProfileScreen` or `SessionHistoryScreen`).
+4. **Sync Engine (Frontend)** ✅
+   - ✅ `syncLocalSessions()` function in `sessionSync.js`
+   - ✅ Finds all `LocalSession` with `status === "completed"` or `"sync_failed"`
+   - ✅ Marks as `synced` on success, `sync_failed` on failure
+   - ✅ Triggers sync on app start (HomeScreen)
+   - ✅ Manual sync button in ProfileScreen
 
-5. **UI States**
-   - Show an indicator for local-only sessions in session history (e.g. "⏳ Pending sync").
-   - Show a subtle "Offline session" tag in the active session UI when not yet synced.
+5. **UI States** ✅
+   - ✅ Shows pending sessions count in ProfileScreen sync button
+   - ✅ Active session UI shows local session state
 
 ## Phase 2: Enhancements (Nice-to-have)
 
-1. **Background Sync / Connectivity Awareness**
+1. **Background Sync / Connectivity Awareness** ❌ NOT IMPLEMENTED
    - Use network status to automatically trigger sync when coming back online.
    - Backoff on repeated failures.
 
-2. **Bulk Sync Endpoint** ✅
-   - ✅ Create `POST /sessions/sync/bulk` endpoint that accepts an array of sessions.
-   - ✅ Update `syncLocalSessions` to batch sessions (send all at once).
-   - ✅ Handle partial failures gracefully (some succeed, some fail).
-   - ✅ More efficient than individual API calls per session (reduced from N calls to 1 call).
+2. **Bulk Sync Endpoint** ✅ COMPLETE
+   - ✅ `POST /sessions/sync/bulk` endpoint accepts array of sessions
+   - ✅ `syncLocalSessions` batches sessions (sends all at once)
+   - ✅ Handles partial failures gracefully (some succeed, some fail)
+   - ✅ More efficient than individual API calls (reduced from N calls to 1 call)
 
-3. **Conflict Handling**
+3. **Conflict Handling** ❌ NOT IMPLEMENTED
    - Define behavior if a session was already synced from another device (future multi-device support).
 
-4. **Richer Local Data**
+4. **Richer Local Data** ❌ NOT IMPLEMENTED
    - Allow attaching more metadata to offline sessions (e.g. per-route notes) and include them in the snapshot.
 

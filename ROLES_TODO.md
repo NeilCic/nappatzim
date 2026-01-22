@@ -3,6 +3,15 @@
 ## Overview
 Implement role-based access control (RBAC) with four roles: Admin, Gym Manager, Setter, and User.
 
+## Current Status
+⚠️ **PARTIALLY IMPLEMENTED**: The `role` field exists in the User schema (`role String @default("user")`), but:
+- ❌ No authorization middleware exists
+- ❌ No role-based checks in controllers/services
+- ❌ No frontend role handling
+- ❌ No layout ownership model implemented
+
+**The role field is in the database but not functionally used anywhere.**
+
 ## Roles
 
 ### 1. **Admin**
@@ -44,10 +53,11 @@ Implement role-based access control (RBAC) with four roles: Admin, Gym Manager, 
 ### Phase 1: Database & Backend Foundation
 
 #### 1.1 Database Schema Changes
-- [ ] Add `role` field to `User` model in `schema.prisma`
-  - Type: Enum with values: `ADMIN`, `GYM_MANAGER`, `SETTER`, `USER`
-  - Default: `USER` for new users
-  - Migration: Set all existing users to `USER` role
+- [x] Add `role` field to `User` model in `schema.prisma` ✅ (Field exists: `role String @default("user")`)
+  - ⚠️ **Note**: Currently uses `String` type, not an Enum. Values are stored as strings.
+  - ⚠️ **Note**: Default is `"user"` (lowercase), not `"USER"` (uppercase)
+  - ❌ Migration to set existing users to `USER` role: NOT DONE
+  - ⚠️ **TODO**: Consider converting to Enum type for type safety
 - [ ] Implement layout ownership model
   - **Decision**: Use explicit ownership (`layout.ownerId` pointing to `User.id`)
   - Default: layouts created via script / legacy data have `ownerId = null` (\"community\" layouts)

@@ -1,4 +1,4 @@
-import { getPendingSyncSessions, batchUpdateLocalSessions, updateLocalSession, getLocalSession } from './localSessionStorage';
+import { getPendingSyncSessions, batchUpdateLocalSessions, updateLocalSession, getLocalSession, deleteLocalSession } from './localSessionStorage';
 import { showErrorAlert } from './alert';
 
 export async function syncLocalSessions(api, options = {}) {
@@ -10,8 +10,26 @@ export async function syncLocalSessions(api, options = {}) {
     return { synced: 0, failed: 0, syncedIds: [], failedIds: [] };
   }
 
+  // Filter out empty sessions (auto-discard) and delete them from local storage
+  const validSessions = pendingSessions.filter(session => 
+    session.routes && session.routes.length > 0
+  );
+  
+  const emptySessions = pendingSessions.filter(session => 
+    !session.routes || session.routes.length === 0
+  );
+  
+  // Delete empty sessions from local storage immediately
+  for (const emptySession of emptySessions) {
+    await deleteLocalSession(emptySession.id);
+  }
+  
+  if (validSessions.length === 0) {
+    return { synced: 0, failed: 0, syncedIds: [], failedIds: [] };
+  }
+
   // Prepare bulk payload (all sessions in one request)
-  const bulkPayload = pendingSessions.map(localSession => ({
+  const bulkPayload = validSessions.map(localSession => ({
     startTime: localSession.startTime,
     endTime: localSession.endTime,
     notes: localSession.notes,
@@ -35,7 +53,7 @@ export async function syncLocalSessions(api, options = {}) {
 
     // Process results and track updates
     results.forEach((result, index) => {
-      const localSession = pendingSessions[index];
+      const localSession = validSessions[index];
       
       if (result.success) {
         sessionUpdates.set(localSession.id, {
@@ -71,7 +89,7 @@ export async function syncLocalSessions(api, options = {}) {
     console.error('Failed to sync sessions in bulk:', error);
     
     // If bulk call fails entirely, mark all as failed
-    pendingSessions.forEach(localSession => {
+    validSessions.forEach(localSession => {
       sessionUpdates.set(localSession.id, {
         status: 'sync_failed',
       });
@@ -104,6 +122,12 @@ export async function syncSingleSession(api, localSessionId) {
 
   if (!localSession) {
     return { success: false, error: new Error('Session not found') };
+  }
+
+  // Auto-discard: If no routes, delete and return
+  if (!localSession.routes || localSession.routes.length === 0) {
+    await deleteLocalSession(localSessionId);
+    return { success: false, error: new Error('Session discarded - no routes') };
   }
 
   if (localSession.status === 'synced') {
