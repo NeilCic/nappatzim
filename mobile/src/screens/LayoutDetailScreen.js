@@ -35,6 +35,14 @@ import ColorPicker from '../components/ColorPicker';
 import RefreshableScrollView from '../components/RefreshableScrollView';
 import DESCRIPTORS from '../../../shared/descriptors';
 import { VALIDATION } from '../shared/constants';
+import {
+  generateLocalSessionId,
+  getActiveLocalSession,
+  saveLocalSession,
+  updateLocalSession,
+  deleteLocalSession,
+} from '../utils/localSessionStorage';
+import { syncSingleSession } from '../utils/sessionSync';
 
 // Swipeable route item component for quick adding during active sessions
 const SwipeableRouteItem = ({ item, onPress, onSwipeSuccess, onSwipeFailure, loggedClimbIds }) => {
@@ -195,8 +203,8 @@ export default function LayoutDetailScreen({ navigation, route }) {
   const hasAutoPlayedRef = useRef(false);
   const { api } = useApi();
   
-  // Session state
-  const [activeSession, setActiveSession] = useState(null);
+  // Session state (using LocalSession model)
+  const [activeLocalSession, setActiveLocalSession] = useState(null);
   const [sessionRoutes, setSessionRoutes] = useState([]);
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [selectedClimbForSession, setSelectedClimbForSession] = useState(null);
@@ -453,56 +461,53 @@ export default function LayoutDetailScreen({ navigation, route }) {
     }
   }, [layout]);
 
-  // Session management
+  // Session management (using LocalSession)
   useFocusEffect(() => {
     const loadActiveSession = async () => {
       try {
-        const savedSession = await AsyncStorage.getItem('activeSession');
+        const localSession = await getActiveLocalSession();
         
-        if (savedSession) {
-          const sessionData = JSON.parse(savedSession);
-          setActiveSession(sessionData.session);
-          setSessionRoutes(sessionData.routes || sessionData.attempts || []);
+        if (localSession) {
+          setActiveLocalSession(localSession);
+          // Convert LocalSession routes to format expected by UI
+          setSessionRoutes(localSession.routes.map((route, index) => ({
+            id: `local_route_${localSession.id}_${index}`,
+            climbId: route.climbId,
+            status: route.isSuccess ? 'success' : 'failure',
+            attempts: route.attempts,
+          })));
         } else {
-          setActiveSession(null);
+          setActiveLocalSession(null);
           setSessionRoutes([]);
         }
       } catch (error) {
-        // Ignore errors loading session
+        console.error('Error loading active session:', error);
+        setActiveLocalSession(null);
+        setSessionRoutes([]);
       }
     };
     
     loadActiveSession();
   });
 
-  const saveActiveSession = async (session, routes) => {
-    try {
-      await AsyncStorage.setItem('activeSession', JSON.stringify({
-        session,
-        routes: routes || sessionRoutes,
-      }));
-    } catch (error) {
-      // Ignore errors saving session
-    }
-  };
-
-  const clearActiveSession = async () => {
-    try {
-      await AsyncStorage.removeItem('activeSession');
-    } catch (error) {
-      // Ignore errors clearing session
-    }
-  };
-
   const startSession = async () => {
     try {
-      const response = await api.post('/sessions', {
-        startTime: new Date().toISOString(),
-      });
-      const session = response.data;
-      setActiveSession(session);
+      const localSessionId = generateLocalSessionId();
+      const startTime = new Date().toISOString();
+      
+      const localSession = {
+        id: localSessionId,
+        startTime,
+        endTime: null,
+        notes: null,
+        routes: [],
+        status: 'active',
+        serverSessionId: null,
+      };
+      
+      await saveLocalSession(localSession);
+      setActiveLocalSession(localSession);
       setSessionRoutes([]);
-      await saveActiveSession(session, []);
       showSuccessAlert('Session started!');
     } catch (error) {
       showError(error, 'Failed to start session');
@@ -510,7 +515,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
   };
 
   const endSession = async () => {
-    if (!activeSession) return;
+    if (!activeLocalSession) return;
 
     const confirmed = await new Promise((resolve) => {
       Alert.alert(
@@ -529,12 +534,12 @@ export default function LayoutDetailScreen({ navigation, route }) {
       ...route,
       isSuccess: route.status === 'success',
     })));
-    setSessionNotes('');
+    setSessionNotes(activeLocalSession.notes || '');
     setShowReviewModal(true);
   };
 
   const discardSession = async () => {
-    if (!activeSession) return;
+    if (!activeLocalSession) return;
 
     const confirmed = await new Promise((resolve) => {
       Alert.alert(
@@ -549,74 +554,60 @@ export default function LayoutDetailScreen({ navigation, route }) {
 
     if (!confirmed) return;
 
-    // Always clear local storage first, regardless of API call success
-    // This ensures the user can always get unstuck even if API fails
+    // Delete LocalSession
     try {
-      await AsyncStorage.multiRemove(['activeSession', 'sessionRouteAttempts']);
-    } catch (storageError) {
-      // If multiRemove fails, try individual removes
-      try {
-        await AsyncStorage.removeItem('activeSession');
-        await AsyncStorage.removeItem('sessionRouteAttempts');
-      } catch (e) {
-        // Ignore - best effort
-      }
-    }
-
-    // Try to delete from API, but don't block on it
-    try {
-      await api.delete(`/sessions/${activeSession.id}`);
-      await fetchLoggedClimbIds();
-    } catch (apiError) {
-      // API delete failed, but we already cleared local storage
-      // User will be able to proceed without the stuck session
+      await deleteLocalSession(activeLocalSession.id);
+    } catch (error) {
+      console.error('Error deleting local session:', error);
     }
 
     // Clear state
-    setActiveSession(null);
+    setActiveLocalSession(null);
     setSessionRoutes([]);
     showSuccessAlert('Session discarded');
   };
 
   const handleSaveSession = async () => {
-    if (!activeSession) return;
+    if (!activeLocalSession) return;
 
     setSavingSession(true);
     try {
-      // Update any routes that were edited
-      const updatePromises = editingRoutes.map(async (route) => {
-        const originalRoute = sessionRoutes.find(r => r.id === route.id);
-        if (!originalRoute) return;
+      // Update routes based on editingRoutes
+      const updatedRoutes = editingRoutes.map(route => ({
+        climbId: route.climbId,
+        isSuccess: route.isSuccess,
+        attempts: route.attempts,
+      }));
 
-        const needsUpdate = 
-          originalRoute.status !== (route.isSuccess ? 'success' : 'failure') ||
-          originalRoute.attempts !== route.attempts;
-
-        if (needsUpdate) {
-          return api.put(`/sessions/routes/${route.id}`, {
-            isSuccess: route.isSuccess,
-            attempts: route.attempts,
-          });
-        }
-        return null;
-      }).filter(Boolean);
-
-      await Promise.all(updatePromises);
-
-      // End session with notes
+      // Update LocalSession: mark as completed with endTime and notes
       const endTime = new Date().toISOString();
-      await api.put(`/sessions/${activeSession.id}/end`, {
+      const updatedSession = {
+        ...activeLocalSession,
         endTime,
-        notes: sessionNotes.trim() || undefined,
-      });
+        notes: sessionNotes.trim() || null,
+        routes: updatedRoutes,
+        status: 'completed', // Ready for sync
+      };
 
-      await clearActiveSession();
-      setActiveSession(null);
+      await saveLocalSession(updatedSession);
+
+      // Clear state
+      setActiveLocalSession(null);
       setSessionRoutes([]);
       setShowReviewModal(false);
       setSessionNotes('');
       setEditingRoutes([]);
-      showSuccessAlert('Session saved!');
+      
+      // Try to sync immediately (non-blocking)
+      syncSingleSession(api, updatedSession.id).then((result) => {
+        if (result.success) {
+          showSuccessAlert('Session saved and synced!');
+        } else {
+          showSuccessAlert('Session saved! It will sync when you have internet connection.');
+        }
+      }).catch(() => {
+        showSuccessAlert('Session saved! It will sync when you have internet connection.');
+      });
     } catch (error) {
       showError(error, 'Failed to save session');
     } finally {
@@ -631,7 +622,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
   };
 
   const addRouteToSessionHelper = async (climb, isSuccess, attempts = 1, showSuccess = false) => {
-    if (!activeSession || !climb) return false;
+    if (!activeLocalSession || !climb) return false;
 
     const isDuplicate = sessionRoutes.some(
       route => route.climbId === climb.id
@@ -645,19 +636,33 @@ export default function LayoutDetailScreen({ navigation, route }) {
     }
 
     try {
-      const response = await api.post(`/sessions/${activeSession.id}/routes`, {
+      // Add route to LocalSession locally
+      const newRoute = {
         climbId: climb.id,
         isSuccess,
         attempts,
-      });
+      };
+
+      const updatedRoutes = [...activeLocalSession.routes, newRoute];
+      const updatedSession = {
+        ...activeLocalSession,
+        routes: updatedRoutes,
+      };
+
+      await saveLocalSession(updatedSession);
+      setActiveLocalSession(updatedSession);
       
-      const newRoute = response.data;
-      const updatedRoutes = [...sessionRoutes, newRoute];
-      setSessionRoutes(updatedRoutes);
-      await saveActiveSession(activeSession, updatedRoutes);
+      // Update UI state
+      const routeForUI = {
+        id: `local_route_${activeLocalSession.id}_${updatedRoutes.length - 1}`,
+        climbId: climb.id,
+        status: isSuccess ? 'success' : 'failure',
+        attempts,
+      };
+      setSessionRoutes([...sessionRoutes, routeForUI]);
       
-      if (newRoute.climbId) {
-        setLoggedClimbIds(prev => new Set([...prev, newRoute.climbId]));
+      if (climb.id) {
+        setLoggedClimbIds(prev => new Set([...prev, climb.id]));
       }
       
       if (showSuccess) {
@@ -666,20 +671,13 @@ export default function LayoutDetailScreen({ navigation, route }) {
       
       return true;
     } catch (error) {
-      if (error.response?.status === 409) {
-        if (showSuccess) {
-          showErrorAlert('This route is already in your session.');
-        }
-        return false; // Duplicate
-      } else {
-        showError(error, 'Failed to add route to session');
-        return false;
-      }
+      showError(error, 'Failed to add route to session');
+      return false;
     }
   };
 
   const addRouteToSession = async () => {
-    if (!activeSession || !selectedClimbForSession) return;
+    if (!activeLocalSession || !selectedClimbForSession) return;
 
     setAddingRouteToSession(true);
     const success = await addRouteToSessionHelper(
@@ -798,7 +796,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
   };
 
   const handleClimbPress = (climb) => {
-    if (activeSession) {
+    if (activeLocalSession) {
       setSelectedClimbForSession(climb);
       setShowQuickAddModal(true);
     } else {
@@ -1031,7 +1029,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => {
                 // Only enable swipe when session is active and route isn't already logged
-                if (!activeSession || loggedClimbIds.has(item.id)) {
+                if (!activeLocalSession || loggedClimbIds.has(item.id)) {
                   return (
                     <Pressable
                       style={styles.listClimbItem}
@@ -1135,20 +1133,20 @@ export default function LayoutDetailScreen({ navigation, route }) {
             <Pressable
               style={[
                 styles.filterButton,
-                activeSession && styles.endSessionButton
+                activeLocalSession && styles.endSessionButton
               ]}
-              onPress={activeSession ? endSession : startSession}
+              onPress={activeLocalSession ? endSession : startSession}
             >
               <Text style={[
                 styles.filterButtonText,
-                activeSession && styles.endSessionButtonText
+                activeLocalSession && styles.endSessionButtonText
               ]}>
-                {activeSession ? '⏹️ End Session' : '▶️ Start Session'}
+                {activeLocalSession ? '⏹️ End Session' : '▶️ Start Session'}
               </Text>
             </Pressable>
             
             {/* Discard Session button - only shown when session is active */}
-            {activeSession && (
+            {activeLocalSession && (
               <Pressable
                 style={styles.discardSessionButton}
                 onPress={discardSession}
@@ -1160,11 +1158,16 @@ export default function LayoutDetailScreen({ navigation, route }) {
             )}
             
             {/* Session active indicator */}
-            {activeSession && (
+            {activeLocalSession && (
               <View style={styles.sessionActiveContainer}>
                 <Text style={styles.sessionActiveText}>
                   Session Active - {sessionRoutes.length} route{sessionRoutes.length !== 1 ? 's' : ''} logged
                 </Text>
+                {activeLocalSession.status === 'active' && (
+                  <Text style={styles.offlineIndicator}>
+                    📱 Offline session (will sync when connected)
+                  </Text>
+                )}
               </View>
             )}
           </View>
@@ -1649,12 +1652,12 @@ export default function LayoutDetailScreen({ navigation, route }) {
           showsVerticalScrollIndicator={true}
         >
           {/* Session Duration */}
-          {activeSession && (
+          {activeLocalSession && (
             <View style={styles.reviewSection}>
               <Text style={styles.reviewLabel}>Duration</Text>
               <Text style={styles.reviewDuration}>
                 {(() => {
-                  const start = new Date(activeSession.startTime);
+                  const start = new Date(activeLocalSession.startTime);
                   const now = new Date();
                   const diffMs = now - start;
                   const diffMins = Math.floor(diffMs / (1000 * 60));
@@ -2665,6 +2668,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2E7D32',
     fontWeight: '500',
+  },
+  offlineIndicator: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   quickAddModalContent: {
     maxHeight: '80%',

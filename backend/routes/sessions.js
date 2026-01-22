@@ -12,6 +12,8 @@ import {
   getInsightsController,
   getGradeProgressionController,
   getInsightsAndProgressionController,
+  syncOfflineSessionController,
+  syncOfflineSessionsBulkController,
 } from '../controllers/sessionController.js';
 import { verifyToken } from '../middleware/auth.js';
 
@@ -20,6 +22,8 @@ const router = express.Router();
 router.use(verifyToken);
 
 router.post('/', createSessionController);
+router.post('/sync', syncOfflineSessionController);
+router.post('/sync/bulk', syncOfflineSessionsBulkController);
 router.get('/', getSessionsController);
 router.get('/logged-climbs', getLoggedClimbIdsController);
 router.get('/insights', getInsightsController);

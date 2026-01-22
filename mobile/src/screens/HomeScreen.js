@@ -8,7 +8,6 @@ import {
   Alert,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useApi } from '../ApiProvider';
 import axios from 'axios';
 import Button from '../components/Button';
@@ -21,6 +20,8 @@ import Animated, {
   withSpring 
 } from 'react-native-reanimated';
 import { showSuccessAlert } from '../utils/alert';
+import { getActiveLocalSession } from '../utils/localSessionStorage';
+import { syncLocalSessions } from '../utils/sessionSync';
 
 import { isLightColor } from '../utils/colorUtils';
 
@@ -31,63 +32,48 @@ export default function HomeScreen({ navigation, onLogout }) {
   const [loading, setLoading] = useState(true);
   const { api } = useApi();
 
-  // Check for active session once when app opens (only run on mount)
+  // Check for active session and sync pending sessions on app start
   useEffect(() => {
-    const checkActiveSession = async () => {
+    const initializeSessions = async () => {
       try {
-        const savedSession = await AsyncStorage.getItem('activeSession');
+        const activeSession = await getActiveLocalSession();
         
-        if (savedSession) {
-          const sessionData = JSON.parse(savedSession);
-          
+        if (activeSession) {
           Alert.alert(
             'Resume Session?',
-            `You have an active session from ${new Date(sessionData.session.startTime).toLocaleTimeString()} with ${sessionData.attempts?.length || 0} route${(sessionData.attempts?.length || 0) !== 1 ? 's' : ''} logged. Would you like to resume it?`,
+            `You have an active session from ${new Date(activeSession.startTime).toLocaleTimeString()} with ${activeSession.routes?.length || 0} route${(activeSession.routes?.length || 0) !== 1 ? 's' : ''} logged. Would you like to resume it?`,
             [
-                {
-                  text: 'Discard',
-                  style: 'destructive',
-                  onPress: async () => {
-                    // Always clear local storage first, regardless of API call success
-                    // This ensures the user can always get unstuck even if API fails
-                    try {
-                      await AsyncStorage.multiRemove(['activeSession', 'sessionRouteAttempts']);
-                    } catch (storageError) {
-                      // If multiRemove fails, try individual removes
-                      try {
-                        await AsyncStorage.removeItem('activeSession');
-                        await AsyncStorage.removeItem('sessionRouteAttempts');
-                      } catch (e) {
-                        // Ignore - best effort
-                      }
-                    }
-                    
-                    // Try to delete from API, but don't block on it
-                    try {
-                      await api.delete(`/sessions/${sessionData.session.id}`);
-                    } catch (apiError) {
-                      // API delete failed, but we already cleared local storage
-                      // User will be able to proceed without the stuck session
-                    }
-                  },
+              {
+                text: 'Discard',
+                style: 'destructive',
+                onPress: async () => {
+                  const { deleteLocalSession } = await import('../utils/localSessionStorage');
+                  await deleteLocalSession(activeSession.id);
                 },
-                {
-                  text: 'Resume',
-                  style: 'default',
-                  onPress: () => {
-                    navigation.navigate('Layout Selection');
-                    showSuccessAlert('Session resumed - select a gym to continue');
-                  },
+              },
+              {
+                text: 'Resume',
+                style: 'default',
+                onPress: () => {
+                  navigation.navigate('Layout Selection');
+                  showSuccessAlert('Session resumed - select a gym to continue');
                 },
+              },
             ]
           );
         }
+
+        // Sync pending sessions (fire-and-forget, non-blocking, no error alerts)
+        syncLocalSessions(api, { showErrors: false }).catch(() => {
+          // Silently fail - sync will retry later
+        });
       } catch (error) {
-        // Ignore errors loading session
+        // Ignore errors
+        console.error('Error initializing sessions:', error);
       }
     };
     
-    checkActiveSession();
+    initializeSessions();
   }, []);
 
   const fetchCategories = async () => {

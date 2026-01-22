@@ -44,9 +44,15 @@
    - Use network status to automatically trigger sync when coming back online.
    - Backoff on repeated failures.
 
-2. **Conflict Handling**
+2. **Bulk Sync Endpoint** ✅
+   - ✅ Create `POST /sessions/sync/bulk` endpoint that accepts an array of sessions.
+   - ✅ Update `syncLocalSessions` to batch sessions (send all at once).
+   - ✅ Handle partial failures gracefully (some succeed, some fail).
+   - ✅ More efficient than individual API calls per session (reduced from N calls to 1 call).
+
+3. **Conflict Handling**
    - Define behavior if a session was already synced from another device (future multi-device support).
 
-3. **Richer Local Data**
+4. **Richer Local Data**
    - Allow attaching more metadata to offline sessions (e.g. per-route notes) and include them in the snapshot.
 

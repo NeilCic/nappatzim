@@ -1010,6 +1010,147 @@ class SessionService extends PrismaCrudService {
       progression,
     };
   }
+
+  async syncOfflineSession(userId, sessionData) {
+    const { startTime, endTime, notes, routes } = sessionData;
+
+    // Idempotency check: look for existing session with same startTime + userId
+    // (within 1 second tolerance to handle timezone/rounding differences)
+    const startTimeDate = new Date(startTime);
+    const oneSecondBefore = new Date(startTimeDate.getTime() - 1000);
+    const oneSecondAfter = new Date(startTimeDate.getTime() + 1000);
+
+    const existingSession = await prisma.climbingSession.findFirst({
+      where: {
+        userId,
+        startTime: {
+          gte: oneSecondBefore,
+          lte: oneSecondAfter,
+        },
+      },
+      include: {
+        attempts: true,
+      },
+    });
+
+    // If session exists and has same number of routes, assume it's the same session
+    if (existingSession && existingSession.attempts.length === routes.length) {
+      return {
+        sessionId: existingSession.id,
+        routeIds: existingSession.attempts.map(a => a.id),
+        isDuplicate: true,
+      };
+    }
+
+    // Create session and routes in a transaction
+    return await prisma.$transaction(async (tx) => {
+      // Create ClimbingSession
+      const session = await tx.climbingSession.create({
+        data: {
+          userId,
+          startTime: new Date(startTime),
+          endTime: endTime ? new Date(endTime) : null,
+          notes: notes || null,
+        },
+      });
+
+      // Fetch all climbs in one query
+      const climbIds = routes.map(r => r.climbId).filter(Boolean);
+      const climbsMap = new Map();
+      
+      if (climbIds.length > 0) {
+        const climbs = await tx.climb.findMany({
+          where: {
+            id: { in: climbIds },
+          },
+          select: {
+            id: true,
+            grade: true,
+            gradeSystem: true,
+            votes: {
+              select: {
+                grade: true,
+                gradeSystem: true,
+                descriptors: true,
+              },
+            },
+          },
+        });
+
+        // Create map for O(1) lookup
+        climbs.forEach(climb => {
+          climbsMap.set(climb.id, climb);
+        });
+      }
+
+      // Prepare route data with grades
+      const routeData = routes.map((route) => {
+        let proposedGrade = null;
+        let gradeSystem = null;
+        let voterGrade = null;
+        let descriptors = [];
+
+        if (route.climbId) {
+          const climb = climbsMap.get(route.climbId);
+
+          if (climb) {
+            proposedGrade = climb.grade;
+            gradeSystem = climb.gradeSystem;
+
+            const result = calculateVoterGradeAndDescriptors(climb.votes, gradeSystem);
+            voterGrade = result.voterGrade;
+            descriptors = result.descriptors;
+          }
+        }
+
+        return {
+          sessionId: session.id,
+          climbId: route.climbId || null,
+          proposedGrade: proposedGrade || "Unknown",
+          gradeSystem: gradeSystem || "V-Scale",
+          voterGrade,
+          descriptors,
+          status: route.isSuccess ? "success" : "failure",
+          attempts: route.attempts,
+        };
+      });
+
+      // Bulk insert routes
+      const createdRoutes = await Promise.all(
+        routeData.map(data => tx.sessionRoute.create({ data }))
+      );
+
+      return {
+        sessionId: session.id,
+        routeIds: createdRoutes.map(r => r.id),
+        isDuplicate: false,
+      };
+    });
+  }
+
+  async syncOfflineSessionsBulk(userId, sessionsData) {
+    // Process all sessions in parallel, but each session is still atomic (transaction)
+    const results = await Promise.allSettled(
+      sessionsData.map(sessionData => this.syncOfflineSession(userId, sessionData))
+    );
+
+    // Transform results into a consistent format
+    return results.map((result, index) => {
+      if (result.status === 'fulfilled') {
+        return {
+          success: true,
+          sessionIndex: index,
+          ...result.value,
+        };
+      } else {
+        return {
+          success: false,
+          sessionIndex: index,
+          error: result.reason?.message || 'Unknown error',
+        };
+      }
+    });
+  }
 }
 
 const sessionService = new SessionService();

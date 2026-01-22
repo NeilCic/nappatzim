@@ -13,10 +13,12 @@ import LoadingScreen from "../components/LoadingScreen";
 import FormField from "../components/FormField";
 import Section from "../components/Section";
 import RefreshableScrollView from "../components/RefreshableScrollView";
-import { showSuccessAlert } from "../utils/alert";
+import { showSuccessAlert, showErrorAlert } from "../utils/alert";
 import Pressable from "../components/Pressable";
 import { Text } from "react-native";
 import GradeProgressionChart from "../components/GradeProgressionChart";
+import { syncLocalSessions } from "../utils/sessionSync";
+import { getPendingSyncSessions } from "../utils/localSessionStorage";
 
 export default function ProfileScreen({ navigation }) {
   const [username, setUsername] = useState("");
@@ -28,8 +30,18 @@ export default function ProfileScreen({ navigation }) {
   const [loadingInsights, setLoadingInsights] = useState(true);
   const [refreshingInsights, setRefreshingInsights] = useState(false);
   const [progression, setProgression] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const [pendingSessions, setPendingSessions] = useState([]);
   const { api } = useApi();
   const { user, setUser, refreshUser } = useUser();
+
+  useEffect(() => {
+    const updatePendingSessions = async () => {
+      const pending = await getPendingSyncSessions();
+      setPendingSessions(pending);
+    };
+    updatePendingSessions();
+  }, []);
 
   useEffect(() => {
     const initUser = async () => {
@@ -586,6 +598,50 @@ export default function ProfileScreen({ navigation }) {
         </Pressable>
       </Section>
 
+      {/* Sync Sessions Button */}
+      {pendingSessions.length > 0 && (
+        <Section>
+          <Pressable
+            style={styles.syncButton}
+            onPress={async () => {
+              setSyncing(true);
+              try {
+                // Pass the sessions we already have to avoid re-fetching
+                const result = await syncLocalSessions(api, { 
+                  showErrors: true,
+                  sessions: pendingSessions,
+                });
+                
+                // Update state locally: remove synced sessions, keep failed ones (still pending)
+                setPendingSessions(prev => 
+                  prev.filter(session => !result.syncedIds.includes(session.id))
+                );
+                
+                if (result.synced > 0) {
+                  showSuccessAlert(`Synced ${result.synced} session${result.synced !== 1 ? 's' : ''}!`);
+                  // Refresh insights after sync
+                  fetchInsights();
+                } else if (result.failed > 0) {
+                  showErrorAlert(`Failed to sync ${result.failed} session${result.failed !== 1 ? 's' : ''}. Please check your connection.`);
+                }
+              } catch (error) {
+                showErrorAlert('Failed to sync sessions');
+              } finally {
+                setSyncing(false);
+              }
+            }}
+            disabled={syncing}
+          >
+            <Text style={styles.syncButtonText}>
+              {syncing ? '⏳ Syncing...' : `🔄 Sync Sessions (${pendingSessions.length} pending)`}
+            </Text>
+            <Text style={styles.syncButtonSubtext}>
+              {syncing ? 'Uploading offline sessions...' : 'Upload your offline sessions to the server'}
+            </Text>
+          </Pressable>
+        </Section>
+      )}
+
       {/* Insights Section */}
       {loadingInsights ? (
         <Section>
@@ -676,6 +732,23 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sessionsButtonSubtext: {
+    fontSize: 14,
+    color: "#666",
+  },
+  syncButton: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#007AFF",
+  },
+  syncButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#007AFF",
+    marginBottom: 4,
+  },
+  syncButtonSubtext: {
     fontSize: 14,
     color: "#666",
   },

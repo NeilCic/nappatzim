@@ -26,6 +26,19 @@ const updateRouteSchema = z.object({
   attempts: z.coerce.number().int().min(1).optional(),
 });
 
+const syncOfflineSessionSchema = z.object({
+  startTime: z.string().datetime(),
+  endTime: z.string().datetime().nullable().optional(),
+  notes: z.string().max(1000).nullable().optional(),
+  routes: z.array(z.object({
+    climbId: z.string().nullable().optional(),
+    isSuccess: z.boolean(),
+    attempts: z.coerce.number().int().min(1),
+  })),
+});
+
+const syncOfflineSessionsBulkSchema = z.array(syncOfflineSessionSchema);
+
 export const createSessionController = async (req, res) => {
   const requestId = Date.now().toString();
   try {
@@ -554,6 +567,106 @@ export const deleteSessionController = async (req, res) => {
         "Failed to delete session"
       );
       res.status(500).json({ error: "Failed to delete session" });
+    }
+  }
+};
+
+export const syncOfflineSessionController = async (req, res) => {
+  const requestId = Date.now().toString();
+  try {
+    const userId = req.user?.userId;
+    if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    logger.info({ requestId, userId }, "Syncing offline session");
+
+    const validatedData = syncOfflineSessionSchema.parse(req.body);
+
+    const result = await sessionService.syncOfflineSession(userId, validatedData);
+
+    logger.info(
+      { requestId, sessionId: result.sessionId, isDuplicate: result.isDuplicate },
+      result.isDuplicate ? "Offline session already exists (idempotent)" : "Offline session synced"
+    );
+
+    res.status(201).json({
+      sessionId: result.sessionId,
+      routeIds: result.routeIds,
+      isDuplicate: result.isDuplicate,
+    });
+  } catch (error) {
+    if (error.name === "ZodError") {
+      logger.warn(
+        {
+          requestId,
+          userId: req.user?.userId,
+          validationError: error,
+        },
+        "Offline session sync validation failed"
+      );
+      const formattedError = formatZodError(error);
+      res.status(400).json({ error: formattedError });
+    } else {
+      logger.error(
+        {
+          requestId,
+          userId: req.user?.userId,
+          error: error.message,
+          stack: error.stack,
+        },
+        "Failed to sync offline session"
+      );
+      res.status(500).json({ error: "Failed to sync offline session" });
+    }
+  }
+};
+
+export const syncOfflineSessionsBulkController = async (req, res) => {
+  const requestId = Date.now().toString();
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    logger.info({ requestId, userId, sessionCount: req.body?.length }, "Syncing offline sessions in bulk");
+
+    const validatedData = syncOfflineSessionsBulkSchema.parse(req.body);
+    const results = await sessionService.syncOfflineSessionsBulk(userId, validatedData);
+
+    const successful = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+
+    logger.info(
+      { requestId, userId, successful, failed },
+      `Bulk sync completed: ${successful} successful, ${failed} failed`
+    );
+
+    res.status(200).json({ results });
+  } catch (error) {
+    if (error.name === "ZodError") {
+      logger.warn(
+        {
+          requestId,
+          userId: req.user?.userId,
+          validationError: error,
+        },
+        "Bulk offline session sync validation failed"
+      );
+      const formattedError = formatZodError(error);
+      res.status(400).json({ error: formattedError });
+    } else {
+      logger.error(
+        {
+          requestId,
+          userId: req.user?.userId,
+          error: error.message,
+          stack: error.stack,
+        },
+        "Failed to sync offline sessions in bulk"
+      );
+      res.status(500).json({ error: "Failed to sync offline sessions in bulk" });
     }
   }
 };
