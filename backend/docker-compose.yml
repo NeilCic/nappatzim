@@ -21,8 +21,6 @@ services:
     command: redis-server --appendonly yes
 
   pgadmin:
-    env_file:
-      - ../.env
     image: dpage/pgadmin4:latest
     container_name: pg-admin
     environment:
