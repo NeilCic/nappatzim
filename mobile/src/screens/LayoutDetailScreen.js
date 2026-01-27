@@ -36,6 +36,7 @@ import Spinner from '../components/Spinner';
 import ColorPicker from '../components/ColorPicker';
 import RefreshableScrollView from '../components/RefreshableScrollView';
 import AnimatedPressable from '../components/AnimatedPressable';
+import { BORDER_RADIUS, SHADOWS } from '../shared/designSystem';
 import DESCRIPTORS from '../../../shared/descriptors';
 import { VALIDATION } from '../shared/constants';
 import {
@@ -3093,17 +3094,13 @@ const styles = StyleSheet.create({
     right: 20,
     width: 56,
     height: 56,
-    borderRadius: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    borderRadius: BORDER_RADIUS.full,
+    ...SHADOWS.lg,
   },
   scrollToBottomButtonInner: {
     width: '100%',
     height: '100%',
-    borderRadius: 28,
+    borderRadius: BORDER_RADIUS.full,
     backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',

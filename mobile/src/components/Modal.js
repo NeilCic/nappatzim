@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal as RNModal, View, Text, StyleSheet, Pressable, TouchableWithoutFeedback } from 'react-native';
+import { BORDER_RADIUS, SHADOWS } from '../shared/designSystem';
 
 /**
  * Centralized Modal component with overlay and content styling
@@ -57,11 +58,12 @@ const styles = StyleSheet.create({
   },
   content: {
     backgroundColor: 'white',
-    borderRadius: 12,
+    borderRadius: BORDER_RADIUS.xl,
     padding: 20,
     width: '85%',
     maxWidth: 400,
     overflow: 'hidden', // Prevent content overflow issues
+    ...SHADOWS.xl,
   },
   title: {
     fontSize: 20,

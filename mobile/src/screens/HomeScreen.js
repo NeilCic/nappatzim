@@ -26,6 +26,7 @@ import { getActiveLocalSession } from '../utils/localSessionStorage';
 import { syncLocalSessions } from '../utils/sessionSync';
 
 import { isLightColor } from '../utils/colorUtils';
+import { BORDER_RADIUS, CARD_SHADOW } from '../shared/designSystem';
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -282,7 +283,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   newWorkoutButton: {
-    borderRadius: 15,
+    borderRadius: BORDER_RADIUS.xl,
     marginBottom: 12,
     width: '100%',
   },
@@ -332,15 +333,11 @@ const styles = StyleSheet.create({
     marginRight: 15,
     padding: 25,
     paddingBottom: 15,
-    borderRadius: 15,
+    borderRadius: BORDER_RADIUS.xl,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "rgba(0, 0, 0, 0.1)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 12,
+    ...CARD_SHADOW,
   },
   categoryCardContent: {
     flex: 1,
@@ -376,14 +373,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(240, 240, 240, 0.95)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: BORDER_RADIUS.md,
     borderWidth: 1,
     borderColor: 'rgba(200, 200, 200, 0.8)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    ...CARD_SHADOW,
   },
   logoutButtonText: {
     fontSize: 14,

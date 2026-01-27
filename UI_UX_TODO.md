@@ -3,12 +3,12 @@
 ## Design System Foundation
 
 ### 1. Create Design System File
-- [ ] Create `mobile/src/shared/designSystem.js` with:
+- [x] Create `mobile/src/shared/designSystem.js` with:
   - [ ] Spacing scale (4px, 8px, 12px, 16px, 24px, 32px, 48px)
   - [ ] Typography scale (heading, body, caption styles)
   - [ ] Color palette (primary, secondary, error, success, neutrals)
-  - [ ] Border radius values (4px, 8px, 12px, 16px)
-  - [ ] Shadow presets (sm, md, lg, xl)
+  - [x] Border radius values (sm: 4px, md: 8px, lg: 12px, xl: 16px, full: 999)
+  - [x] Shadow presets (sm, md, lg, xl)
   - [ ] Animation constants (timing, spring configs)
 
 ### 2. Update Shared Styles
@@ -34,9 +34,12 @@
 - [ ] Ensure consistent use of primary, secondary, error, success colors
 
 ### 6. Border Radius & Shadows
-- [ ] Standardize border radius across all components
-- [ ] Add subtle shadows for depth (cards, buttons)
-- [ ] Use consistent shadow presets
+- [x] Create design system with standardized border radius and shadow presets
+- [x] Update Button component to use design system
+- [x] Update HomeScreen category cards to use design system
+- [x] Update Modal component to use design system
+- [x] Update floating scroll button to use design system
+- [ ] Apply design system to remaining components (inputs, cards, etc.)
 
 ## Empty States
 

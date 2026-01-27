@@ -1,5 +1,6 @@
 import React from 'react';
 import { Text, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { BORDER_RADIUS } from '../shared/designSystem';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { 
   useAnimatedStyle, 
@@ -174,7 +175,7 @@ export default function Button({
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 12,
+    borderRadius: BORDER_RADIUS.lg,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -188,12 +189,12 @@ const styles = StyleSheet.create({
     ...Platform.select({
       ios: {
         shadowColor: '#007AFF',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
       },
       android: {
-        elevation: 6,
+        elevation: 4,
       },
     }),
   },
@@ -217,19 +218,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     minHeight: 40,
-    borderRadius: 10,
+    borderRadius: BORDER_RADIUS.md,
   },
   button_medium: {
     paddingVertical: 14,
     paddingHorizontal: 28,
     minHeight: 48,
-    borderRadius: 12,
+    borderRadius: BORDER_RADIUS.lg,
   },
   button_large: {
     paddingVertical: 18,
     paddingHorizontal: 36,
     minHeight: 56,
-    borderRadius: 14,
+    borderRadius: BORDER_RADIUS.lg,
   },
   
   // States
@@ -246,13 +247,13 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
+    borderRadius: BORDER_RADIUS.lg,
     ...Platform.select({
       ios: {
         shadowColor: '#007AFF',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
       },
       android: {
         elevation: 8,
@@ -264,7 +265,7 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
+    borderRadius: BORDER_RADIUS.lg,
   },
   gradientAbsolute: {
     position: 'absolute',
