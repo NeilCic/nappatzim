@@ -8,8 +8,7 @@ import {
   ScrollView,
   FlatList,
   Switch,
-  Alert,
-  Pressable as RNPressable
+  Alert
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,6 +35,7 @@ import Pressable from '../components/Pressable';
 import Spinner from '../components/Spinner';
 import ColorPicker from '../components/ColorPicker';
 import RefreshableScrollView from '../components/RefreshableScrollView';
+import AnimatedPressable from '../components/AnimatedPressable';
 import DESCRIPTORS from '../../../shared/descriptors';
 import { VALIDATION } from '../shared/constants';
 import {
@@ -48,46 +48,16 @@ import { syncSingleSession } from '../utils/sessionSync';
 
 // Floating scroll to bottom button component
 const FloatingScrollButton = ({ onPress, visible }) => {
-  const scale = useSharedValue(1);
-  const opacity = useSharedValue(visible ? 1 : 0);
-
-  useEffect(() => {
-    // Use withTiming for smooth opacity transitions (no spring bounce)
-    // Only animate if the value actually needs to change
-    if (visible && opacity.value !== 1) {
-      opacity.value = withTiming(1, { duration: 200 });
-    } else if (!visible && opacity.value !== 0) {
-      opacity.value = withTiming(0, { duration: 200 });
-    }
-  }, [visible, opacity]);
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.5, { damping: 15, stiffness: 300 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 300 });
-  };
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
-
   return (
-    <Animated.View 
-      style={[styles.scrollToBottomButton, animatedStyle]} 
-      pointerEvents={visible ? 'auto' : 'none'}
+    <AnimatedPressable
+      onPress={onPress}
+      visible={visible}
+      scaleTo={0.5}
+      style={styles.scrollToBottomButton}
+      pressableStyle={styles.scrollToBottomButtonInner}
     >
-      <RNPressable
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        style={styles.scrollToBottomButtonInner}
-      >
-        <Text style={styles.scrollToBottomIcon}>↓</Text>
-      </RNPressable>
-    </Animated.View>
+      <Text style={styles.scrollToBottomIcon}>↓</Text>
+    </AnimatedPressable>
   );
 };
 

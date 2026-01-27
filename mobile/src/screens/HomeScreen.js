@@ -13,11 +13,9 @@ import axios from 'axios';
 import Button from '../components/Button';
 import LoadingScreen from '../components/LoadingScreen';
 import Pressable from '../components/Pressable';
+import AnimatedPressable from '../components/AnimatedPressable';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withSpring,
   FadeInDown
 } from 'react-native-reanimated';
 import { showSuccessAlert } from '../utils/alert';
@@ -27,6 +25,19 @@ import { syncLocalSessions } from '../utils/sessionSync';
 import { isLightColor } from '../utils/colorUtils';
 
 const { width: screenWidth } = Dimensions.get("window");
+
+const LogoutButton = ({ onPress }) => {
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      scaleTo={0.95}
+      style={styles.logoutButton}
+      pressableStyle={styles.logoutButtonInner}
+    >
+      <Text style={styles.logoutButtonText}>Logout</Text>
+    </AnimatedPressable>
+  );
+};
 
 export default function HomeScreen({ navigation, onLogout }) {
   const [categories, setCategories] = useState([]);
@@ -236,13 +247,7 @@ export default function HomeScreen({ navigation, onLogout }) {
         />
       </View>
 
-      <Button
-        title="Logout"
-        onPress={onLogout}
-        variant="text"
-        size="small"
-        style={styles.logoutButton}
-      />
+      <LogoutButton onPress={onLogout} />
     </LinearGradient>
   );
 }
@@ -363,6 +368,24 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 50,
     right: 20,
+  },
+  logoutButtonInner: {
+    backgroundColor: 'rgba(240, 240, 240, 0.95)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(200, 200, 200, 0.8)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  logoutButtonText: {
+    fontSize: 14,
+    color: '#555',
+    fontWeight: '600',
   },
   newCategoryCard: {
     backgroundColor: "#f0f0f0",
