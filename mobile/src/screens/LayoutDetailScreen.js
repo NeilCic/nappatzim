@@ -8,7 +8,8 @@ import {
   ScrollView,
   FlatList,
   Switch,
-  Alert
+  Alert,
+  Pressable as RNPressable
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -60,7 +61,7 @@ const FloatingScrollButton = ({ onPress, visible }) => {
   }, [visible, opacity]);
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.9, { damping: 15, stiffness: 300 });
+    scale.value = withSpring(0.5, { damping: 15, stiffness: 300 });
   };
 
   const handlePressOut = () => {
@@ -77,15 +78,14 @@ const FloatingScrollButton = ({ onPress, visible }) => {
       style={[styles.scrollToBottomButton, animatedStyle]} 
       pointerEvents={visible ? 'auto' : 'none'}
     >
-      <Pressable
+      <RNPressable
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={styles.scrollToBottomButtonInner}
-        activeOpacity={1}
       >
         <Text style={styles.scrollToBottomIcon}>↓</Text>
-      </Pressable>
+      </RNPressable>
     </Animated.View>
   );
 };
