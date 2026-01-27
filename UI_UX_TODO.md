@@ -70,7 +70,9 @@
 
 ### 10. Button Interactions
 - [x] Add scale animations on press (floating scroll-to-bottom button in LayoutDetailScreen)
-- [ ] Ensure all buttons have press feedback
+- [x] Create reusable AnimatedPressable component for consistent press feedback
+- [x] Add press feedback to logout button
+- [ ] Apply AnimatedPressable to other buttons throughout the app
 - [ ] Improve disabled state styling
 
 ### 11. Screen Transitions

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable as RNPressable } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -6,7 +6,6 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { useEffect } from 'react';
 
 
 const AnimatedPressable = ({

@@ -16,6 +16,9 @@ import Pressable from '../components/Pressable';
 import AnimatedPressable from '../components/AnimatedPressable';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { 
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
   FadeInDown
 } from 'react-native-reanimated';
 import { showSuccessAlert } from '../utils/alert';
