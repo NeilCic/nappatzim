@@ -12,6 +12,7 @@ import {
   Pressable as RNPressable
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -225,6 +226,7 @@ const SwipeableRouteItem = ({ item, onPress, onSwipeSuccess, onSwipeFailure, log
 
 export default function LayoutDetailScreen({ navigation, route }) {
   const { layoutId } = route.params;
+  const insets = useSafeAreaInsets();
   const [layout, setLayout] = useState(null);
   const [spots, setSpots] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1152,7 +1154,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
         </View>
       )}
 
-      <View style={styles.infoContainer}>
+      <View style={[styles.infoContainer, { paddingBottom: 16 + insets.bottom }]}>
         <Text style={styles.layoutName}>{layout.name}</Text>
         <View style={styles.layoutInfoRow}>
           <Text style={styles.spotsCount}>{spots.length} spot{spots.length !== 1 ? 's' : ''}</Text>
