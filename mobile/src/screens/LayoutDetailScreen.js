@@ -17,7 +17,8 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { 
   useAnimatedStyle, 
   useSharedValue, 
-  withSpring, 
+  withSpring,
+  withTiming,
   runOnJS,
   interpolate,
   Extrapolation
@@ -39,10 +40,55 @@ import {
   generateLocalSessionId,
   getActiveLocalSession,
   saveLocalSession,
-  updateLocalSession,
   deleteLocalSession,
 } from '../utils/localSessionStorage';
 import { syncSingleSession } from '../utils/sessionSync';
+
+// Floating scroll to bottom button component
+const FloatingScrollButton = ({ onPress, visible }) => {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(visible ? 1 : 0);
+
+  useEffect(() => {
+    // Use withTiming for smooth opacity transitions (no spring bounce)
+    // Only animate if the value actually needs to change
+    if (visible && opacity.value !== 1) {
+      opacity.value = withTiming(1, { duration: 200 });
+    } else if (!visible && opacity.value !== 0) {
+      opacity.value = withTiming(0, { duration: 200 });
+    }
+  }, [visible, opacity]);
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.9, { damping: 15, stiffness: 300 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+  };
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View 
+      style={[styles.scrollToBottomButton, animatedStyle]} 
+      pointerEvents={visible ? 'auto' : 'none'}
+    >
+      <Pressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={styles.scrollToBottomButtonInner}
+        activeOpacity={1}
+      >
+        <Text style={styles.scrollToBottomIcon}>↓</Text>
+      </Pressable>
+    </Animated.View>
+  );
+};
 
 // Swipeable route item component for quick adding during active sessions
 const SwipeableRouteItem = ({ item, onPress, onSwipeSuccess, onSwipeFailure, loggedClimbIds }) => {
@@ -231,6 +277,8 @@ export default function LayoutDetailScreen({ navigation, route }) {
   const [viewMode, setViewMode] = useState('map'); // 'map' or 'list'
   const [matchingClimbCount, setMatchingClimbCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(false);
+  const scrollViewRef = useRef(null);
   
   const videoPlayer = useVideoPlayer(selectedVideo?.videoUrl || '');
   
@@ -929,12 +977,29 @@ export default function LayoutDetailScreen({ navigation, route }) {
     return <LoadingScreen />;
   }
 
+  const scrollToBottom = () => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollToEnd({ animated: true });
+    }
+  };
+
+  const handleScroll = (event) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const paddingToBottom = 20; // Threshold for "at bottom" detection
+    const isNearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+    setIsAtBottom(isNearBottom);
+  };
+
   return (
-    <RefreshableScrollView
-      style={styles.container}
-      refreshing={refreshing}
-      onRefresh={handleRefresh}
-    >
+    <View style={{ flex: 1, position: 'relative' }}>
+      <RefreshableScrollView
+        ref={scrollViewRef}
+        style={styles.container}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
       {viewMode === 'map' ? (
         <View style={styles.imageContainer}>
           <Pressable 
@@ -1801,7 +1866,13 @@ export default function LayoutDetailScreen({ navigation, route }) {
         </ScrollView>
       </AppModal>
 
-    </RefreshableScrollView>
+      </RefreshableScrollView>
+      
+      {/* Floating scroll to bottom button - only show in list mode */}
+      {viewMode === 'list' && listViewData.length > 0 && (
+        <FloatingScrollButton onPress={scrollToBottom} visible={!isAtBottom} />
+      )}
+    </View>
   );
 }
 
@@ -3043,6 +3114,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  scrollToBottomButton: {
+    position: 'absolute',
+    bottom: 70,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  scrollToBottomButtonInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 28,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrollToBottomIcon: {
+    fontSize: 24,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
 });
 

@@ -10,12 +10,12 @@ import { ScrollView, RefreshControl } from "react-native";
  * - children: React.ReactNode – scrollable content
  * - ...rest: any – forwarded to underlying ScrollView
  */
-export default function RefreshableScrollView({
+const RefreshableScrollView = React.forwardRef(({
   refreshing = false,
   onRefresh,
   children,
   ...rest
-}) {
+}, ref) => {
   const refreshControl =
     typeof onRefresh === "function"
       ? (
@@ -29,11 +29,17 @@ export default function RefreshableScrollView({
 
   return (
     <ScrollView
+      ref={ref}
       {...rest}
       refreshControl={refreshControl}
     >
       {children}
     </ScrollView>
   );
-}
+});
+
+// Set displayName for better debugging in React DevTools and error messages
+RefreshableScrollView.displayName = 'RefreshableScrollView';
+
+export default RefreshableScrollView;
 
