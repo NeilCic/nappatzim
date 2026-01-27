@@ -1177,7 +1177,7 @@ export default function LayoutDetailScreen({ navigation, route }) {
                 </Text>
                 {activeLocalSession.status === 'active' && (
                   <Text style={styles.offlineIndicator}>
-                    📱 Offline session (will sync when connected)
+                    📱 Offline session (will sync on next app start)
                   </Text>
                 )}
               </View>
