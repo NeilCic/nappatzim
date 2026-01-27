@@ -69,8 +69,8 @@
 ## Micro-Interactions & Animations
 
 ### 10. Button Interactions
+- [x] Add scale animations on press (floating scroll-to-bottom button in LayoutDetailScreen)
 - [ ] Ensure all buttons have press feedback
-- [ ] Add subtle scale animations on press
 - [ ] Improve disabled state styling
 
 ### 11. Screen Transitions
@@ -79,8 +79,8 @@
 - [ ] Ensure consistent navigation animations
 
 ### 12. List Animations
-- [ ] Add subtle animations to list items
-- [ ] Implement staggered entrance animations
+- [x] Implement staggered entrance animations (HomeScreen category cards)
+- [ ] Add subtle animations to other list items
 - [ ] Add pull-to-refresh animations
 
 ## Form Improvements
@@ -131,7 +131,7 @@
 ### 20. Layout/Climb Screens
 - [ ] Improve route/climb card design
 - [ ] Better image handling
-- [ ] Enhanced interaction feedback
+- [x] Enhanced interaction feedback (floating scroll-to-bottom button in list mode with scale animation and auto-hide)
 - [ ] Improved modal designs
 
 ## Accessibility & Polish

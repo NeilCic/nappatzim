@@ -220,9 +220,7 @@ export default function HomeScreen({ navigation, onLogout }) {
       </View>
 
       <View style={styles.bottomHalf}>
-        <Animated.View entering={FadeInDown.delay(200).springify().damping(15)}>
-          <Text style={styles.categoriesTitle}>Categories</Text>
-        </Animated.View>
+        <Text style={styles.categoriesTitle}>Categories</Text>
         <FlatList
           data={[...categories, null]}
           renderItem={renderCategory}
