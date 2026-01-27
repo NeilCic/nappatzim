@@ -17,7 +17,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { 
   useAnimatedStyle, 
   useSharedValue, 
-  withSpring 
+  withSpring,
+  FadeInDown
 } from 'react-native-reanimated';
 import { showSuccessAlert } from '../utils/alert';
 import { getActiveLocalSession } from '../utils/localSessionStorage';
@@ -105,7 +106,7 @@ export default function HomeScreen({ navigation, onLogout }) {
     navigation.navigate("Create Workout");
   };
 
-  const AnimatedCard = ({ category, onPress }) => {
+  const AnimatedCard = ({ category, onPress, index }) => {
     const scale = useSharedValue(1);
     const cardColor = category.color || "#007AFF";
     const textColor = isLightColor(cardColor) ? "#000000" : "#FFFFFF";
@@ -123,7 +124,10 @@ export default function HomeScreen({ navigation, onLogout }) {
     };
 
     return (
-      <Animated.View style={[styles.categoryCard, { backgroundColor: cardColor }, animatedStyle]}>
+      <Animated.View 
+        entering={FadeInDown.delay(index * 100).springify().damping(15)}
+        style={[styles.categoryCard, { backgroundColor: cardColor }, animatedStyle]}
+      >
         <Pressable
           style={styles.categoryCardContent}
           onPress={onPress}
@@ -155,23 +159,28 @@ export default function HomeScreen({ navigation, onLogout }) {
   const renderCategory = ({ item: category, index }) => {
     if (index === categories.length) {
       return (
-        <Pressable
-          style={styles.newCategoryCard}
-          onPress={() =>
-            navigation.navigate("Create Category", {
-              onCategoryCreated: fetchCategories,
-            })
-          }
+        <Animated.View 
+          entering={FadeInDown.delay(categories.length * 100).springify().damping(15)}
         >
-          <Text style={styles.newCategoryIcon}>+</Text>
-          <Text style={styles.newCategoryText}>New Category</Text>
-        </Pressable>
+          <Pressable
+            style={styles.newCategoryCard}
+            onPress={() =>
+              navigation.navigate("Create Category", {
+                onCategoryCreated: fetchCategories,
+              })
+            }
+          >
+            <Text style={styles.newCategoryIcon}>+</Text>
+            <Text style={styles.newCategoryText}>New Category</Text>
+          </Pressable>
+        </Animated.View>
       );
     }
     
     return (
       <AnimatedCard
         category={category}
+        index={index}
         onPress={() => {
           navigation.navigate("Category Workouts", { category });
         }}
@@ -192,24 +201,28 @@ export default function HomeScreen({ navigation, onLogout }) {
     >
       <View style={styles.topHalf}>
         <View style={styles.buttonWrapper}>
-          <Button
-            title="+ New Workout"
-            onPress={startNewWorkout}
-            disabled={categories.length === 0}
-            variant="gradient"
-            size="large"
-            style={styles.newWorkoutButton}
-          />
+            <Button
+              title="+ New Workout"
+              onPress={startNewWorkout}
+              disabled={categories.length === 0}
+              variant="gradient"
+              size="large"
+              style={styles.newWorkoutButton}
+            />
           {categories.length === 0 && (
-            <Text style={styles.disabledHint}>
-              Create a category first to start a workout
-            </Text>
+            <Animated.View entering={FadeInDown.delay(150).springify().damping(15)}>
+              <Text style={styles.disabledHint}>
+                Create a category first to start a workout
+              </Text>
+            </Animated.View>
           )}
         </View>
       </View>
 
       <View style={styles.bottomHalf}>
-        <Text style={styles.categoriesTitle}>Categories</Text>
+        <Animated.View entering={FadeInDown.delay(200).springify().damping(15)}>
+          <Text style={styles.categoriesTitle}>Categories</Text>
+        </Animated.View>
         <FlatList
           data={[...categories, null]}
           renderItem={renderCategory}
