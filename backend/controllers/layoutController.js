@@ -295,10 +295,14 @@ export const updateSpotController = async (req, res) => {
       });
     }
 
-    const userId = req.user?.userId;
+    const userRole = req.user?.role;
+
+    if (userRole !== "admin") {
+      return res.status(403).json({ error: "Only admins can update spots" });
+    }
     
     try {
-      const spot = await spotService.updateSpot(spotId, userId, validation.data);
+      const spot = await spotService.updateSpot(spotId, validation.data);
       
       if (!spot) {
         return res.status(404).json({ error: "Spot not found or you don't have permission" });
@@ -320,9 +324,13 @@ export const updateSpotController = async (req, res) => {
 export const deleteSpotController = async (req, res) => {
   try {
     const { spotId } = req.params;
-    const userId = req.user?.userId;
+    const userRole = req.user?.role;
+
+    if (userRole !== "admin") {
+      return res.status(403).json({ error: "Only admins can delete spots" });
+    }
     
-    const deleted = await spotService.deleteSpot(spotId, userId);
+    const deleted = await spotService.deleteSpot(spotId);
     
     if (!deleted) {
       return res.status(404).json({ error: "Spot not found or you don't have permission" });
@@ -332,6 +340,28 @@ export const deleteSpotController = async (req, res) => {
   } catch (error) {
     logger.error({ error, spotId: req.params.spotId, userId: req.user?.userId }, "Error deleting spot");
     res.status(500).json({ error: "Failed to delete spot" });
+  }
+};
+
+export const resetSpotController = async (req, res) => {
+  try {
+    const { spotId } = req.params;
+    const userRole = req.user?.role;
+
+    if (userRole !== "admin") {
+      return res.status(403).json({ error: "Only admins can reset spots" });
+    }
+
+    const spot = await spotService.resetSpot(spotId);
+
+    if (!spot) {
+      return res.status(404).json({ error: "Spot not found" });
+    }
+
+    res.json({ spot });
+  } catch (error) {
+    logger.error({ error, spotId: req.params.spotId, userId: req.user?.userId }, "Error resetting spot");
+    res.status(500).json({ error: "Failed to reset spot" });
   }
 };
 

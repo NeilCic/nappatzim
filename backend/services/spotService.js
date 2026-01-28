@@ -3,6 +3,7 @@ import { SPOT_MODEL } from "../lib/dbModels.js";
 import { deleteMultipleFromCloudinary } from "./cloudinaryService.js";
 import logger from "../lib/logger.js";
 import { gradeToNumber } from "../lib/gradeUtils.js";
+import prisma from "../lib/prisma.js";
 
 class SpotService extends PrismaCrudService {
   constructor() {
@@ -234,14 +235,13 @@ class SpotService extends PrismaCrudService {
     }
   }
 
-  async updateSpot(spotId, userId, data) {
-    // Trim name if provided
+  async updateSpot(spotId, data) {
     if (data.name) {
       data.name = data.name.trim();
     }
 
     try {
-      return await this.update({ id: spotId, userId }, data);
+      return await this.update({ id: spotId }, data);
     } catch (error) {
       // Handle Prisma unique constraint violation (P2002)
       if (error.code === 'P2002' && error.meta?.target?.includes('name')) {
@@ -253,46 +253,73 @@ class SpotService extends PrismaCrudService {
     }
   }
 
-  async deleteSpot(spotId, userId) {
+  async deleteSpot(spotId) {
     const spot = await this.getSpotById(spotId);
     
     if (!spot) {
       return null;
     }
 
-    if (spot.userId !== userId) {
+    // Delete all videos from Cloudinary in bulk (from all climbs at this spot)
+    await this._deleteSpotVideos(spot, spotId, "deletion");
+
+    // Delete spot from database (climbs and their videos will be cascade deleted)
+    return await this.delete({ id: spotId });
+  }
+
+  async resetSpot(spotId) {
+    const spot = await this.getSpotById(spotId);
+
+    if (!spot) {
       return null;
     }
 
-    // Delete all videos from Cloudinary in bulk (from all climbs at this spot)
-    if (spot.climbs && spot.climbs.length > 0) {
-      const publicIdsToDelete = [];
-      for (const climb of spot.climbs) {
-        if (climb.videos) {
-          for (const video of climb.videos) {
-            if (video.videoPublicId) {
-              publicIdsToDelete.push(video.videoPublicId);
-            }
+    // Delete all videos from Cloudinary for all climbs at this spot
+    await this._deleteSpotVideos(spot, spotId, "reset");
+
+    // Delete all climbs for this spot; related data is cascade-deleted via Prisma schema
+    await prisma.climb.deleteMany({
+      where: { spotId },
+    });
+
+    // Return the refreshed spot (with no climbs)
+    return await this.getSpotById(spotId);
+  }
+
+  /**
+   * Helper to delete all Cloudinary videos associated with a spot's climbs.
+   * mode is used only to adjust log messages (e.g. "deletion" vs "reset").
+   */
+  async _deleteSpotVideos(spot, spotId, mode = "deletion") {
+    if (!spot?.climbs || spot.climbs.length === 0) {
+      return;
+    }
+
+    const publicIdsToDelete = [];
+    for (const climb of spot.climbs) {
+      if (climb.videos) {
+        for (const video of climb.videos) {
+          if (video.videoPublicId) {
+            publicIdsToDelete.push(video.videoPublicId);
           }
         }
       }
-
-      if (publicIdsToDelete.length > 0) {
-        const deleteResults = await deleteMultipleFromCloudinary(publicIdsToDelete);
-        
-        deleteResults.forEach((result) => {
-          if (result.error) {
-            logger.warn(
-              { error: result.error, publicId: result.publicId, spotId },
-              "Failed to delete video from Cloudinary during spot deletion - video may be orphaned"
-            );
-          }
-        });
-      }
     }
 
-    // Delete spot from database (climbs and their videos will be cascade deleted)
-    return await this.delete({ id: spotId, userId });
+    if (publicIdsToDelete.length === 0) {
+      return;
+    }
+
+    const deleteResults = await deleteMultipleFromCloudinary(publicIdsToDelete);
+
+    deleteResults.forEach((result) => {
+      if (result.error) {
+        logger.warn(
+          { error: result.error, publicId: result.publicId, spotId },
+          `Failed to delete video from Cloudinary during spot ${mode} - video may be orphaned`
+        );
+      }
+    });
   }
 }
 

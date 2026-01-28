@@ -67,13 +67,13 @@ class ClimbCommentService extends PrismaCrudService {
     });
   }
 
-  async updateComment(commentId, userId, content, isAdmin = false) {
+  async updateComment(commentId, userId, content) {
     const comment = await this.getCommentById(commentId);
     if (!comment) {
       throw new Error("Comment not found");
     }
 
-    if (comment.userId !== userId && !isAdmin) {
+    if (comment.userId !== userId) {
       throw new Error("Unauthorized - can only edit own comments");
     }
 

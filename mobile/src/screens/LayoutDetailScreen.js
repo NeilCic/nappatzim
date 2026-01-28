@@ -25,6 +25,7 @@ import Animated, {
   Extrapolation
 } from 'react-native-reanimated';
 import { useApi } from '../ApiProvider';
+import { useUser } from '../UserProvider';
 import { showError } from '../utils/errorHandler';
 import StyledTextInput from '../components/StyledTextInput';
 import LoadingScreen from '../components/LoadingScreen';
@@ -198,6 +199,8 @@ const SwipeableRouteItem = ({ item, onPress, onSwipeSuccess, onSwipeFailure, log
 export default function LayoutDetailScreen({ navigation, route }) {
   const { layoutId } = route.params;
   const insets = useSafeAreaInsets();
+  const { user } = useUser();
+  const isAdmin = user?.role === 'admin';
   const [layout, setLayout] = useState(null);
   const [spots, setSpots] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -235,6 +238,10 @@ export default function LayoutDetailScreen({ navigation, route }) {
   const [editingRoutes, setEditingRoutes] = useState([]);
   const [savingSession, setSavingSession] = useState(false);
   const [loggedClimbIds, setLoggedClimbIds] = useState(new Set());
+  const [isEditingSpotName, setIsEditingSpotName] = useState(false);
+  const [editedSpotName, setEditedSpotName] = useState('');
+  const [isResettingSpot, setIsResettingSpot] = useState(false);
+  const [isDeletingSpot, setIsDeletingSpot] = useState(false);
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -820,6 +827,8 @@ export default function LayoutDetailScreen({ navigation, route }) {
 
   const handleSpotPress = (spot) => {
     setSelectedSpot(spot);
+    setEditedSpotName(spot?.name || '');
+    setIsEditingSpotName(false);
     setShowSpotDetailModal(true);
   };
 
@@ -830,6 +839,112 @@ export default function LayoutDetailScreen({ navigation, route }) {
     } else {
       navigation.navigate('Route', { climbId: climb.id });
     }
+  };
+
+  const handleUpdateSpotName = async () => {
+    if (!selectedSpot) return;
+
+    const trimmedName = editedSpotName.trim();
+
+    if (!trimmedName) {
+      showErrorAlert("Spot name is required");
+      return;
+    }
+
+    if (trimmedName.length > VALIDATION.SPOT_NAME.MAX_LENGTH) {
+      showErrorAlert(`Spot name must be ${VALIDATION.SPOT_NAME.MAX_LENGTH} characters or less`);
+      return;
+    }
+
+    try {
+      const response = await api.put(`/spots/${selectedSpot.id}`, {
+        name: trimmedName,
+      });
+
+      const updatedSpot = response.data?.spot || null;
+
+      if (updatedSpot) {
+        setSelectedSpot(updatedSpot);
+        setSpots((prev) =>
+          prev.map((spot) => (spot.id === updatedSpot.id ? updatedSpot : spot))
+        );
+      }
+
+      setIsEditingSpotName(false);
+      showSuccessAlert("Spot name updated");
+    } catch (error) {
+      showError(error, "Error", "Failed to update spot name");
+    }
+  };
+
+  const handleResetSpot = () => {
+    if (!selectedSpot || !isAdmin) return;
+
+    Alert.alert(
+      "Reset spot",
+      "This will remove all climbs from this spot but keep the spot itself. Are you sure?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset",
+          style: "destructive",
+          onPress: async () => {
+            setIsResettingSpot(true);
+            try {
+              const response = await api.post(`/spots/${selectedSpot.id}/reset`);
+              const updatedSpot = response.data?.spot || null;
+
+              if (updatedSpot) {
+                setSelectedSpot(updatedSpot);
+                setSpots((prev) =>
+                  prev.map((spot) => (spot.id === updatedSpot.id ? updatedSpot : spot))
+                );
+              }
+
+              showSuccessAlert("Spot reset successfully");
+            } catch (error) {
+              showError(error, "Error", "Failed to reset spot");
+            } finally {
+              setIsResettingSpot(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteSpot = () => {
+    if (!selectedSpot || !isAdmin) return;
+
+    Alert.alert(
+      "Delete spot",
+      "This will delete the spot and all its climbs. This action cannot be undone. Are you sure?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setIsDeletingSpot(true);
+            try {
+              await api.delete(`/spots/${selectedSpot.id}`);
+
+              setSpots((prev) => prev.filter((spot) => spot.id !== selectedSpot.id));
+              setShowSpotDetailModal(false);
+              setSelectedSpot(null);
+              setNewClimbGrade('');
+              setNewClimbColor('#FF6B6B');
+
+              showSuccessAlert("Spot deleted");
+            } catch (error) {
+              showError(error, "Error", "Failed to delete spot");
+            } finally {
+              setIsDeletingSpot(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleClearFilters = () => {
@@ -1278,6 +1393,8 @@ export default function LayoutDetailScreen({ navigation, route }) {
           setSelectedSpot(null);
           setNewClimbGrade('');
           setNewClimbColor('#FF6B6B');
+          setIsEditingSpotName(false);
+          setEditedSpotName('');
         }}
         style={[styles.modalContent, { paddingBottom: 12 }]}
       >
@@ -1288,9 +1405,59 @@ export default function LayoutDetailScreen({ navigation, route }) {
         >
           {selectedSpot && (
             <>
-              <Text style={styles.modalTitle}>{selectedSpot.name}</Text>
+              {isAdmin ? (
+                isEditingSpotName ? (
+                  <StyledTextInput
+                    style={styles.input}
+                    placeholder="Spot name *"
+                    value={editedSpotName}
+                    onChangeText={(text) => {
+                      if (text.length <= VALIDATION.SPOT_NAME.MAX_LENGTH) {
+                        setEditedSpotName(text);
+                      }
+                    }}
+                    onSubmitEditing={handleUpdateSpotName}
+                    onBlur={handleUpdateSpotName}
+                    maxLength={VALIDATION.SPOT_NAME.MAX_LENGTH}
+                    autoFocus
+                  />
+                ) : (
+                  <Pressable
+                    onPress={() => {
+                      setEditedSpotName(selectedSpot.name || '');
+                      setIsEditingSpotName(true);
+                    }}
+                  >
+                    <Text style={styles.modalTitle}>{selectedSpot.name}</Text>
+                  </Pressable>
+                )
+              ) : (
+                <Text style={styles.modalTitle}>{selectedSpot.name}</Text>
+              )}
               {selectedSpot.description && (
                 <Text style={styles.spotDescription}>{selectedSpot.description}</Text>
+              )}
+
+              {isAdmin && (
+                <View style={styles.spotAdminActions}>
+                  <Button
+                    title={isResettingSpot ? "Resetting..." : "Reset spot"}
+                    onPress={handleResetSpot}
+                    disabled={isResettingSpot}
+                    variant="outline"
+                    size="small"
+                    style={styles.spotAdminButton}
+                  />
+                  <Button
+                    title={isDeletingSpot ? "Deleting..." : "Delete spot"}
+                    onPress={handleDeleteSpot}
+                    disabled={isDeletingSpot}
+                    variant="secondary"
+                    size="small"
+                    style={styles.spotAdminButtonDanger}
+                    textStyle={styles.spotAdminButtonDangerText}
+                  />
+                </View>
               )}
 
               <View style={styles.climbsSection}>
@@ -2037,7 +2204,28 @@ const styles = StyleSheet.create({
   spotDescription: {
     fontSize: 16,
     color: '#666',
-    marginBottom: 20,
+    marginBottom: 12,
+  },
+  spotAdminActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  spotAdminButton: {
+    flex: 0,
+    minWidth: 0,
+  },
+  spotAdminButtonDanger: {
+    flex: 0,
+    minWidth: 0,
+    backgroundColor: '#FFEBEE',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+  },
+  spotAdminButtonDangerText: {
+    color: '#D32F2F',
   },
   climbsSection: {
     marginTop: 10,

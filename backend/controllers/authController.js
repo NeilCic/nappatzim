@@ -204,7 +204,7 @@ const getCurrentUser = async (req, res) => {
         const user = await authService.getOne(
           { id: req.user.userId },
           undefined,
-          { id: true, email: true, username: true, height: true, preferredGradeSystem: true }
+          { id: true, email: true, username: true, height: true, preferredGradeSystem: true, role: true }
         );
         if (!user) {
             logger.warn({ requestId, userId: req.user.userId }, "User not found");

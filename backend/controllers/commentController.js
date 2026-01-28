@@ -90,14 +90,10 @@ export const updateCommentController = async (req, res) => {
       });
     }
 
-    const user = await authService.getOne({ id: userId }, undefined, { role: true });
-    const isAdmin = user?.role === "admin";
-
     const comment = await climbCommentService.updateComment(
       commentId,
       userId,
       validation.data.content,
-      isAdmin
     );
 
     res.json({ comment });
