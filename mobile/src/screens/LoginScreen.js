@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { useState, useMemo } from "react";
+import { View, Text, StyleSheet, ImageBackground } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useApi } from "../ApiProvider";
@@ -8,6 +8,7 @@ import { getErrorMessage } from "../utils/errorHandler";
 import { VALIDATION } from "../shared/constants.js";
 import Button from "../components/Button";
 import FormField from "../components/FormField";
+import { BORDER_RADIUS, SHADOWS } from "../shared/designSystem";
 
 // Validation functions matching backend schema
 const validateEmail = (email) => {
@@ -44,6 +45,15 @@ export default function LoginScreen({ onLoggedIn }) {
   const [generalError, setGeneralError] = useState(null);
   const [loading, setLoading] = useState(false);
   const { api, setAuthToken } = useApi();
+
+  const backgroundSource = useMemo(() => {
+    const images = [
+      require("../../assets/login1.jpg"),
+      require("../../assets/login2.jpg"),
+    ];
+    const index = Math.floor(Math.random() * images.length);
+    return images[index];
+  }, []);
 
   const handleEmailChange = (text) => {
     setEmail(text);
@@ -184,53 +194,69 @@ export default function LoginScreen({ onLoggedIn }) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <View style={styles.container}>
-        <FormField
-          label={null}
-          error={emailError}
-          inputProps={{
-            placeholder: "Email",
-            autoCapitalize: "none",
-            value: email,
-            onChangeText: handleEmailChange,
-          }}
-        />
+    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+      <ImageBackground
+        source={backgroundSource}
+        style={styles.background}
+        resizeMode="cover"
+      >
+        <View style={styles.overlay}>
+          <View style={styles.screen}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Nappatzim</Text>
+              <Text style={styles.subtitle}>Track your climbing, not your logbook.</Text>
+            </View>
 
-        <FormField
-          label={null}
-          error={passwordError}
-          inputProps={{
-            placeholder: "Password",
-            secureTextEntry: true,
-            value: password,
-            onChangeText: handlePasswordChange,
-          }}
-        />
+            <View style={styles.card}>
+              <FormField
+                label="Email"
+                error={emailError}
+                inputProps={{
+                  placeholder: "Enter your email",
+                  autoCapitalize: "none",
+                  keyboardType: "email-address",
+                  value: email,
+                  onChangeText: handleEmailChange,
+                }}
+              />
 
-        {generalError && !emailError && !passwordError && (
-          <Text style={styles.generalErrorText}>{generalError}</Text>
-        )}
+              <FormField
+                label="Password"
+                error={passwordError}
+                inputProps={{
+                  placeholder: "Enter your password",
+                  secureTextEntry: true,
+                  value: password,
+                  onChangeText: handlePasswordChange,
+                }}
+              />
 
-        <Button 
-          title="Login" 
-          onPress={login} 
-          disabled={loading}
-          loading={loading}
-          variant="primary"
-          size="large"
-          style={styles.button}
-        />
-        <Button 
-          title="Register" 
-          onPress={register} 
-          disabled={loading}
-          loading={loading}
-          variant="primary"
-          size="large"
-          style={styles.button}
-        />
-      </View>
+              {generalError && !emailError && !passwordError && (
+                <Text style={styles.generalErrorText}>{generalError}</Text>
+              )}
+
+              <Button
+                title="Login"
+                onPress={login}
+                disabled={loading}
+                loading={loading}
+                variant="primary"
+                size="large"
+                style={styles.primaryButton}
+              />
+              <Button
+                title="Register"
+                onPress={register}
+                disabled={loading}
+                loading={loading}
+                variant="secondary"
+                size="large"
+                style={styles.secondaryButton}
+              />
+            </View>
+          </View>
+        </View>
+      </ImageBackground>
     </SafeAreaView>
   );
 }
@@ -238,12 +264,48 @@ export default function LoginScreen({ onLoggedIn }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
   },
-  container: {
+  background: {
+    flex: 1,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  screen: {
+    flex: 1,
     padding: 16,
-    paddingTop: 40,
+    justifyContent: "center",
+  },
+  header: {
+    marginBottom: 24,
+    alignItems: "center",
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    color: "#F9FAFB",
+    marginBottom: 4,
+    textShadowColor: "rgba(0, 0, 0, 0.6)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#E5E7EB",
+    textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  card: {
+    padding: 16,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: "rgba(255, 255, 255, 0.6)",
     gap: 12,
+    ...SHADOWS.md,
   },
   generalErrorText: {
     color: "#ff3b30",
@@ -251,7 +313,10 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 4,
   },
-  button: {
+  primaryButton: {
     marginTop: 8,
+  },
+  secondaryButton: {
+    marginTop: 4,
   },
 });
