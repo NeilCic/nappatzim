@@ -13,7 +13,8 @@ module.exports = {
       backgroundColor: "#ffffff"
     },
     ios: {
-      supportsTablet: true
+      supportsTablet: true,
+      bundleIdentifier: "com.nappatzim.mobile"
     },
     android: {
       package: "com.nappatzim.mobile",
