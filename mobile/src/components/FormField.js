@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import StyledTextInput from './StyledTextInput';
 
@@ -21,6 +21,27 @@ export default function FormField({
   inputStyle,
 }) {
   const hasError = !!error;
+  const [isFocused, setIsFocused] = useState(false);
+
+  const handleFocus = (e) => {
+    setIsFocused(true);
+    if (inputProps.onFocus) {
+      inputProps.onFocus(e);
+    }
+  };
+
+  const handleBlur = (e) => {
+    setIsFocused(false);
+    if (inputProps.onBlur) {
+      inputProps.onBlur(e);
+    }
+  };
+
+  const mergedInputProps = {
+    ...inputProps,
+    onFocus: handleFocus,
+    onBlur: handleBlur,
+  };
 
   return (
     <View style={[styles.container, style]}>
@@ -31,9 +52,10 @@ export default function FormField({
         <Text style={styles.description}>{description}</Text>
       )}
       <StyledTextInput
-        {...inputProps}
+        {...mergedInputProps}
         style={[
           styles.input,
+          isFocused && styles.inputFocused,
           hasError && styles.inputError,
           inputStyle,
         ]}
@@ -68,6 +90,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     fontSize: 16,
     backgroundColor: 'white',
+  },
+  inputFocused: {
+    borderColor: '#007AFF',
   },
   inputError: {
     borderColor: '#ff3b30',

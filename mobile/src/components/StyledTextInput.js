@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { TextInput } from 'react-native';
+import { TextInput, StyleSheet } from 'react-native';
 
 /**
  * Styled TextInput component with centralized styling
@@ -11,7 +11,9 @@ export default function StyledTextInput({
   selectTextOnFocus,
   onChangeText,
   onFocus,
+  onBlur,
   selection: controlledSelection,
+  style,
   ...props 
 }) {
   const hasSelectedOnThisFocus = useRef(false);
@@ -80,12 +82,23 @@ export default function StyledTextInput({
   return (
     <TextInput
       ref={inputRef}
+      style={[styles.baseInput, style]}
       placeholderTextColor={placeholderTextColor}
       selectTextOnFocus={false} // We handle this manually
       onChangeText={handleChangeText}
       onFocus={handleFocus}
+      onBlur={onBlur}
       {...textInputProps}
     />
   );
 }
 
+const styles = StyleSheet.create({
+  baseInput: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+  },
+});

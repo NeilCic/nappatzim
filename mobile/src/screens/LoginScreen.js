@@ -118,6 +118,12 @@ export default function LoginScreen({ onLoggedIn }) {
           return;
         }
       }
+
+      // Treat authentication failures as password errors for clearer feedback
+      if (e.response?.status === 401) {
+        setPasswordError(errorMessage);
+        return;
+      }
       
       if (errorMessage.toLowerCase().includes("password")) {
         setPasswordError(errorMessage);

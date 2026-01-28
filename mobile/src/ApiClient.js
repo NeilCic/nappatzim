@@ -46,14 +46,6 @@ export function createApi({ baseURL, onAuthFailure }) {
         }
       }
 
-      if (
-        original.url?.includes("/auth/login") ||
-        original.url?.includes("/auth/register")
-      ) {
-        const errorMessage = getErrorMessage(error, "Authentication failed");
-        Alert.alert("Login Failed", errorMessage);
-      }
-      
       return Promise.reject(error);
     }
   );

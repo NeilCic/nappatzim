@@ -4,13 +4,13 @@
 Implement role-based access control (RBAC) with four roles: Admin, Gym Manager, Setter, and User.
 
 ## Current Status
-⚠️ **PARTIALLY IMPLEMENTED**: The `role` field exists in the User schema (`role String @default("user")`), but:
-- ❌ No authorization middleware exists
-- ❌ No role-based checks in controllers/services
-- ❌ No frontend role handling
+⚠️ **PARTIALLY IMPLEMENTED**: The `role` field exists in the User schema (`role String @default("user")`), and:
+- ✅ JWTs include `role` and `auth/me` returns it to the frontend
+- ✅ Frontend `UserProvider` exposes `user.role`
+- ✅ Admin-only behavior implemented for spot operations (reset/rename/delete)
+- ✅ Admin-only delete for comments (moderation), but comment edits are still author-only
+- ❌ No dedicated authorization middleware yet (all checks inline in controllers)
 - ❌ No layout ownership model implemented
-
-**The role field is in the database but not functionally used anywhere.**
 
 ## Roles
 
